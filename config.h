@@ -44,6 +44,8 @@
 #define FILTER_IAT         180   // IAT: muito filtrado (lento)
 #define FILTER_O2          128   // O2: média-alta
 #define FILTER_BAT         128   // Bateria: média-alta
+#define FILTER_OIL_PRESS   100   // Pressão óleo: média
+#define FILTER_FUEL_PRESS  100   // Pressão combustível: média
 
 // Limites de ADC (10-bit: 0-1023)
 #define ADC_MIN             0
@@ -199,6 +201,28 @@ extern volatile uint8_t loopTimerFlags;
 // MAP sampling
 #define MAP_SAMPLE_INSTANT        0   // Leitura instantânea
 #define MAP_SAMPLE_AVERAGE        1   // Média do ciclo
+
+// ============================================================================
+// CONSTANTES DE AUXILIARES
+// ============================================================================
+
+// Ventoinha (Fan)
+#define FAN_ON_TEMP         95    // Liga ventoinha em 95°C
+#define FAN_OFF_TEMP        90    // Desliga em 90°C (histerese)
+
+// Bomba de combustível
+#define FUEL_PUMP_PRIME_MS  2000  // Prime de 2 segundos ao ligar
+
+// Válvula de marcha lenta (IAC)
+#define IAC_IDLE_RPM        850   // RPM alvo de marcha lenta
+#define IAC_RPM_DEADBAND    50    // Banda morta ±50 RPM
+#define IAC_STEP_SIZE       2     // Incremento de duty cycle (%)
+#define IAC_MIN_DUTY        0     // Duty mínimo
+#define IAC_MAX_DUTY        100   // Duty máximo
+
+// Pressão de óleo e combustível (sensores 0-5V = 0-1000 kPa típico)
+#define OIL_PRESS_MIN       50    // Pressão mínima óleo em idle (kPa)
+#define FUEL_PRESS_MIN      250   // Pressão mínima combustível (kPa)
 
 // ============================================================================
 // DEBUG

@@ -7,18 +7,20 @@
 - **Linguagem:** C++ (Arduino)
 - **Arquitetura:** ISR-driven, offline-first, integer-only
 - **Inspiração:** Speeduino (protocolo compatível com TunerStudio)
+- **Versão:** 0.2.0 (com auxiliares)
 
 ## 🎯 Objetivos do Projeto
 
 Criar uma ECU funcional que:
 - ✅ Controla injeção (wasted paired, 2 canais para 4 cilindros)
 - ✅ Controla ignição (wasted spark, 2 canais)
-- ✅ Lê sensores (MAP, TPS, CLT, IAT, O2, Battery)
+- ✅ Lê sensores (MAP, TPS, CLT, IAT, O2, Battery, Oil Press, Fuel Press)
 - ✅ Decodifica trigger wheels (Missing Tooth 36-1/60-2, Basic Distributor)
 - ✅ Comunica com TunerStudio via serial (Legacy + Modern protocol)
 - ✅ Usa tabelas 3D (8×8) com interpolação bilinear
 - ✅ Aplica correções (WUE, ASE, AE, CLT, Battery)
 - ✅ Agendamento em tempo real via ISR direta
+- ✅ Controla auxiliares (ventoinha, IAC, bomba combustível)
 
 ## 🏗️ Estrutura de Arquivos
 
@@ -39,6 +41,7 @@ fuel.h/cpp             - Cálculo de injeção e correções
 ignition.h/cpp         - Cálculo de avanço e dwell
 scheduler.h/cpp        - Timer1 para eventos de injeção/ignição
 comms.h/cpp            - Protocolo Speeduino (TunerStudio)
+auxiliaries.h/cpp      - Controle de ventoinha, IAC e bomba
 ```
 
 ## 🔧 Conceitos Críticos
@@ -240,19 +243,89 @@ struct Table3D {
 #define PIN_INJECTOR_2     3   // D3 - Injetores 2+3
 #define PIN_IGNITION_1     4   // D4 - Bobinas 1+4
 #define PIN_IGNITION_2     5   // D5 - Bobinas 2+3
+#define PIN_FAN            8   // D8 - Relé ventoinha radiador
+#define PIN_IDLE_VALVE     9   // D9 - Válvula marcha lenta (PWM)
+#define PIN_FUEL_PUMP     10   // D10 - Relé bomba combustível
 
 // Trigger inputs
 #define PIN_TRIGGER_PRIMARY   6  // D6 - INT0 (roda fônica)
 #define PIN_TRIGGER_SECONDARY 7  // D7 - INT1 (cam - futuro)
 
 // Sensores ADC
-#define PIN_MAP      A0  // Sensor MAP
-#define PIN_TPS      A1  // Sensor TPS
-#define PIN_CLT      A2  // Sensor Coolant (NTC)
-#define PIN_IAT      A3  // Sensor Intake Air (NTC)
-#define PIN_O2       A4  // Sensor O2 (wideband)
-#define PIN_BATTERY  A5  // Tensão bateria
+#define PIN_CLT             A0  // Temperatura motor (NTC)
+#define PIN_IAT             A1  // Temperatura ar (NTC)
+#define PIN_MAP             A2  // Pressão coletor
+#define PIN_TPS             A3  // Posição borboleta
+#define PIN_O2              A4  // Sonda Lambda
+#define PIN_BATTERY         A5  // Tensão bateria
+#define PIN_OIL_PRESSURE    A6  // Pressão óleo (0-5V = 0-1000 kPa)
+#define PIN_FUEL_PRESSURE   A7  // Pressão combustível (0-5V = 0-1000 kPa)
 ```
+
+## 🔌 Sistema de Auxiliares (v0.2)
+
+### Controle de Ventoinha (Fan Control)
+
+**Implementação:** digitalWrite() simples com histerese
+
+**Lógica:**
+```cpp
+if (coolant >= 95°C) FAN_ON();
+if (coolant <= 90°C) FAN_OFF();
+// Entre 90-95°C: mantém estado (histerese)
+```
+
+**Por quê simples?**
+- Não precisa de PWM (relé on/off)
+- Histerese evita liga/desliga rápido
+- Executado a 4Hz (250ms) é suficiente
+
+### Bomba de Combustível (Fuel Pump)
+
+**Implementação:** digitalWrite() com controle de estado
+
+**Fases:**
+1. **Priming:** Liga por 2s ao boot
+2. **Operação:** Liga se RPM > 0 ou cranking
+3. **Timeout:** Desliga 1s após motor parar
+
+**Segurança:** Se motor parar sem desligar ignição, bomba desliga automaticamente
+
+### Válvula de Marcha Lenta (IAC)
+
+**Implementação:** analogWrite() PWM no pino D9
+
+**Controle proporcional simples:**
+```cpp
+int16_t erro = 850 - RPM;  // Alvo 850 RPM
+if (abs(erro) > 50) {      // Deadband ±50 RPM
+  if (erro > 0) duty += 2%; // RPM baixo: abre mais
+  else duty -= 2%;           // RPM alto: fecha
+}
+```
+
+**Limites:**
+- TPS < 5% (só atua em idle)
+- CLT > 60°C (motor aquecido)
+- Duty 0-100%
+
+**Por quê não PID?**
+- RAM limitada
+- Resposta lenta ok em idle
+- Simples de entender e ajustar
+
+### Sensores de Pressão
+
+**Pressão de óleo e combustível:**
+- Sensores típicos: 0-5V = 0-1000 kPa
+- Armazenado em uint8_t (0-250, multiplicar por 4 para kPa real)
+- Filtro IIR médio (α=100)
+- Lidos a 4Hz junto com CLT/IAT
+
+**Uso:**
+- Monitoramento/alerta (futuro)
+- Datalog
+- Não afetam cálculos de injeção/ignição
 
 ## 📊 Decisões Técnicas
 

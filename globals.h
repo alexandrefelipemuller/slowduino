@@ -26,6 +26,9 @@
 #define PIN_INJECTOR_2      3   // Bico 2 (cilindros 2+3 em wasted paired)
 #define PIN_IGNITION_1      4   // Ignição 1 (cilindros 1+4)
 #define PIN_IGNITION_2      5   // Ignição 2 (cilindros 2+3)
+#define PIN_FAN             8   // Ventoinha do radiador
+#define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC)
+#define PIN_FUEL_PUMP      10   // Relé da bomba de combustível
 
 // Entradas Digitais
 #define PIN_TRIGGER_PRIMARY   6   // Sensor de rotação (crank) - INT0
@@ -33,10 +36,7 @@
 #define PIN_VSS              12   // Velocidade do veículo
 
 // Futuro uso
-#define PIN_SPARE_1          8
-#define PIN_SPARE_2          9
-#define PIN_SPARE_3         10
-#define PIN_SPARE_4         11
+#define PIN_SPARE_1         11
 
 // Entradas Analógicas
 #define PIN_CLT             A0   // Temperatura do motor
@@ -45,6 +45,8 @@
 #define PIN_TPS             A3   // Posição da borboleta
 #define PIN_O2              A4   // Sonda Lambda
 #define PIN_BAT             A5   // Tensão da bateria
+#define PIN_OIL_PRESSURE    A6   // Pressão de óleo do motor
+#define PIN_FUEL_PRESSURE   A7   // Pressão da linha de combustível
 
 // ============================================================================
 // CONSTANTES DE CONVERSÃO
@@ -72,6 +74,8 @@ struct Statuses {
   uint16_t iatADC;
   uint16_t o2ADC;
   uint16_t batADC;
+  uint16_t oilPressADC;
+  uint16_t fuelPressADC;
 
   // Sensores convertidos (valores físicos)
   uint8_t  MAP;                // Pressão kPa (0-255)
@@ -80,6 +84,8 @@ struct Statuses {
   int8_t   IAT;                // Temperatura ar °C (-40 a +215)
   uint8_t  O2;                 // Lambda % (0-255, 100 = lambda 1.0)
   uint8_t  battery10;          // Tensão bateria * 10 (ex: 145 = 14.5V)
+  uint8_t  oilPressure;        // Pressão óleo kPa (0-1000 kPa)
+  uint8_t  fuelPressure;       // Pressão combustível kPa (0-1000 kPa)
 
   // Combustível
   uint16_t PW1;                // Pulsewidth injetor 1 (microsegundos)
@@ -100,6 +106,11 @@ struct Statuses {
 
   // Estado do motor
   uint8_t  engineStatus;       // Flags de estado (bit field)
+
+  // Auxiliares (outputs)
+  bool     fanActive;          // Ventoinha ativa
+  bool     fuelPumpActive;     // Bomba de combustível ativa
+  uint8_t  idleValveDuty;      // Duty cycle válvula marcha lenta (0-100%)
 
   // Tempo
   uint32_t secl;               // Segundos desde power-on

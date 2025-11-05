@@ -76,6 +76,24 @@ void readO2();
 void readBattery();
 
 /**
+ * @brief Lê sensor de pressão de óleo
+ *
+ * Lê ADC e converte para kPa (0-1000 kPa típico)
+ * Sensores comuns: 0-5V = 0-1000 kPa
+ * Frequência: 10-15Hz
+ */
+void readOilPressure();
+
+/**
+ * @brief Lê sensor de pressão de combustível
+ *
+ * Lê ADC e converte para kPa (0-1000 kPa típico)
+ * Sensores comuns: 0-5V = 0-1000 kPa
+ * Frequência: 10-15Hz
+ */
+void readFuelPressure();
+
+/**
  * @brief Lê todos os sensores
  *
  * Chama todas as funções de leitura. Use com cuidado (lento).

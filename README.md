@@ -45,6 +45,9 @@ Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e 
 | Injetor 2 | D3 | Cilindros 2+3 (wasted paired) |
 | Bobina 1 | D4 | Ignição cilindros 1+4 |
 | Bobina 2 | D5 | Ignição cilindros 2+3 |
+| Ventoinha | D8 | Relé da ventoinha do radiador |
+| Válvula Marcha Lenta | D9 | Selenoide IAC (PWM) |
+| Bomba Combustível | D10 | Relé da bomba de combustível |
 
 ### Entradas Digitais
 | Função | Pino Arduino | Descrição |
@@ -62,8 +65,16 @@ Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e 
 | TPS | A3 | Posição da borboleta (potenciômetro) |
 | O2 | A4 | Sonda Lambda narrowband |
 | Bateria | A5 | Tensão da bateria (divisor 10K:1K5) |
+| Pressão Óleo | A6 | Sensor de pressão de óleo (0-5V = 0-1000 kPa) |
+| Pressão Combustível | A7 | Sensor de pressão de combustível (0-5V = 0-1000 kPa) |
 
 ---
+
+![](https://github.com/alexandrefelipemuller/slowduino/resources/Schematic%20Slowduino-injection%202025-11-05.png?raw=true)
+
+
+[Schematic Overview](Schematic.md)
+
 
 ## 📂 Estrutura de Arquivos
 
@@ -79,6 +90,8 @@ slowduino/
 ├── fuel.h/cpp             # Cálculos de injeção
 ├── ignition.h/cpp         # Cálculos de ignição
 ├── scheduler.h/cpp        # Agendamento de eventos (Timer1)
+├── auxiliaries.h/cpp      # Controle de ventoinha, IAC e bomba
+├── comms.h/cpp            # Comunicação serial (TunerStudio)
 └── README.md              # Esta documentação
 ```
 
@@ -143,8 +156,12 @@ slowduino/
 - Sensor TPS (potenciômetro 5K)
 - 2× Termistores NTC 10K (CLT e IAT)
 - Sensor de rotação (Hall ou indutivo)
+- Sensor de pressão de óleo (0-5V, 0-1000 kPa)
+- Sensor de pressão de combustível (0-5V, 0-1000 kPa)
 - 2× Drivers de injetor (ex: ULN2003 ou MOSFET)
 - 2× Módulos de ignição (ex: BIP373 ou similar)
+- 3× Relés 12V (ventoinha, bomba combustível, reserva)
+- 1× Válvula IAC (idle air control) ou selenoide PWM
 - Regulador 5V e proteções
 
 ### 2. Software
@@ -276,20 +293,27 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 
 ## 🛠️ Desenvolvimento Futuro
 
-### Roadmap v0.2
+### v0.2 (Atual)
 
-- [ ] Agendamento correto baseado em ângulo do virabrequim
-- [ ] Priming pulse
-- [ ] Modo sequential (4 canais de injeção)
-- [ ] Sensor de cam (sincronismo completo)
-- [ ] Datalogger SD card
-- [ ] Compatibilidade com TunerStudio INI
+- [x] Controle de ventoinha por temperatura
+- [x] Bomba de combustível com priming
+- [x] Válvula de marcha lenta (IAC) com PWM
+- [x] Sensores de pressão de óleo e combustível
+- [x] Priming pulse de injeção
 
 ### Roadmap v0.3
 
-- [ ] Idle Air Control (IAC)
+- [ ] Agendamento correto baseado em ângulo do virabrequim
+- [ ] Modo sequential (4 canais de injeção)
+- [ ] Sensor de cam (sincronismo completo)
 - [ ] Closed-loop O2
 - [ ] Tabela de AFR target
+
+### Roadmap v0.4
+
+- [ ] Datalogger SD card
+- [ ] Compatibilidade completa com TunerStudio INI
+- [ ] Launch control básico
 - [ ] Expansão para 6 cilindros (ATmega2560)
 
 ---

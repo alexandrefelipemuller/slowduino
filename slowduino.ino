@@ -20,6 +20,7 @@
 #include "ignition.h"
 #include "scheduler.h"
 #include "comms.h"
+#include "auxiliaries.h"
 
 // ============================================================================
 // VARIÁVEIS DO LOOP
@@ -81,13 +82,18 @@ void setup() {
   commsInit();
   Serial.println(F("OK"));
 
-  // 7. Inicializa status
+  // 7. Auxiliares (ventoinha, IAC, bomba)
+  Serial.print(F("- Auxiliares... "));
+  auxiliariesInit();
+  Serial.println(F("OK"));
+
+  // 8. Inicializa status
   currentStatus.secl = 0;
   currentStatus.runSecs = 0;
   currentStatus.loopCount = 0;
   currentStatus.ignitionCount = 0;
 
-  // 7. Estado inicial do motor
+  // 9. Estado inicial do motor
   currentStatus.engineStatus = 0;
   BIT_CLEAR(currentStatus.engineStatus, ENGINE_CRANK);
   BIT_CLEAR(currentStatus.engineStatus, ENGINE_RUN);
@@ -175,7 +181,7 @@ void loop() {
   }
 
   // ------------------------------------------------------------------------
-  // Loop 4Hz (250ms) - Sensores lentos
+  // Loop 4Hz (250ms) - Sensores lentos e auxiliares
   // ------------------------------------------------------------------------
   if ((now - lastLoop4Hz) >= 250) {
     lastLoop4Hz = now;
@@ -184,6 +190,13 @@ void loop() {
     readIAT();
     readO2();
     readBattery();
+    readOilPressure();
+    readFuelPressure();
+
+    // Controles auxiliares
+    fanControl();
+    fuelPumpControl();
+    idleControl();
   }
 
   // ------------------------------------------------------------------------

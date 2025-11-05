@@ -20,6 +20,8 @@ void sensorsInit() {
   pinMode(PIN_IAT, INPUT);
   pinMode(PIN_O2, INPUT);
   pinMode(PIN_BAT, INPUT);
+  pinMode(PIN_OIL_PRESSURE, INPUT);
+  pinMode(PIN_FUEL_PRESSURE, INPUT);
 
   // Realiza leituras iniciais (sem filtro)
   currentStatus.mapADC = analogRead(PIN_MAP);
@@ -28,6 +30,8 @@ void sensorsInit() {
   currentStatus.iatADC = analogRead(PIN_IAT);
   currentStatus.o2ADC = analogRead(PIN_O2);
   currentStatus.batADC = analogRead(PIN_BAT);
+  currentStatus.oilPressADC = analogRead(PIN_OIL_PRESSURE);
+  currentStatus.fuelPressADC = analogRead(PIN_FUEL_PRESSURE);
 
   // Converte valores iniciais
   currentStatus.MAP = fastMap(currentStatus.mapADC, 0, 1023, configPage1.mapMin, configPage1.mapMax);
@@ -36,6 +40,8 @@ void sensorsInit() {
   currentStatus.IAT = ntcToCelsius(currentStatus.iatADC);
   currentStatus.O2 = adc10to8(currentStatus.o2ADC);
   currentStatus.battery10 = (uint8_t)(((uint32_t)currentStatus.batADC * ADC_VREF * BAT_MULTIPLIER) / (1024UL * 1000UL));
+  currentStatus.oilPressure = (uint8_t)fastMap(currentStatus.oilPressADC, 0, 1023, 0, 250);  // 0-1000 kPa em escala 0-250
+  currentStatus.fuelPressure = (uint8_t)fastMap(currentStatus.fuelPressADC, 0, 1023, 0, 250);
 
   currentStatus.TPSlast = currentStatus.TPS;
   lastTPSReadTime = micros();
@@ -165,6 +171,46 @@ void readBattery() {
 }
 
 // ============================================================================
+// LEITURA DE PRESSÃO DE ÓLEO
+// ============================================================================
+
+void readOilPressure() {
+  // Lê ADC
+  uint16_t rawADC = analogRead(PIN_OIL_PRESSURE);
+
+  // Aplica filtro
+  currentStatus.oilPressADC = applyFilter(rawADC, currentStatus.oilPressADC, FILTER_OIL_PRESS);
+
+  // Converte para kPa (sensor típico 0-5V = 0-1000 kPa)
+  // Usa escala 0-250 para caber em uint8_t (multiplicar por 4 para obter kPa real)
+  uint16_t pressKpa = fastMap(currentStatus.oilPressADC, 0, 1023, 0, 1000);
+  currentStatus.oilPressure = (uint8_t)(pressKpa >> 2);  // Divide por 4
+
+  // Limita
+  if (currentStatus.oilPressure > 250) currentStatus.oilPressure = 250;
+}
+
+// ============================================================================
+// LEITURA DE PRESSÃO DE COMBUSTÍVEL
+// ============================================================================
+
+void readFuelPressure() {
+  // Lê ADC
+  uint16_t rawADC = analogRead(PIN_FUEL_PRESSURE);
+
+  // Aplica filtro
+  currentStatus.fuelPressADC = applyFilter(rawADC, currentStatus.fuelPressADC, FILTER_FUEL_PRESS);
+
+  // Converte para kPa (sensor típico 0-5V = 0-1000 kPa)
+  // Usa escala 0-250 para caber em uint8_t (multiplicar por 4 para obter kPa real)
+  uint16_t pressKpa = fastMap(currentStatus.fuelPressADC, 0, 1023, 0, 1000);
+  currentStatus.fuelPressure = (uint8_t)(pressKpa >> 2);  // Divide por 4
+
+  // Limita
+  if (currentStatus.fuelPressure > 250) currentStatus.fuelPressure = 250;
+}
+
+// ============================================================================
 // LEITURA COMPLETA
 // ============================================================================
 
@@ -175,6 +221,8 @@ void readAllSensors() {
   readIAT();
   readO2();
   readBattery();
+  readOilPressure();
+  readFuelPressure();
 }
 
 // ============================================================================
