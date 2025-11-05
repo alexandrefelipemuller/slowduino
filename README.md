@@ -7,6 +7,9 @@ Baseada na Speeduino, mas drasticamente simplificada para caber em apenas **32KB
 
 ---
 
+![](https://raw.githubusercontent.com/alexandrefelipemuller/slowduino/refs/heads/main/resources/PCB_3d.jpeg)
+
+
 ## 🎯 Objetivo
 
 Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e ignição, compatível com comunicação básica com TunerStudio, sem recursos avançados.
@@ -70,7 +73,7 @@ Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e 
 
 ---
 
-![](https://github.com/alexandrefelipemuller/slowduino/resources/Schematic%20Slowduino-injection%202025-11-05.png?raw=true)
+![](https://raw.githubusercontent.com/alexandrefelipemuller/slowduino/refs/heads/main/resources/Schematic_Slowduino-injection_2025-11-05.png)
 
 
 [Schematic Overview](Schematic.md)
@@ -366,3 +369,4 @@ Dúvidas e sugestões: abra uma issue no repositório.
 ---
 
 **Slowduino** - Porque nem todo motor precisa de 8 MB de RAM! 🚗💨
+
