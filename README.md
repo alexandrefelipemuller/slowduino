@@ -44,19 +44,19 @@ Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e 
 ### Saídas Digitais
 | Função | Pino Arduino | Descrição |
 |--------|--------------|-----------|
-| Injetor 1 | D2 | Cilindros 1+4 (wasted paired) |
-| Injetor 2 | D3 | Cilindros 2+3 (wasted paired) |
+| Injetor 1 | D10 | Cilindros 1+4 (wasted paired) |
+| Injetor 2 | D11 | Cilindros 2+3 (wasted paired) |
 | Bobina 1 | D4 | Ignição cilindros 1+4 |
 | Bobina 2 | D5 | Ignição cilindros 2+3 |
 | Ventoinha | D8 | Relé da ventoinha do radiador |
 | Válvula Marcha Lenta | D9 | Selenoide IAC (PWM) |
-| Bomba Combustível | D10 | Relé da bomba de combustível |
+| Bomba Combustível | D6 | Relé da bomba de combustível |
 
 ### Entradas Digitais
 | Função | Pino Arduino | Descrição |
 |--------|--------------|-----------|
-| Trigger Primário | D6 (INT0) | Sensor de rotação (crank) |
-| Trigger Secundário | D7 | Sensor de fase (cam) - futuro |
+| Trigger Primário | D2 (INT0) | Sensor de rotação (crank) |
+| Trigger Secundário | D3 | Sensor de fase (cam) - futuro |
 | Velocidade | D12 | Sensor de velocidade (VSS) |
 
 ### Entradas Analógicas
@@ -73,7 +73,7 @@ Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e 
 
 ---
 
-![](https://raw.githubusercontent.com/alexandrefelipemuller/slowduino/refs/heads/main/resources/Schematic_Slowduino-injection_2025-11-05.png)
+![](https://raw.githubusercontent.com/alexandrefelipemuller/slowduino/refs/heads/main/resources/Schematic%20Slowduino-injection%202025-11-06.png)
 
 
 [Schematic Overview](Schematic.md)

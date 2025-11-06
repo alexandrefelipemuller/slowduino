@@ -21,22 +21,24 @@
 // MAPEAMENTO DE PINOS (Arduino Uno/Nano)
 // ============================================================================
 
+// Entradas Digitais (TRIGGER PRECISA DE INT0/INT1 - SOMENTE D2/D3 NO UNO/NANO!)
+#define PIN_TRIGGER_PRIMARY   2   // Sensor de rotação (crank) - INT0 (D2)
+#define PIN_TRIGGER_SECONDARY 3   // Sensor de fase (cam) - INT1 (D3) - futuro
+
 // Saídas Digitais
-#define PIN_INJECTOR_1      2   // Bico 1 (cilindros 1+4 em wasted paired)
-#define PIN_INJECTOR_2      3   // Bico 2 (cilindros 2+3 em wasted paired)
 #define PIN_IGNITION_1      4   // Ignição 1 (cilindros 1+4)
 #define PIN_IGNITION_2      5   // Ignição 2 (cilindros 2+3)
+#define PIN_FUEL_PUMP       6   // Relé da bomba de combustível
 #define PIN_FAN             8   // Ventoinha do radiador
-#define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC)
-#define PIN_FUEL_PUMP      10   // Relé da bomba de combustível
+#define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC - PWM)
+#define PIN_INJECTOR_1     10   // Bico 1 (cilindros 1+4 em wasted paired)
+#define PIN_INJECTOR_2     11   // Bico 2 (cilindros 2+3 em wasted paired)
 
-// Entradas Digitais
-#define PIN_TRIGGER_PRIMARY   6   // Sensor de rotação (crank) - INT0
-#define PIN_TRIGGER_SECONDARY 7   // Sensor de fase (cam) - futuro
-#define PIN_VSS              12   // Velocidade do veículo
+// Outras Entradas Digitais
+#define PIN_VSS            12   // Velocidade do veículo
 
 // Futuro uso
-#define PIN_SPARE_1         11
+#define PIN_SPARE_1         7
 
 // Entradas Analógicas
 #define PIN_CLT             A0   // Temperatura do motor

@@ -341,18 +341,19 @@ uint16_t timeToAngle(uint32_t time) {
 }
 
 uint16_t getCrankAngle() {
-  if (!triggerState.hasSync) return 0;
+  if (!triggerState.hasSync || triggerState.revolutionTime == 0) return 0;
 
   // Tempo desde dente #1
   uint32_t timeSinceToothOne = micros() - triggerState.toothOneTime;
 
-  // Converte para ângulo
-  uint16_t angle = timeToAngle(timeSinceToothOne);
-
-  // Normaliza para 0-359
-  if (angle >= 360) {
-    angle = angle % 360;
+  // Limita ao tempo de revolução para evitar overflow e operação módulo
+  // (entre revoluções o tempo pode exceder revolutionTime)
+  if (timeSinceToothOne >= triggerState.revolutionTime) {
+    timeSinceToothOne = triggerState.revolutionTime - 1;
   }
+
+  // Converte para ângulo (0-359) - agora garantido sem necessidade de módulo
+  uint16_t angle = ((uint32_t)timeSinceToothOne * 360UL) / triggerState.revolutionTime;
 
   return angle;
 }
@@ -362,11 +363,12 @@ uint16_t getCrankAngle() {
 // ============================================================================
 
 void attachTriggerInterrupt() {
-  // Configura pino como entrada
+  // Configura pino como entrada com pullup
   pinMode(PIN_TRIGGER_PRIMARY, INPUT_PULLUP);
 
-  // Anexa interrupção INT0 (pino D2 no Uno)
-  // Detecta borda de subida (padrão)
+  // Anexa interrupção INT0 (pino D2 no Uno/Nano - PIN_TRIGGER_PRIMARY)
+  // Detecta borda de subida (RISING)
+  // Lambda chama ISR atual dinamicamente (permite trocar decoder em runtime)
   attachInterrupt(digitalPinToInterrupt(PIN_TRIGGER_PRIMARY), []() {
     if (currentTriggerISR != nullptr) {
       currentTriggerISR();

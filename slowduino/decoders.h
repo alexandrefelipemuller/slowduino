@@ -76,7 +76,7 @@ void triggerSetup_BasicDistributor();
 /**
  * @brief ISR primária do trigger (Missing Tooth)
  *
- * Chamada por interrupção externa INT0 (pino D2)
+ * Chamada por interrupção externa INT0 (pino D2 - PIN_TRIGGER_PRIMARY)
  * CRÍTICO: código deve ser MUITO rápido!
  */
 void triggerPri_MissingTooth();
@@ -132,7 +132,7 @@ uint16_t getCrankAngle();
 /**
  * @brief Anexa interrupção ao pino de trigger
  *
- * Configura INT0 (pino D2) com a ISR apropriada
+ * Configura INT0 (pino D2 - PIN_TRIGGER_PRIMARY) com a ISR apropriada
  */
 void attachTriggerInterrupt();
 

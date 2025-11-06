@@ -237,19 +237,27 @@ struct Table3D {
 
 ## 🎮 Mapeamento de Pinos
 
+**⚠️ IMPORTANTE:** Arduino Uno/Nano só tem interrupções em D2 e D3!
+- INT0 → Pino D2
+- INT1 → Pino D3
+
 ```cpp
+// Trigger inputs (CRÍTICO: PRECISA de INT0/INT1!)
+#define PIN_TRIGGER_PRIMARY   2  // D2 - INT0 (roda fônica) ⚡
+#define PIN_TRIGGER_SECONDARY 3  // D3 - INT1 (cam - futuro) ⚡
+
 // Saídas (Arduino Uno/Nano)
-#define PIN_INJECTOR_1     2   // D2 - Injetores 1+4
-#define PIN_INJECTOR_2     3   // D3 - Injetores 2+3
 #define PIN_IGNITION_1     4   // D4 - Bobinas 1+4
 #define PIN_IGNITION_2     5   // D5 - Bobinas 2+3
+#define PIN_FUEL_PUMP      6   // D6 - Relé bomba combustível
 #define PIN_FAN            8   // D8 - Relé ventoinha radiador
 #define PIN_IDLE_VALVE     9   // D9 - Válvula marcha lenta (PWM)
-#define PIN_FUEL_PUMP     10   // D10 - Relé bomba combustível
+#define PIN_INJECTOR_1    10   // D10 - Injetores 1+4
+#define PIN_INJECTOR_2    11   // D11 - Injetores 2+3
 
-// Trigger inputs
-#define PIN_TRIGGER_PRIMARY   6  // D6 - INT0 (roda fônica)
-#define PIN_TRIGGER_SECONDARY 7  // D7 - INT1 (cam - futuro)
+// Outras entradas digitais
+#define PIN_VSS           12   // D12 - Velocidade do veículo
+#define PIN_SPARE_1        7   // D7 - Reserva
 
 // Sensores ADC
 #define PIN_CLT             A0  // Temperatura motor (NTC)
@@ -556,6 +564,34 @@ uint32_t value32 = pgm_read_dword(&data32[i]);
 ```
 
 ---
+
+## 📝 Changelog Recente
+
+### [HOJE] - Correções Críticas de Hardware
+
+**Problemas identificados:**
+1. ❌ **Pino de interrupção errado:** `PIN_TRIGGER_PRIMARY` estava no D6, que NÃO tem interrupção!
+2. ❌ **Conflito de pinos:** D2 e D3 usados por injetores, mas são os únicos com INT0/INT1
+3. ⚠️ **Operação módulo cara:** `getCrankAngle()` usava `%` (muito lento em AVR)
+
+**Mudanças implementadas:**
+
+1. **Remapeamento de pinos (globals.h)**
+   - Trigger movido para D2 (INT0) e D3 (INT1) ✅
+   - Injetores movidos para D10 e D11 (pinos comuns funcionam perfeitamente)
+   - Bomba combustível para D6 (D10 liberado)
+   - D7 vira pino reserva
+
+2. **Otimização getCrankAngle() (decoders.cpp)**
+   - Clamp em vez de módulo (eliminado operação cara)
+   - Validação de `revolutionTime == 0` adicionada
+   - Código mais rápido e previsível
+
+**Resultado:**
+- ✅ Interrupções funcionam corretamente (INT0 no pino certo!)
+- ✅ Todos pinos com função apropriada
+- ✅ Performance melhorada (sem operações módulo)
+- ✅ Documentação atualizada
 
 **Projeto:** Slowduino - Super Lowcost Speeduino
 **Stack:** Arduino C++ + ATmega328p
