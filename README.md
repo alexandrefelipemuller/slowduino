@@ -73,7 +73,7 @@ Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e 
 
 ---
 
-![](https://raw.githubusercontent.com/alexandrefelipemuller/slowduino/refs/heads/main/resources/Schematic%20Slowduino-injection%202025-11-06.png)
+![](https://github.com/alexandrefelipemuller/slowduino/blob/main/resources/Schematic_Slowduino-injection_2025-11-06.png)
 
 
 [Schematic Overview](Schematic.md)
@@ -369,4 +369,5 @@ Dúvidas e sugestões: abra uma issue no repositório.
 ---
 
 **Slowduino** - Porque nem todo motor precisa de 8 MB de RAM! 🚗💨
+
 
