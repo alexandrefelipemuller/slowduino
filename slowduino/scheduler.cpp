@@ -8,8 +8,10 @@
 // Instancia schedules globais
 volatile FuelSchedule fuelSchedule1 = {SCHED_OFF, 0, 0, 0, 1};
 volatile FuelSchedule fuelSchedule2 = {SCHED_OFF, 0, 0, 0, 2};
+volatile FuelSchedule fuelSchedule3 = {SCHED_OFF, 0, 0, 0, 3};
 volatile IgnitionSchedule ignitionSchedule1 = {SCHED_OFF, 0, 0, 0, 1};
 volatile IgnitionSchedule ignitionSchedule2 = {SCHED_OFF, 0, 0, 0, 2};
+volatile IgnitionSchedule ignitionSchedule3 = {SCHED_OFF, 0, 0, 0, 3};
 
 // ============================================================================
 // INICIALIZAÇÃO
@@ -19,14 +21,18 @@ void schedulerInit() {
   // Configura pinos de saída
   pinMode(PIN_INJECTOR_1, OUTPUT);
   pinMode(PIN_INJECTOR_2, OUTPUT);
+  pinMode(PIN_INJECTOR_3, OUTPUT);
   pinMode(PIN_IGNITION_1, OUTPUT);
   pinMode(PIN_IGNITION_2, OUTPUT);
+  pinMode(PIN_IGNITION_3, OUTPUT);
 
   // Garante que tudo está desligado
   closeInjector1();
   closeInjector2();
+  closeInjector3();
   endCoil1Charge();
   endCoil2Charge();
+  endCoil3Charge();
 
   // Configura Timer1
   setupTimer1();
@@ -88,8 +94,10 @@ void clearFuelSchedule(volatile FuelSchedule* schedule) {
   // Fecha injetor se estava aberto
   if (schedule->channel == 1) {
     closeInjector1();
-  } else {
+  } else if (schedule->channel == 2) {
     closeInjector2();
+  } else if (schedule->channel == 3) {
+    closeInjector3();
   }
 }
 
@@ -125,8 +133,10 @@ void clearIgnitionSchedule(volatile IgnitionSchedule* schedule) {
   // Desliga bobina se estava carregando
   if (schedule->channel == 1) {
     endCoil1Charge();
-  } else {
+  } else if (schedule->channel == 2) {
     endCoil2Charge();
+  } else if (schedule->channel == 3) {
+    endCoil3Charge();
   }
 }
 
@@ -134,10 +144,10 @@ void clearIgnitionSchedule(volatile IgnitionSchedule* schedule) {
 // ISRs DO TIMER1
 // ============================================================================
 
-// ISR para Compare Match A (Fuel/Ign Channel 1)
+// ISR para Compare Match A (Fuel/Ign Channel 1 e 3)
 ISR(TIMER1_COMPA_vect) {
   // CRÍTICO: Fuel e Ignition compartilham o mesmo compare register (OCR1A)
-  // Prioridade: Fuel > Ignition (injeção tem precedência)
+  // Prioridade: Fuel1 > Fuel3 > Ign1 > Ign3 (injeção tem precedência)
 
   // Processa Fuel Schedule 1
   if (fuelSchedule1.status == SCHED_PENDING) {
@@ -147,12 +157,25 @@ ISR(TIMER1_COMPA_vect) {
 
     // Agenda fim da injeção
     OCR1A = fuelSchedule1.endCompare;
-    return;  // Ignição aguarda próximo ciclo
+    return;
 
   } else if (fuelSchedule1.status == SCHED_RUNNING) {
     // Termina injeção
     fuelSchedule1.status = SCHED_OFF;
     closeInjector1();
+
+    // Verifica se há fuel3 pendente
+    if (fuelSchedule3.status == SCHED_PENDING) {
+      uint16_t now = TCNT1;
+      if (fuelSchedule3.startCompare > now) {
+        OCR1A = fuelSchedule3.startCompare;
+      } else {
+        fuelSchedule3.status = SCHED_RUNNING;
+        openInjector3();
+        OCR1A = fuelSchedule3.endCompare;
+      }
+      return;
+    }
 
     // Se ignição está pendente, agenda agora
     if (ignitionSchedule1.status == SCHED_PENDING) {
@@ -164,6 +187,42 @@ ISR(TIMER1_COMPA_vect) {
         ignitionSchedule1.status = SCHED_RUNNING;
         beginCoil1Charge();
         OCR1A = ignitionSchedule1.endCompare;
+      }
+    }
+    return;
+  }
+
+  // Processa Fuel Schedule 3 (compartilha OCR1A)
+  if (fuelSchedule3.status == SCHED_PENDING) {
+    fuelSchedule3.status = SCHED_RUNNING;
+    openInjector3();
+    OCR1A = fuelSchedule3.endCompare;
+    return;
+
+  } else if (fuelSchedule3.status == SCHED_RUNNING) {
+    fuelSchedule3.status = SCHED_OFF;
+    closeInjector3();
+
+    // Se ignição 1 ou 3 está pendente, agenda
+    if (ignitionSchedule1.status == SCHED_PENDING) {
+      uint16_t now = TCNT1;
+      if (ignitionSchedule1.startCompare > now) {
+        OCR1A = ignitionSchedule1.startCompare;
+      } else {
+        ignitionSchedule1.status = SCHED_RUNNING;
+        beginCoil1Charge();
+        OCR1A = ignitionSchedule1.endCompare;
+      }
+      return;
+    }
+    if (ignitionSchedule3.status == SCHED_PENDING) {
+      uint16_t now = TCNT1;
+      if (ignitionSchedule3.startCompare > now) {
+        OCR1A = ignitionSchedule3.startCompare;
+      } else {
+        ignitionSchedule3.status = SCHED_RUNNING;
+        beginCoil3Charge();
+        OCR1A = ignitionSchedule3.endCompare;
       }
     }
     return;
@@ -184,6 +243,31 @@ ISR(TIMER1_COMPA_vect) {
     endCoil1Charge();
 
     // Incrementa contador de ignições
+    currentStatus.ignitionCount++;
+
+    // Verifica se ign3 está pendente
+    if (ignitionSchedule3.status == SCHED_PENDING) {
+      uint16_t now = TCNT1;
+      if (ignitionSchedule3.startCompare > now) {
+        OCR1A = ignitionSchedule3.startCompare;
+      } else {
+        ignitionSchedule3.status = SCHED_RUNNING;
+        beginCoil3Charge();
+        OCR1A = ignitionSchedule3.endCompare;
+      }
+    }
+    return;
+  }
+
+  // Processa Ignition Schedule 3
+  if (ignitionSchedule3.status == SCHED_PENDING) {
+    ignitionSchedule3.status = SCHED_RUNNING;
+    beginCoil3Charge();
+    OCR1A = ignitionSchedule3.endCompare;
+
+  } else if (ignitionSchedule3.status == SCHED_RUNNING) {
+    ignitionSchedule3.status = SCHED_OFF;
+    endCoil3Charge();
     currentStatus.ignitionCount++;
   }
 }

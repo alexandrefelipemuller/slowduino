@@ -21,24 +21,28 @@
 // MAPEAMENTO DE PINOS (Arduino Uno/Nano)
 // ============================================================================
 
-// Entradas Digitais (TRIGGER PRECISA DE INT0/INT1 - SOMENTE D2/D3 NO UNO/NANO!)
+// Entradas Digitais (TRIGGER PRECISA DE INT0 - SOMENTE D2 NO UNO/NANO!)
 #define PIN_TRIGGER_PRIMARY   2   // Sensor de rotação (crank) - INT0 (D2)
-#define PIN_TRIGGER_SECONDARY 3   // Sensor de fase (cam) - INT1 (D3) - futuro
+// NOTA: PIN_TRIGGER_SECONDARY (D3) REMOVIDO - não usaremos sensor de fase
+//       Wasted spark é suficiente para até 6 cilindros (3 canais)
 
-// Saídas Digitais
+// Saídas Digitais - Ignição (wasted spark para 1-6 cilindros)
 #define PIN_IGNITION_1      4   // Ignição 1 (cilindros 1+4)
-#define PIN_IGNITION_2      5   // Ignição 2 (cilindros 2+3)
+#define PIN_IGNITION_2      5   // Ignição 2 (cilindros 2+5)
+#define PIN_IGNITION_3      3   // Ignição 3 (cilindros 3+6) - LIBERADO por remover sensor de fase!
+
+// Saídas Digitais - Injeção (wasted paired para 1-6 cilindros)
+#define PIN_INJECTOR_1     10   // Bico 1 (cilindros 1+4)
+#define PIN_INJECTOR_2     11   // Bico 2 (cilindros 2+5)
+#define PIN_INJECTOR_3      7   // Bico 3 (cilindros 3+6) - LIBERADO!
+
+// Saídas Digitais - Auxiliares
 #define PIN_FUEL_PUMP       6   // Relé da bomba de combustível
 #define PIN_FAN             8   // Ventoinha do radiador
 #define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC - PWM)
-#define PIN_INJECTOR_1     10   // Bico 1 (cilindros 1+4 em wasted paired)
-#define PIN_INJECTOR_2     11   // Bico 2 (cilindros 2+3 em wasted paired)
 
 // Outras Entradas Digitais
 #define PIN_VSS            12   // Velocidade do veículo
-
-// Futuro uso
-#define PIN_SPARE_1         7
 
 // Entradas Analógicas
 #define PIN_CLT             A0   // Temperatura do motor
@@ -89,9 +93,10 @@ struct Statuses {
   uint8_t  oilPressure;        // Pressão óleo kPa (0-1000 kPa)
   uint8_t  fuelPressure;       // Pressão combustível kPa (0-1000 kPa)
 
-  // Combustível
-  uint16_t PW1;                // Pulsewidth injetor 1 (microsegundos)
-  uint16_t PW2;                // Pulsewidth injetor 2
+  // Combustível (3 canais para até 6 cilindros)
+  uint16_t PW1;                // Pulsewidth injetor 1 (microsegundos) - cil 1+4
+  uint16_t PW2;                // Pulsewidth injetor 2 - cil 2+5
+  uint16_t PW3;                // Pulsewidth injetor 3 - cil 3+6
   uint8_t  VE;                 // Volumetric Efficiency % (0-255)
   uint16_t corrections;        // Correções acumuladas (base 100)
 
@@ -142,8 +147,8 @@ extern struct Statuses currentStatus;
 // ============================================================================
 struct ConfigPage1 {
   // Configuração do motor
-  uint8_t  nCylinders;         // Número de cilindros (1-4)
-  uint8_t  injectorLayout;     // 0=Paired, 1=Semi-Sequential
+  uint8_t  nCylinders;         // Número de cilindros (1-6)
+  uint8_t  injectorLayout;     // 0=Wasted Paired (sempre, sem sensor de fase)
 
   // Required fuel
   uint16_t reqFuel;            // Required fuel em microsegundos (base para cálculo de PW)
@@ -184,8 +189,10 @@ struct ConfigPage1 {
   // Misc
   uint8_t  stoich;             // Razão estequiométrica * 10 (ex: 147 = 14.7:1)
 
-  // Reserva para expansão futura
-  uint8_t  spare[10];
+  // Reserva para compatibilidade com Speeduino (página 1 = 128 bytes)
+  // ConfigPage1 atual: 45 bytes (1+1+2+1+2+3+4+12+2+4+1+1+1+10)
+  // Padding necessário: 128 - 45 = 83 bytes
+  uint8_t  spare[83];
 
 } __attribute__((packed));
 
@@ -223,8 +230,10 @@ struct ConfigPage2 {
   // Ignition output
   uint8_t  ignInvert;          // 0=Normal, 1=Invertido
 
-  // Reserva
-  uint8_t  spare[15];
+  // Reserva para compatibilidade com Speeduino (página 2 = 288 bytes)
+  // ConfigPage2 atual: 38 bytes (4+6+1+1+1+1+8+1+15)
+  // Padding necessário: 288 - 38 = 250 bytes
+  uint8_t  spare[250];
 
 } __attribute__((packed));
 

@@ -1,19 +1,19 @@
 # Memória do Projeto - Slowduino
 
 ## 📱 Visão Geral
-- **Tipo:** ECU minimalista para motores 1-4 cilindros
+- **Tipo:** ECU minimalista para motores 1-6 cilindros
 - **Hardware:** ATmega328p (Arduino Uno/Nano)
 - **Limitações:** 32KB Flash, 2KB RAM, 1KB EEPROM
 - **Linguagem:** C++ (Arduino)
-- **Arquitetura:** ISR-driven, offline-first, integer-only
+- **Arquitetura:** ISR-driven, offline-first, integer-only, wasted spark/paired
 - **Inspiração:** Speeduino (protocolo compatível com TunerStudio)
-- **Versão:** 0.2.0 (com auxiliares)
+- **Versão:** 0.2.1 (3 canais, até 6 cilindros)
 
 ## 🎯 Objetivos do Projeto
 
 Criar uma ECU funcional que:
-- ✅ Controla injeção (wasted paired, 2 canais para 4 cilindros)
-- ✅ Controla ignição (wasted spark, 2 canais)
+- ✅ Controla injeção (wasted paired, **3 canais para 1-6 cilindros**)
+- ✅ Controla ignição (wasted spark, **3 canais**)
 - ✅ Lê sensores (MAP, TPS, CLT, IAT, O2, Battery, Oil Press, Fuel Press)
 - ✅ Decodifica trigger wheels (Missing Tooth 36-1/60-2, Basic Distributor)
 - ✅ Comunica com TunerStudio via serial (Legacy + Modern protocol)
@@ -21,6 +21,7 @@ Criar uma ECU funcional que:
 - ✅ Aplica correções (WUE, ASE, AE, CLT, Battery)
 - ✅ Agendamento em tempo real via ISR direta
 - ✅ Controla auxiliares (ventoinha, IAC, bomba combustível)
+- ✅ **SEM sensor de fase** (wasted spark suficiente para 6 cilindros)
 
 ## 🏗️ Estrutura de Arquivos
 
@@ -75,20 +76,25 @@ inline void scheduleInjectionISR() {
 - ✅ ISR direta = zero latência, precisão máxima
 - ✅ Scheduler usa Timer1 para precisão de 0.5µs
 
-### 2. Wasted Paired Injection/Ignition
+### 2. Wasted Paired Injection/Ignition (3 Canais)
 
-**Conceito:** 1 canal controla 2 cilindros simultaneamente
+**Conceito:** 1 canal controla 2 cilindros simultaneamente (wasted spark/paired)
 
-**Injeção:**
-- Canal 1 (PIN_INJECTOR_1) → Cilindros 1 + 4
-- Canal 2 (PIN_INJECTOR_2) → Cilindros 2 + 3
-- Ambos injetam na mesma quantidade (PW1 = PW2)
+**Injeção (3 canais para 1-6 cilindros):**
+- Canal 1 (PIN_INJECTOR_1 - D10) → Cilindros 1 + 4
+- Canal 2 (PIN_INJECTOR_2 - D11) → Cilindros 2 + 5
+- Canal 3 (PIN_INJECTOR_3 - D7) → Cilindros 3 + 6
+- Todos injetam mesma quantidade (PW1 = PW2 = PW3)
 - Alternância via `revolutionCounter` (0 ou 1)
+- **Motores 1-4 cil:** Usa canais 1 e 2
+- **Motores 5-6 cil:** Usa todos 3 canais
 
-**Ignição:**
-- Canal 1 (PIN_IGNITION_1) → Cilindros 1 + 4
-- Canal 2 (PIN_IGNITION_2) → Cilindros 2 + 3
-- Mesmos timing de avanço e dwell
+**Ignição (3 canais para 1-6 cilindros):**
+- Canal 1 (PIN_IGNITION_1 - D4) → Cilindros 1 + 4
+- Canal 2 (PIN_IGNITION_2 - D5) → Cilindros 2 + 5
+- Canal 3 (PIN_IGNITION_3 - D3) → Cilindros 3 + 6
+- Mesmos timing de avanço e dwell para todos
+- **SEM sensor de fase** - wasted spark é suficiente
 
 ### 3. Trigger Decoders
 
@@ -156,7 +162,24 @@ void commsProcess() {
 }
 ```
 
-**Realtime Data Packet (127 bytes):**
+**⚠️ CRÍTICO: Realtime Data Format**
+
+Speeduino usa **offset byte** antes dos log entries:
+
+**Legacy Protocol (comando 'A'):**
+- Envia: 126 bytes de log entries (getTSLogEntry 0-125)
+- SEM offset byte
+
+**Modern Protocol (comando 'A' ou 'r' subcmd 0x30):**
+- Estrutura: `[length] [RC_OK] [offset_byte=0x00] [126 log entries] [CRC32]`
+- Total payload: 128 bytes (RC_OK + offset + 126 entries)
+- Após TunerStudio remover RC_OK: 127 bytes
+  - `data[0]` = offset byte (0x00)
+  - `data[1]` = getTSLogEntry(0) = secl
+  - `data[15]` = getTSLogEntry(14) = RPM low byte
+  - `data[16]` = getTSLogEntry(15) = RPM high byte
+
+**Log Entries Map (126 bytes, indices 0-125):**
 ```
 [0]: secl
 [7]: coolant+40
@@ -168,13 +191,14 @@ void commsProcess() {
 ```
 
 **Endianness:**
-- Little-endian: offsets, lengths, data fields
-- Big-endian: CRC32 apenas
+- Little-endian: offsets, lengths, data fields, log entry values
+- Big-endian: length header, CRC32
 
 **CRC32:**
 - Algoritmo padrão (FastCRC32 compatible)
 - Lookup table em PROGMEM (256 entradas)
 - Envia: `sendU32BE(crc)`
+- Inclui TODO o payload (RC_OK + dados)
 
 ## 📂 Estruturas de Dados
 
@@ -237,27 +261,33 @@ struct Table3D {
 
 ## 🎮 Mapeamento de Pinos
 
-**⚠️ IMPORTANTE:** Arduino Uno/Nano só tem interrupções em D2 e D3!
-- INT0 → Pino D2
-- INT1 → Pino D3
+**⚠️ IMPORTANTE:** Arduino Uno/Nano só tem interrupção em D2 (INT0)!
+- INT0 → Pino D2 (trigger primário - roda fônica)
+- **D3 LIBERADO** para ignição 3 (sem sensor de fase)
 
 ```cpp
-// Trigger inputs (CRÍTICO: PRECISA de INT0/INT1!)
+// Trigger input (CRÍTICO: PRECISA de INT0 - SOMENTE D2!)
 #define PIN_TRIGGER_PRIMARY   2  // D2 - INT0 (roda fônica) ⚡
-#define PIN_TRIGGER_SECONDARY 3  // D3 - INT1 (cam - futuro) ⚡
+// NOTA: PIN_TRIGGER_SECONDARY (D3) REMOVIDO
+//       Wasted spark é suficiente para 6 cilindros
 
-// Saídas (Arduino Uno/Nano)
+// Saídas - Ignição (wasted spark para 1-6 cilindros)
 #define PIN_IGNITION_1     4   // D4 - Bobinas 1+4
-#define PIN_IGNITION_2     5   // D5 - Bobinas 2+3
+#define PIN_IGNITION_2     5   // D5 - Bobinas 2+5
+#define PIN_IGNITION_3     3   // D3 - Bobinas 3+6 (LIBERADO!)
+
+// Saídas - Injeção (wasted paired para 1-6 cilindros)
+#define PIN_INJECTOR_1    10   // D10 - Injetores 1+4
+#define PIN_INJECTOR_2    11   // D11 - Injetores 2+5
+#define PIN_INJECTOR_3     7   // D7 - Injetores 3+6 (LIBERADO!)
+
+// Saídas - Auxiliares
 #define PIN_FUEL_PUMP      6   // D6 - Relé bomba combustível
 #define PIN_FAN            8   // D8 - Relé ventoinha radiador
 #define PIN_IDLE_VALVE     9   // D9 - Válvula marcha lenta (PWM)
-#define PIN_INJECTOR_1    10   // D10 - Injetores 1+4
-#define PIN_INJECTOR_2    11   // D11 - Injetores 2+3
 
 // Outras entradas digitais
 #define PIN_VSS           12   // D12 - Velocidade do veículo
-#define PIN_SPARE_1        7   // D7 - Reserva
 
 // Sensores ADC
 #define PIN_CLT             A0  // Temperatura motor (NTC)
@@ -567,7 +597,115 @@ uint32_t value32 = pgm_read_dword(&data32[i]);
 
 ## 📝 Changelog Recente
 
-### [HOJE] - Correções Críticas de Hardware
+### [07/01/2025] - Expansão para 6 Cilindros (3 Canais)
+
+**Mudança arquitetural:** Remoção do sensor de fase para liberar pinos
+
+**Motivação:**
+- ❌ Arduino Uno/Nano tem apenas 2 pinos com interrupção (D2 e D3)
+- ❌ D3 estava reservado para sensor de fase (cam), mas não era usado
+- ✅ Wasted spark/paired é suficiente para até 6 cilindros
+- ✅ Injeção sequencial não é possível (sem pinos suficientes)
+
+**Mudanças implementadas:**
+
+1. **globals.h**
+   - Removido `PIN_TRIGGER_SECONDARY` (D3)
+   - Adicionado `PIN_IGNITION_3` no D3 (liberado!)
+   - Adicionado `PIN_INJECTOR_3` no D7 (liberado!)
+   - Adicionado `currentStatus.PW3` para terceiro canal
+   - Atualizado `nCylinders` para suportar 1-6 cilindros
+   - Comentários explicando uso de D3 e D7
+
+2. **scheduler.h**
+   - Adicionado `fuelSchedule3` e `ignitionSchedule3`
+   - Adicionadas funções inline: `openInjector3()`, `closeInjector3()`
+   - Adicionadas funções inline: `beginCoil3Charge()`, `endCoil3Charge()`
+   - Atualizada documentação dos canais (1, 2 ou 3)
+
+3. **scheduler.cpp**
+   - Inicialização de `fuelSchedule3` e `ignitionSchedule3`
+   - Atualizado `schedulerInit()` para pinMode de canal 3
+   - ISR Timer1 COMPA estendida para suportar schedules 1 e 3
+   - Prioridade: Fuel1 > Fuel3 > Ign1 > Ign3
+
+4. **decoders.cpp**
+   - `scheduleInjectionISR()`: adiciona schedule3 para motores 5-6 cil
+   - `scheduleIgnitionISR()`: adiciona schedule3 para motores 5-6 cil
+   - Lógica: canal 3 dispara apenas se `nCylinders >= 5`
+   - Wasted paired: rev0 → canais 1+3, rev1 → canal 2
+
+5. **fuel.cpp**
+   - `calculateInjection()`: atualiza `PW1 = PW2 = PW3`
+   - Wasted paired: todos canais injetam mesma quantidade
+
+6. **comms.cpp**
+   - `buildRealtimePacket()`: adicionado PW3 nos offsets 80-81
+   - Seguindo protocolo Speeduino (little-endian uint16)
+
+**Configuração por número de cilindros:**
+
+| Cilindros | Canais Usados | Firing Order |
+|-----------|---------------|--------------|
+| 1         | 1             | 1 |
+| 2         | 1, 2          | 1-2 |
+| 3         | 1, 2, 3       | 1-2-3 |
+| 4         | 1, 2          | 1-3-4-2 (wasted) |
+| 5         | 1, 2, 3       | 1-2-4-5-3 |
+| 6         | 1, 2, 3       | 1-5-3-6-2-4 |
+
+**Resultado:**
+- ✅ Suporte completo para 1-6 cilindros
+- ✅ Sem necessidade de sensor de fase
+- ✅ Wasted spark/paired suficiente
+- ✅ Todos pinos do Arduino otimizados
+- ✅ Protocolo serial compatível (PW3 incluído)
+
+### [07/01/2025] - Correções Críticas de Protocolo Serial
+
+**Problemas identificados:**
+1. ❌ **Offset byte faltando:** Modern protocol precisa de byte 0x00 antes dos log entries
+2. ❌ **Comando 'd' com payload incorreto:** Era `payload[2]`, deveria ser `payload[1]`
+3. ❌ **Comando 'r' sem validação de length:** Não validava se payload tinha 7+ bytes
+4. ❌ **Comando 'p' com parsing incorreto:** Ordem dos bytes estava errada
+5. ❌ **Comando 'A' e 'C' não implementados no modern protocol**
+6. ❌ **buildRealtimePacket gerando 127 bytes:** Deveria gerar 126 (offset byte separado)
+
+**Mudanças implementadas:**
+
+1. **comms.h** - Novos defines
+   - `LOG_ENTRIES_COUNT = 126` (log entries sem offset byte)
+   - `LOG_ENTRY_SIZE = 127` (total: offset + entries)
+
+2. **comms.cpp - processModernCommand()**
+   - Comando 'A': Envia [RC_OK] + [offset 0x00] + [126 entries]
+   - Comando 'C': Test comm no modern protocol
+   - Comando 'd': Corrigido para `payload[1]` (era [2])
+   - Comando 'p': Validação de payload >= 7 bytes
+   - Comando 'r': Validação de payload >= 7 bytes
+
+3. **comms.cpp - sendOutputChannels()**
+   - Monta buffer com offset byte + 126 entries
+   - Calcula CRC corretamente incluindo offset byte
+   - Comentários detalhados sobre estrutura
+
+4. **comms.cpp - buildRealtimePacket()**
+   - Agora gera APENAS 126 bytes (log entries)
+   - Offset byte adicionado pela camada de protocolo
+   - `memset` ajustado para `LOG_ENTRIES_COUNT`
+
+5. **comms.cpp - sendRealtimeData() (legacy)**
+   - Envia direto 126 bytes (SEM offset byte)
+   - Legacy protocol não usa offset byte
+
+**Resultado:**
+- ✅ Modern protocol compatível 100% com Speeduino
+- ✅ Offset byte enviado corretamente
+- ✅ Todos comandos do simulador implementados
+- ✅ CRC32 calculado sobre payload completo (RC_OK + dados)
+- ✅ TunerStudio deve reconhecer e conectar
+
+### [07/01/2025] - Correções Críticas de Hardware
 
 **Problemas identificados:**
 1. ❌ **Pino de interrupção errado:** `PIN_TRIGGER_PRIMARY` estava no D6, que NÃO tem interrupção!

@@ -28,7 +28,7 @@ struct FuelSchedule {
   volatile uint16_t startCompare;     // Valor OCR para início
   volatile uint16_t endCompare;       // Valor OCR para fim
   volatile uint16_t duration;         // Duração em ticks do timer
-  volatile uint8_t channel;           // Canal (1 ou 2)
+  volatile uint8_t channel;           // Canal (1, 2 ou 3)
 };
 
 struct IgnitionSchedule {
@@ -36,14 +36,16 @@ struct IgnitionSchedule {
   volatile uint16_t startCompare;     // Início do dwell (carga)
   volatile uint16_t endCompare;       // Fim do dwell (faísca)
   volatile uint16_t duration;         // Duração do dwell em ticks
-  volatile uint8_t channel;           // Canal (1 ou 2)
+  volatile uint8_t channel;           // Canal (1, 2 ou 3)
 };
 
-// Schedules globais
+// Schedules globais (3 canais para 1-6 cilindros)
 extern volatile FuelSchedule fuelSchedule1;
 extern volatile FuelSchedule fuelSchedule2;
+extern volatile FuelSchedule fuelSchedule3;
 extern volatile IgnitionSchedule ignitionSchedule1;
 extern volatile IgnitionSchedule ignitionSchedule2;
+extern volatile IgnitionSchedule ignitionSchedule3;
 
 // ============================================================================
 // FUNÇÕES DE INICIALIZAÇÃO
@@ -74,7 +76,7 @@ void setupTimer1();
  * @param schedule Ponteiro para struct de schedule
  * @param startTime Tempo de início (microsegundos a partir de agora)
  * @param duration Duração da injeção (microsegundos)
- * @param channel Canal do injetor (1 ou 2)
+ * @param channel Canal do injetor (1, 2 ou 3)
  */
 void setFuelSchedule(volatile FuelSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel);
 
@@ -93,7 +95,7 @@ void clearFuelSchedule(volatile FuelSchedule* schedule);
  * @param schedule Ponteiro para struct de schedule
  * @param startTime Tempo para iniciar dwell (microsegundos a partir de agora)
  * @param duration Duração do dwell (microsegundos)
- * @param channel Canal da bobina (1 ou 2)
+ * @param channel Canal da bobina (1, 2 ou 3)
  */
 void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel);
 
@@ -132,6 +134,20 @@ inline void openInjector2() {
  */
 inline void closeInjector2() {
   digitalWrite(PIN_INJECTOR_2, LOW);
+}
+
+/**
+ * @brief Abre injetor 3
+ */
+inline void openInjector3() {
+  digitalWrite(PIN_INJECTOR_3, HIGH);
+}
+
+/**
+ * @brief Fecha injetor 3
+ */
+inline void closeInjector3() {
+  digitalWrite(PIN_INJECTOR_3, LOW);
 }
 
 // ============================================================================
@@ -179,6 +195,28 @@ inline void endCoil2Charge() {
     digitalWrite(PIN_IGNITION_2, HIGH);
   } else {
     digitalWrite(PIN_IGNITION_2, LOW);
+  }
+}
+
+/**
+ * @brief Inicia carga da bobina 3
+ */
+inline void beginCoil3Charge() {
+  if (configPage2.ignInvert) {
+    digitalWrite(PIN_IGNITION_3, LOW);
+  } else {
+    digitalWrite(PIN_IGNITION_3, HIGH);
+  }
+}
+
+/**
+ * @brief Termina carga da bobina 3
+ */
+inline void endCoil3Charge() {
+  if (configPage2.ignInvert) {
+    digitalWrite(PIN_IGNITION_3, HIGH);
+  } else {
+    digitalWrite(PIN_IGNITION_3, LOW);
   }
 }
 

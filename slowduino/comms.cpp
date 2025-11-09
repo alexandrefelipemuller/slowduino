@@ -50,11 +50,13 @@ static const uint32_t crc32_table[256] PROGMEM = {
 // VARIÁVEIS GLOBAIS
 // ============================================================================
 
-// Tamanhos das páginas
+// Tamanhos das páginas (compatibilidade Speeduino)
+// IMPORTANTE: Tamanhos hardcoded para garantir compatibilidade com TunerStudio
+// sizeof() pode retornar valores incorretos devido a padding do compilador
 const uint16_t pageSize[PAGE_COUNT] PROGMEM = {
   0,    // Page 0: não usada
-  sizeof(ConfigPage1),  // Page 1: fuel config
-  sizeof(ConfigPage2)   // Page 2: ignition config
+  128,  // Page 1: fuel config (Speeduino padrão)
+  288   // Page 2: ignition config (Speeduino padrão)
 };
 
 // Buffer serial
@@ -97,6 +99,12 @@ void sendU16(uint16_t value) {
   // Little-endian
   Serial.write(value & 0xFF);
   Serial.write((value >> 8) & 0xFF);
+}
+
+void sendU16BE(uint16_t value) {
+  // Big-endian (para length header Modern Protocol)
+  Serial.write((value >> 8) & 0xFF);
+  Serial.write(value & 0xFF);
 }
 
 void sendU32BE(uint32_t value) {
@@ -183,6 +191,10 @@ void processLegacyCommand(uint8_t command) {
       sendRealtimeData();
       break;
 
+    case 'I':  // Interface version (compatibilidade Speeduino)
+      Serial.print(F("speeduino 202402"));
+      break;
+
     case 'Q':  // Firmware version
       sendFirmwareVersion();
       break;
@@ -196,7 +208,7 @@ void processLegacyCommand(uint8_t command) {
       break;
 
     case 'C':  // Test comm
-      sendTestComm();
+      sendTestComm();  // Legacy: 0x00 0xFF direto
       break;
 
     case 'B':  // Burn EEPROM (legacy)
@@ -228,19 +240,23 @@ void processLegacyCommand(uint8_t command) {
 }
 
 void sendRealtimeData() {
-  uint8_t buffer[LOG_ENTRY_SIZE];
-  buildRealtimePacket(buffer);
-  sendBytes(buffer, LOG_ENTRY_SIZE);
+  // Legacy protocol: envia offset byte + 126 log entries = 127 bytes total
+  uint8_t buffer[LOG_ENTRY_SIZE];  // 127 bytes
+  buffer[0] = 0x00;  // Offset byte
+  buildRealtimePacket(&buffer[1]);  // Log entries após offset
+  sendBytes(buffer, LOG_ENTRY_SIZE);  // Envia 127 bytes
 }
 
 void sendFirmwareVersion() {
-  Serial.print(F("slowduino "));
-  Serial.print(F(SLOWDUINO_VERSION));
+  //Serial.print(F("slowduino "));
+  //Serial.print(F(SLOWDUINO_VERSION));
+  Serial.print(F("Speeduino 202402"));
 }
 
 void sendProductString() {
-  Serial.print(F("Slowduino "));
-  Serial.print(F(SLOWDUINO_VERSION));
+  //Serial.print(F("Slowduino "));
+  //Serial.print(F(SLOWDUINO_VERSION));
+  Serial.print(F("Speeduino 202402"));
 }
 
 void sendProtocolVersion() {
@@ -248,6 +264,7 @@ void sendProtocolVersion() {
 }
 
 void sendTestComm() {
+  // Legacy: envia direto
   sendByte(0x00);
   sendByte(0xFF);
 }
@@ -273,10 +290,10 @@ void processModernCommand() {
   // Valida CRC
   if (receivedCRC != calculatedCRC) {
     // CRC inválido - envia erro
-    uint8_t response[] = {0x00, 0x01, SERIAL_RC_CRC_ERR};
-    sendBytes(response, 2);  // Length
-    sendByte(response[2]);    // Status
-    sendU32BE(calculateCRC32(&response[2], 1));
+    uint8_t errorByte = SERIAL_RC_CRC_ERR;
+    sendU16BE(1);  // Length = 1
+    sendByte(errorByte);
+    sendU32BE(calculateCRC32(&errorByte, 1));
     return;
   }
 
@@ -284,46 +301,141 @@ void processModernCommand() {
   uint8_t command = payload[0];
 
   switch (command) {
-    case 'Q':  // Firmware version
-    case 'S':  // Product string
-    case 'F':  // Protocol version
+    case 'A':  // Realtime data (modern protocol)
       {
-        // Monta resposta
+        // Estrutura: [RC_OK] [offset_byte] [126 log entries]
+        uint8_t buffer[1 + 1 + LOG_ENTRIES_COUNT];
+        buffer[0] = SERIAL_RC_OK;
+        buffer[1] = 0x00;  // Offset byte (compatibilidade Speeduino)
+        buildRealtimePacket(&buffer[2]);  // 126 log entries começam no byte 2
+
+        uint16_t responseLength = 1 + 1 + LOG_ENTRIES_COUNT;  // RC_OK + offset + 126 entries = 128
+        sendU16BE(responseLength);
+        sendBytes(buffer, responseLength);
+        sendU32BE(calculateCRC32(buffer, responseLength));
+      }
+      break;
+
+    case 'C':  // Test comm (modern protocol)
+      {
+        uint8_t testBuf[2];
+        testBuf[0] = SERIAL_RC_OK;
+        testBuf[1] = 0xFF;
+
+        sendU16BE(2);  // Length = 2
+        sendBytes(testBuf, 2);
+        sendU32BE(calculateCRC32(testBuf, 2));
+      }
+      break;
+
+    case 'f':  // Serial capability details (compatibilidade Speeduino)
+      {
+        uint8_t tempBuf[6];
+        tempBuf[0] = SERIAL_RC_OK;
+        tempBuf[1] = 2;  // Serial protocol version
+        tempBuf[2] = (BLOCKING_FACTOR >> 8) & 0xFF;  // High byte
+        tempBuf[3] = BLOCKING_FACTOR & 0xFF;         // Low byte
+        tempBuf[4] = (TABLE_BLOCKING_FACTOR >> 8) & 0xFF;
+        tempBuf[5] = TABLE_BLOCKING_FACTOR & 0xFF;
+
+        sendU16BE(6);  // Length = 6 bytes
+        sendBytes(tempBuf, 6);
+        sendU32BE(calculateCRC32(tempBuf, 6));
+      }
+      break;
+
+    case 'I':  // Interface version (compatibilidade Speeduino)
+      {
         uint8_t tempBuf[32];
         uint8_t len = 0;
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        if (command == 'Q') {
-          const char* ver = "slowduino " SLOWDUINO_VERSION;
-          uint8_t vlen = strlen(ver);
-          memcpy(&tempBuf[len], ver, vlen);
-          len += vlen;
-        } else if (command == 'S') {
-          const char* prod = "Slowduino " SLOWDUINO_VERSION;
-          uint8_t plen = strlen(prod);
-          memcpy(&tempBuf[len], prod, plen);
-          len += plen;
-        } else if (command == 'F') {
-          tempBuf[len++] = '0';
-          tempBuf[len++] = '0';
-          tempBuf[len++] = '2';
-        }
+        // SEMPRE retorna "speeduino 202402" para compatibilidade
+        const char* iface = "speeduino 202402";
+        uint8_t ilen = strlen(iface);
+        memcpy(&tempBuf[len], iface, ilen);
+        len += ilen;
 
-        // Envia: [length] [data] [CRC]
-        sendU16(len);  // Big-endian
+        sendU16BE(len);
         sendBytes(tempBuf, len);
         sendU32BE(calculateCRC32(tempBuf, len));
       }
       break;
 
+    case 'Q':  // Firmware version
+      {
+        uint8_t tempBuf[32];
+        uint8_t len = 0;
+
+        tempBuf[len++] = SERIAL_RC_OK;
+
+        //const char* ver = "slowduino " SLOWDUINO_VERSION;
+        const char* ver = "speeduino 202207";
+        uint8_t vlen = strlen(ver);
+        memcpy(&tempBuf[len], ver, vlen);
+        len += vlen;
+
+        sendU16BE(len);
+        sendBytes(tempBuf, len);
+        sendU32BE(calculateCRC32(tempBuf, len));
+      }
+      break;
+
+    case 'S':  // Product string
+      {
+        uint8_t tempBuf[32];
+        uint8_t len = 0;
+
+        tempBuf[len++] = SERIAL_RC_OK;
+
+        //const char* prod = "Slowduino " SLOWDUINO_VERSION;
+        const char* prod = "Speeduino 2024.02.4";  // Capital S for compatibility
+        uint8_t plen = strlen(prod);
+        memcpy(&tempBuf[len], prod, plen);
+        len += plen;
+
+        sendU16BE(len);
+        sendBytes(tempBuf, len);
+        sendU32BE(calculateCRC32(tempBuf, len));
+      }
+      break;
+
+    case 'F':  // Protocol version
+      {
+        uint8_t tempBuf[4];
+        tempBuf[0] = SERIAL_RC_OK;
+        tempBuf[1] = '0';
+        tempBuf[2] = '0';
+        tempBuf[3] = '2';
+
+        sendU16BE(4);
+        sendBytes(tempBuf, 4);
+        sendU32BE(calculateCRC32(tempBuf, 4));
+      }
+      break;
+
     case 'p':  // Read page
       {
-        uint8_t page = payload[2];
-        uint16_t offset = payload[3] | ((uint16_t)payload[4] << 8);  // Little-endian
-        uint16_t length = payload[5] | ((uint16_t)payload[6] << 8);  // Little-endian
+        // Formato: 'p' + CAN_ID + page + offset(2) + length(2)
+        // payload[0] = 'p'
+        // payload[1] = CAN_ID (geralmente 0x00)
+        // payload[2] = page number
+        // payload[3:5] = offset (little-endian uint16)
+        // payload[5:7] = length (little-endian uint16)
+        if (payloadLength >= 7) {
+          uint8_t page = payload[2];
+          uint16_t offset = payload[3] | ((uint16_t)payload[4] << 8);  // Little-endian
+          uint16_t length = payload[5] | ((uint16_t)payload[6] << 8);  // Little-endian
 
-        sendPageValues(page, offset, length);
+          sendPageValues(page, offset, length);
+        } else {
+          // Payload incompleto
+          uint8_t err = SERIAL_RC_UKWN_ERR;
+          sendU16BE(1);
+          sendByte(err);
+          sendU32BE(calculateCRC32(&err, 1));
+        }
       }
       break;
 
@@ -337,8 +449,7 @@ void processModernCommand() {
         uint8_t result = writePageValues(page, offset, length, data);
 
         // Envia resposta
-        uint8_t response[] = {0x00, 0x01, result};
-        sendU16(1);  // Length = 1
+        sendU16BE(1);  // Length = 1
         sendByte(result);
         sendU32BE(calculateCRC32(&result, 1));
       }
@@ -346,37 +457,65 @@ void processModernCommand() {
 
     case 'd':  // Page CRC32
       {
-        uint8_t page = payload[2];
-        sendPageCRC32(page);
+        // Formato: 'd' + extra_byte + page_num (3 bytes total)
+        // payload[0] = 'd'
+        // payload[1] = extra byte (sempre 0x00)
+        // payload[2] = page number
+        if (payloadLength >= 3) {
+          uint8_t page = payload[2];  // Speeduino real usa payload[2]
+          sendPageCRC32(page);
+        } else {
+          uint8_t err = SERIAL_RC_UKWN_ERR;
+          sendU16BE(1);
+          sendByte(err);
+          sendU32BE(calculateCRC32(&err, 1));
+        }
       }
       break;
 
-    case 'r':  // Output channels
+    case 'r':  // Output channels (optimized realtime)
       {
-        uint8_t subcmd = payload[2];
-        uint16_t offset = payload[3] | ((uint16_t)payload[4] << 8);
-        uint16_t length = payload[5] | ((uint16_t)payload[6] << 8);
+        // Formato: 'r' + CAN_ID + Subcmd + Offset(2) + Length(2)
+        // payload[0] = 'r'
+        // payload[1] = CAN_ID (geralmente 0x00)
+        // payload[2] = subcommand (0x30 = output channels)
+        // payload[3:5] = offset (little-endian uint16)
+        // payload[5:7] = length (little-endian uint16)
+        if (payloadLength >= 7) {
+          uint8_t subcmd = payload[2];
+          uint16_t offset = payload[3] | ((uint16_t)payload[4] << 8);  // Little-endian
+          uint16_t length = payload[5] | ((uint16_t)payload[6] << 8);  // Little-endian
 
-        sendOutputChannels(subcmd, offset, length);
+          sendOutputChannels(subcmd, offset, length);
+        } else {
+          uint8_t err = SERIAL_RC_UKWN_ERR;
+          sendU16BE(1);
+          sendByte(err);
+          sendU32BE(calculateCRC32(&err, 1));
+        }
       }
       break;
 
     case 'b':  // Burn EEPROM
     case 'B':
-      burnEEPROM();
-      // Envia resposta
-      uint8_t response[] = {0x00, 0x01, SERIAL_RC_BURN_OK};
-      sendU16(1);
-      sendByte(SERIAL_RC_BURN_OK);
-      sendU32BE(calculateCRC32(&response[2], 1));
+      {
+        burnEEPROM();
+        // Envia resposta
+        uint8_t statusByte = SERIAL_RC_BURN_OK;
+        sendU16BE(1);
+        sendByte(statusByte);
+        sendU32BE(calculateCRC32(&statusByte, 1));
+      }
       break;
 
     default:
-      // Comando desconhecido
-      uint8_t err = SERIAL_RC_UKWN_ERR;
-      sendU16(1);
-      sendByte(err);
-      sendU32BE(calculateCRC32(&err, 1));
+      {
+        // Comando desconhecido
+        uint8_t err = SERIAL_RC_UKWN_ERR;
+        sendU16BE(1);
+        sendByte(err);
+        sendU32BE(calculateCRC32(&err, 1));
+      }
       break;
   }
 }
@@ -408,7 +547,7 @@ void sendPageValues(uint8_t page, uint16_t offset, uint16_t length) {
   if (pagePtr == nullptr || page >= PAGE_COUNT) {
     // Página inválida
     uint8_t err = SERIAL_RC_RANGE_ERR;
-    sendU16(1);
+    sendU16BE(1);
     sendByte(err);
     sendU32BE(calculateCRC32(&err, 1));
     return;
@@ -422,28 +561,37 @@ void sendPageValues(uint8_t page, uint16_t offset, uint16_t length) {
   uint16_t responseLength = 1 + actualLength;
 
   // Envia length header
-  sendU16(responseLength);
+  sendU16BE(responseLength);
 
-  // Envia status OK
-  sendByte(SERIAL_RC_OK);
+  // Para evitar VLA (RAM limitada), usamos buffer temporário pequeno
+  // Enviamos e calculamos CRC simultaneamente
+  uint8_t tempBuf[32];  // Buffer temporário para envio em blocos
 
-  // Envia dados da página
-  sendBytes(pagePtr + offset, actualLength);
-
-  // Calcula CRC da resposta (status + dados)
-  // Precisamos incluir o status byte no CRC, mas ele já foi enviado
-  // Solução: calcular CRC em duas etapas para evitar VLA (ATmega328p tem RAM limitada)
+  // Inicializa CRC manual (método robusto para streams)
   uint32_t crc = 0xFFFFFFFF;
 
   // Passo 1: CRC do status byte
-  uint8_t statusByte = SERIAL_RC_OK;
-  uint8_t index = (crc ^ statusByte) & 0xFF;
+  tempBuf[0] = SERIAL_RC_OK;
+  sendByte(tempBuf[0]);
+  uint8_t index = (crc ^ tempBuf[0]) & 0xFF;
   crc = (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
 
-  // Passo 2: CRC dos dados
-  for (uint16_t i = 0; i < actualLength; i++) {
-    index = (crc ^ pagePtr[offset + i]) & 0xFF;
-    crc = (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
+  // Passo 2: Envia dados em blocos e calcula CRC
+  uint16_t remaining = actualLength;
+  uint16_t pos = 0;
+  while (remaining > 0) {
+    uint16_t blockSize = (remaining < 32) ? remaining : 32;
+    memcpy(tempBuf, pagePtr + offset + pos, blockSize);
+    sendBytes(tempBuf, blockSize);
+
+    // Calcula CRC do bloco
+    for (uint16_t i = 0; i < blockSize; i++) {
+      index = (crc ^ tempBuf[i]) & 0xFF;
+      crc = (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
+    }
+
+    pos += blockSize;
+    remaining -= blockSize;
   }
 
   crc = ~crc;
@@ -475,7 +623,7 @@ void sendPageCRC32(uint8_t page) {
 
   if (pagePtr == nullptr || page >= PAGE_COUNT) {
     uint8_t err = SERIAL_RC_RANGE_ERR;
-    sendU16(1);
+    sendU16BE(1);
     sendByte(err);
     sendU32BE(calculateCRC32(&err, 1));
     return;
@@ -484,43 +632,65 @@ void sendPageCRC32(uint8_t page) {
   // Calcula CRC32 da página
   uint32_t pageCRC = calculateCRC32(pagePtr, pageSz);
 
-  // Monta resposta: [status OK] [CRC32 little-endian]
+  // Reverte bytes do CRC32 (big-endian → little-endian) como Speeduino real
+  uint32_t reversedCRC = ((pageCRC & 0xFF) << 24) |
+                         ((pageCRC & 0xFF00) << 8) |
+                         ((pageCRC & 0xFF0000) >> 8) |
+                         ((pageCRC & 0xFF000000) >> 24);
+
+  // Monta resposta: [status OK] [CRC32 reversed, depois little-endian]
   uint8_t response[5];
   response[0] = SERIAL_RC_OK;
-  response[1] = pageCRC & 0xFF;
-  response[2] = (pageCRC >> 8) & 0xFF;
-  response[3] = (pageCRC >> 16) & 0xFF;
-  response[4] = (pageCRC >> 24) & 0xFF;
+  response[1] = reversedCRC & 0xFF;
+  response[2] = (reversedCRC >> 8) & 0xFF;
+  response[3] = (reversedCRC >> 16) & 0xFF;
+  response[4] = (reversedCRC >> 24) & 0xFF;
 
   // Envia
-  sendU16(5);  // Length
+  sendU16BE(5);  // Length
   sendBytes(response, 5);
   sendU32BE(calculateCRC32(response, 5));
 }
 
 void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
   if (subcmd == 0x30) {  // Output channels
-    // Mesmo que realtime data
-    uint8_t buffer[LOG_ENTRY_SIZE];
-    buildRealtimePacket(buffer);
+    // *** CRÍTICO: Speeduino envia offset byte 0x00 ANTES dos dados do log! ***
+    // Estrutura: [RC_OK] [offset_byte=0x00] [log_entry_0] [log_entry_1] ... [log_entry_125]
+    // Total: 128 bytes (1 RC_OK + 1 offset + 126 log entries)
+    //
+    // Quando TunerStudio remove o RC_OK, sobram 127 bytes:
+    //   data[0] = offset byte (0x00)
+    //   data[1] = getTSLogEntry(0) = secl
+    //   data[15] = getTSLogEntry(14) = RPM low
+    //   data[16] = getTSLogEntry(15) = RPM high
 
-    // Limita ao range solicitado
-    if (offset >= LOG_ENTRY_SIZE) {
+    uint8_t fullBuffer[1 + LOG_ENTRIES_COUNT];  // offset byte + 126 log entries
+    fullBuffer[0] = 0x00;  // Offset byte (compatibilidade Speeduino)
+    buildRealtimePacket(&fullBuffer[1]);  // 126 log entries começam no índice 1
+
+    // Ajusta offset e length para incluir o offset byte
+    // TunerStudio pede offset=0, length=127
+    // Devemos retornar: [RC_OK] + fullBuffer[0:127]
+    uint16_t fullBufferSize = 1 + LOG_ENTRIES_COUNT;  // 127 bytes total
+    if (offset >= fullBufferSize) {
       offset = 0;
       length = 0;
     }
-    if (offset + length > LOG_ENTRY_SIZE) {
-      length = LOG_ENTRY_SIZE - offset;
+    if (offset + length > fullBufferSize) {
+      length = fullBufferSize - offset;
     }
 
-    // Monta resposta
-    uint16_t responseLength = 1 + length;
-    sendU16(responseLength);
-    sendByte(SERIAL_RC_OK);
-    sendBytes(buffer + offset, length);
+    // Monta resposta: [length] [RC_OK] [dados] [CRC]
+    uint16_t responseLength = 1 + length;  // RC_OK + dados
+    sendU16BE(responseLength);
 
-    // Calcula CRC corretamente (status + dados)
-    // Calcular em duas etapas para evitar VLA
+    // Envia RC_OK
+    sendByte(SERIAL_RC_OK);
+
+    // Envia dados (offset byte + log entries)
+    sendBytes(fullBuffer + offset, length);
+
+    // Calcula CRC (RC_OK + dados)
     uint32_t crc = 0xFFFFFFFF;
 
     // Passo 1: CRC do status byte
@@ -530,7 +700,7 @@ void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
 
     // Passo 2: CRC dos dados
     for (uint16_t i = 0; i < length; i++) {
-      index = (crc ^ buffer[offset + i]) & 0xFF;
+      index = (crc ^ fullBuffer[offset + i]) & 0xFF;
       crc = (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
     }
 
@@ -539,7 +709,7 @@ void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
   } else {
     // Subcomando desconhecido
     uint8_t err = SERIAL_RC_UKWN_ERR;
-    sendU16(1);
+    sendU16BE(1);
     sendByte(err);
     sendU32BE(calculateCRC32(&err, 1));
   }
@@ -550,12 +720,15 @@ void burnEEPROM() {
 }
 
 // ============================================================================
-// REALTIME DATA PACKET (127 bytes)
+// REALTIME DATA PACKET (126 bytes de log entries)
 // ============================================================================
-
+//
+// Speeduino usa getTSLogEntry(n) onde n = 0..125 (126 entries)
+// Não inclui o offset byte 0x00 - isso é adicionado pela camada de protocolo
+//
 void buildRealtimePacket(uint8_t* buffer) {
-  // Zera buffer
-  memset(buffer, 0, LOG_ENTRY_SIZE);
+  // Zera buffer (126 bytes)
+  memset(buffer, 0, LOG_ENTRIES_COUNT);
 
   // Offset 0: secl
   buffer[0] = currentStatus.secl & 0xFF;
@@ -630,19 +803,19 @@ void buildRealtimePacket(uint8_t* buffer) {
   // Offset 41: baro
   buffer[41] = 100;  // 100 kPa (atmosférico)
 
-  // Offset 76-77: PW1 (microsegundos, uint16)
+  // Offset 76-77: PW1 (microsegundos, uint16, little-endian)
   buffer[76] = currentStatus.PW1 & 0xFF;
   buffer[77] = (currentStatus.PW1 >> 8) & 0xFF;
 
-  // Offset 78-79: PW2
+  // Offset 78-79: PW2 (little-endian)
   buffer[78] = currentStatus.PW2 & 0xFF;
   buffer[79] = (currentStatus.PW2 >> 8) & 0xFF;
 
-  // Offset 80-81: PW3 (0 - só temos 2 canais)
-  buffer[80] = 0;
-  buffer[81] = 0;
+  // Offset 80-81: PW3 (little-endian)
+  buffer[80] = currentStatus.PW3 & 0xFF;
+  buffer[81] = (currentStatus.PW3 >> 8) & 0xFF;
 
-  // Offset 82-83: PW4
+  // Offset 82-83: PW4 (0 - não temos 4º canal)
   buffer[82] = 0;
   buffer[83] = 0;
 

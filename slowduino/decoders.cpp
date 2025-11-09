@@ -38,18 +38,29 @@ inline void scheduleInjectionISR() {
   uint32_t timeToInjection = ((uint32_t)INJECTION_ANGLE * triggerState.revolutionTime) / 360UL;
 
   // Obtém PW (calculado no loop principal)
-  uint16_t pw = currentStatus.PW1;
+  uint16_t pw1 = currentStatus.PW1;
+  uint16_t pw2 = currentStatus.PW2;
+  uint16_t pw3 = currentStatus.PW3;
 
   // Valida PW
-  if (pw < INJ_MIN_PW || pw > INJ_MAX_PW) {
-    pw = INJ_MIN_PW;
-  }
+  if (pw1 < INJ_MIN_PW || pw1 > INJ_MAX_PW) pw1 = INJ_MIN_PW;
+  if (pw2 < INJ_MIN_PW || pw2 > INJ_MAX_PW) pw2 = INJ_MIN_PW;
+  if (pw3 < INJ_MIN_PW || pw3 > INJ_MAX_PW) pw3 = INJ_MIN_PW;
 
-  // Agenda baseado em revolução (wasted paired)
+  // Agenda baseado em revolução e número de cilindros (wasted paired)
+  uint8_t nCyl = configPage1.nCylinders;
+
   if (revolutionCounter == 0) {
-    setFuelSchedule(&fuelSchedule1, timeToInjection, pw, 1);
+    // Primeira revolução: canais 1 e 3 (se necessário)
+    setFuelSchedule(&fuelSchedule1, timeToInjection, pw1, 1);
+
+    // Canal 3 só para motores 5-6 cilindros
+    if (nCyl >= 5) {
+      setFuelSchedule(&fuelSchedule3, timeToInjection, pw3, 3);
+    }
   } else {
-    setFuelSchedule(&fuelSchedule2, timeToInjection, pw, 2);
+    // Segunda revolução: canal 2
+    setFuelSchedule(&fuelSchedule2, timeToInjection, pw2, 2);
   }
 }
 
@@ -79,10 +90,19 @@ inline void scheduleIgnitionISR() {
   // Calcula tempo até início do dwell
   uint32_t timeToDwell = ((uint32_t)dwellStartAngle * triggerState.revolutionTime) / 360UL;
 
-  // Agenda baseado em revolução
+  // Agenda baseado em revolução e número de cilindros
+  uint8_t nCyl = configPage1.nCylinders;
+
   if (revolutionCounter == 0) {
+    // Primeira revolução: canais 1 e 3 (se necessário)
     setIgnitionSchedule(&ignitionSchedule1, timeToDwell, dwellTime, 1);
+
+    // Canal 3 só para motores 5-6 cilindros
+    if (nCyl >= 5) {
+      setIgnitionSchedule(&ignitionSchedule3, timeToDwell, dwellTime, 3);
+    }
   } else {
+    // Segunda revolução: canal 2
     setIgnitionSchedule(&ignitionSchedule2, timeToDwell, dwellTime, 2);
   }
 }

@@ -39,6 +39,11 @@ uint16_t calculateInjection() {
   if (pw < INJ_MIN_PW) pw = INJ_MIN_PW;
   if (pw > INJ_MAX_PW) pw = INJ_MAX_PW;
 
+  // 6. Atualiza todos os canais (wasted paired - mesmo PW)
+  currentStatus.PW1 = (uint16_t)pw;
+  currentStatus.PW2 = (uint16_t)pw;
+  currentStatus.PW3 = (uint16_t)pw;
+
   return (uint16_t)pw;
 }
 

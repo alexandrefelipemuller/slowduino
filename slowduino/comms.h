@@ -25,9 +25,16 @@
 // ============================================================================
 // TAMANHOS
 // ============================================================================
-#define LOG_ENTRY_SIZE      127   // Tamanho do realtime data packet
+#define LOG_ENTRY_SIZE      127   // Tamanho TOTAL do pacote (offset byte + 126 log entries)
+#define LOG_ENTRIES_COUNT   126   // Quantidade de log entries (getTSLogEntry)
 #define SERIAL_BUFFER_SIZE  64    // Buffer de recepção
 #define PAGE_COUNT          3     // Número de páginas (0, 1, 2)
+
+// ============================================================================
+// SERIAL CAPABILITY (compatibilidade Speeduino)
+// ============================================================================
+#define BLOCKING_FACTOR       121   // Para AVR (ATmega328p)
+#define TABLE_BLOCKING_FACTOR 64    // Para AVR
 
 // ============================================================================
 // ESTRUTURA DE PÁGINAS
@@ -71,6 +78,11 @@ inline void sendBytes(const uint8_t* data, uint16_t length) {
 void sendU16(uint16_t value);
 
 /**
+ * @brief Envia uint16_t em big-endian (para length header Modern Protocol)
+ */
+void sendU16BE(uint16_t value);
+
+/**
  * @brief Envia uint32_t em big-endian (para CRC)
  */
 void sendU32BE(uint32_t value);
@@ -100,6 +112,20 @@ void processLegacyCommand(uint8_t command);
  * Comando 'A' - envia struct de dados ao vivo
  */
 void sendRealtimeData();
+
+/**
+ * @brief Envia serial capability details (compatibilidade Speeduino)
+ *
+ * Comando 'f' - retorna protocol version, blocking factors
+ */
+void sendSerialCapability();
+
+/**
+ * @brief Envia interface version (compatibilidade Speeduino)
+ *
+ * Comando 'I' - retorna "speeduino 202402" para TunerStudio aceitar
+ */
+void sendInterfaceVersion();
 
 /**
  * @brief Envia versão do firmware
@@ -199,10 +225,12 @@ uint8_t* getPagePointer(uint8_t page);
 uint16_t getPageSize(uint8_t page);
 
 /**
- * @brief Monta pacote de realtime data (127 bytes)
+ * @brief Monta pacote de realtime data (126 bytes de log entries)
  *
- * Preenche buffer com dados do currentStatus
- * @param buffer Buffer de saída (mínimo 127 bytes)
+ * Preenche buffer com dados do currentStatus.
+ * NÃO inclui o offset byte inicial (0x00) - isso é adicionado pela camada de protocolo.
+ *
+ * @param buffer Buffer de saída (mínimo 126 bytes)
  */
 void buildRealtimePacket(uint8_t* buffer);
 
