@@ -250,7 +250,13 @@ void loop() {
     Serial.print(currentStatus.RPM);
     Serial.print(F(" | Sync: "));
     Serial.print(currentStatus.hasSync ? F("OK") : F("NO"));
-    Serial.print(F(" | MAP: "));
+    Serial.print(F(" | Dentes: "));
+    Serial.print(triggerState.toothCurrentCount);
+    Serial.print(F(" | LastGap: "));
+    Serial.print(triggerState.lastGap);
+    Serial.print(F("us | RevTime: "));
+    Serial.print(triggerState.revolutionTime);
+    Serial.print(F("us | MAP: "));
     Serial.print(currentStatus.MAP);
     Serial.print(F(" kPa | TPS: "));
     Serial.print(currentStatus.TPS);

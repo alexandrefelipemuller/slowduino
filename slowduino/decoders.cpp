@@ -198,22 +198,39 @@ void triggerPri_MissingTooth() {
   // Gap desde último dente
   triggerState.curGap = curTime - triggerState.toothLastToothTime;
 
-  // Filtro de debounce
-  if (triggerState.curGap < triggerState.triggerFilterTime) {
+  // Filtro de debounce mínimo (50us absoluto)
+  if (triggerState.curGap < 50) {
     return;  // Ignora ruído
   }
 
-  // Incrementa contador de dentes
+  // Atualiza tempo
+  triggerState.toothLastToothTime = curTime;
+
+  // ESTRATÉGIA SIMPLIFICADA: Com CHANGE, temos HIGH e LOW
+  // HIGH->LOW: gap ~500us (meio dente)
+  // LOW->HIGH do próximo dente: gap ~500us (outro meio)
+  // Gap entre dentes COMPLETOS: ~1000us
+  // Missing tooth gap: ~2000us
+
+  // Aceita TODOS os pulsos, mas detecta gap pelo tamanho absoluto
   triggerState.toothCurrentCount++;
 
-  // Detecta missing tooth (gap significativamente maior)
-  // Gap do missing tooth é ~2x maior que dente normal
-  // Usa 1.5x como threshold para robustez
-  if (triggerState.curGap > (triggerState.lastGap + (triggerState.lastGap >> 1))) {
+  // Detecta missing tooth por tamanho ABSOLUTO do gap
+  // Gap normal: ~500-1000us
+  // Missing tooth gap: ~1500-2500us (bem maior!)
+  bool isGap = (triggerState.curGap > 1200);  // Threshold fixo
+
+  if (isGap) {
     // Encontrou o gap!
 
-    // Verifica se número de dentes bate (validação de sync)
-    if (triggerState.toothCurrentCount >= triggerState.triggerActualTeeth) {
+    // Com CHANGE, esperamos ~70 pulsos (35 dentes × 2 bordas)
+    // Mas o gap também gera 2 pulsos, então ~72 total
+    // Validação flexível: entre 60-80 pulsos
+    uint16_t expectedPulses = triggerState.triggerActualTeeth * 2;  // 35 × 2 = 70
+
+    if (triggerState.toothCurrentCount >= (expectedPulses - 10) &&
+        triggerState.toothCurrentCount <= (expectedPulses + 10)) {
+
       // Sincronismo OK
       triggerState.hasSync = true;
       triggerState.syncLossCounter = 0;
@@ -221,9 +238,11 @@ void triggerPri_MissingTooth() {
       // Marca tempo de referência (dente #1)
       triggerState.toothOneTime = curTime;
 
-      // Calcula tempo de revolução
-      triggerState.revolutionTime = curTime - triggerState.toothLastMinusOneTime;
-      triggerState.toothLastMinusOneTime = triggerState.toothOneTime;
+      // Calcula tempo de revolução (desde último gap)
+      if (triggerState.toothLastMinusOneTime > 0) {
+        triggerState.revolutionTime = curTime - triggerState.toothLastMinusOneTime;
+      }
+      triggerState.toothLastMinusOneTime = curTime;
 
       // Reseta contador
       triggerState.toothCurrentCount = 1;
@@ -232,20 +251,23 @@ void triggerPri_MissingTooth() {
       revolutionCounter = (revolutionCounter == 0) ? 1 : 0;
 
       // *** AGENDAMENTO DIRETO NA ISR - TEMPO REAL! ***
-      scheduleInjectionISR();
-      scheduleIgnitionISR();
+      if (triggerState.revolutionTime > 0) {
+        scheduleInjectionISR();
+        scheduleIgnitionISR();
+      }
     } else {
-      // Número de dentes não bate, perdeu sync
+      // Número de pulsos não bate - tenta resincronizar
+      triggerState.toothCurrentCount = 1;
       triggerState.syncLossCounter++;
-      if (triggerState.syncLossCounter > 3) {
+
+      if (triggerState.syncLossCounter > 10) {
         triggerState.hasSync = false;
       }
     }
   }
 
-  // Atualiza histórico de gaps
+  // Atualiza lastGap para referência
   triggerState.lastGap = triggerState.curGap;
-  triggerState.toothLastToothTime = curTime;
 }
 
 // ============================================================================
@@ -297,20 +319,19 @@ void calculateRPM() {
   }
 
   // RPM = 60.000.000 / revolutionTime (microsegundos)
-  // Mas para 4-stroke, revolução = 720°, então RPM = 30.000.000 / revolutionTime
-  // Para 2-stroke, RPM = 60.000.000 / revolutionTime
-
+  // revolutionTime = tempo de uma volta completa (360°)
   if (triggerState.revolutionTime > 0) {
-    // Assume 4-stroke (2 revoluções = 1 ciclo completo)
-    // Mas roda fônica gira 1x por revolução do virabrequim
-    // Então RPM = 60.000.000 / revolutionTime
+    // Calcula RPM com proteção de overflow
+    // 60.000.000us = 1 minuto
     uint32_t rpm = MICROS_PER_MIN / triggerState.revolutionTime;
 
-    // Para missing tooth, revolutionTime é 1 volta completa (360°)
-    // RPM correto
+    // Limita range razoável (evita valores absurdos)
+    if (rpm > 15000) rpm = 15000;  // Máximo 15k RPM
+    if (rpm < 100) rpm = 0;        // Abaixo de 100 RPM considera parado
+
     triggerState.RPM = (uint16_t)rpm;
 
-    // Atualiza status global
+    // Atualiza status global (thread-safe)
     noInterrupts();
     currentStatus.RPM = triggerState.RPM;
     currentStatus.RPMdiv100 = triggerState.RPM / 100;
@@ -387,13 +408,14 @@ void attachTriggerInterrupt() {
   pinMode(PIN_TRIGGER_PRIMARY, INPUT_PULLUP);
 
   // Anexa interrupção INT0 (pino D2 no Uno/Nano - PIN_TRIGGER_PRIMARY)
-  // Detecta borda de subida (RISING)
+  // CHANGE = detecta AMBAS bordas (subida E descida)
+  // NOTA: Com CHANGE, cada dente físico gera 2 pulsos!
   // Lambda chama ISR atual dinamicamente (permite trocar decoder em runtime)
   attachInterrupt(digitalPinToInterrupt(PIN_TRIGGER_PRIMARY), []() {
     if (currentTriggerISR != nullptr) {
       currentTriggerISR();
     }
-  }, RISING);
+  }, CHANGE);
 }
 
 void detachTriggerInterrupt() {
