@@ -13,8 +13,8 @@
 // ============================================================================
 // TAMANHO DAS TABELAS
 // ============================================================================
-#define TABLE_SIZE_X        8    // Eixo X (RPM) - 8 pontos
-#define TABLE_SIZE_Y        8    // Eixo Y (MAP/TPS) - 8 pontos
+#define TABLE_SIZE_X        16   // Eixo X (RPM) - 16 pontos
+#define TABLE_SIZE_Y        16   // Eixo Y (MAP/TPS) - 16 pontos
 
 // ============================================================================
 // CONSTANTES DE TIMING
@@ -148,26 +148,26 @@
 
 #define EEPROM_VERSION_ADDR     0    // 1 byte - versão
 
-// Tabela VE 8x8
-#define EEPROM_VE_TABLE        10    // 64 bytes (values)
-#define EEPROM_VE_AXIS_X       74    // 16 bytes (8 × uint16_t RPM)
-#define EEPROM_VE_AXIS_Y       90    // 8 bytes (8 × uint8_t MAP)
+// Tabela VE 16x16
+#define EEPROM_VE_TABLE        10    // 256 bytes (values)
+#define EEPROM_VE_AXIS_X      (EEPROM_VE_TABLE + 256)  // 32 bytes (16 × uint16_t RPM)
+#define EEPROM_VE_AXIS_Y      (EEPROM_VE_AXIS_X + 32)  // 16 bytes (16 × uint8_t MAP)
 
-// Tabela Ignição 8x8
-#define EEPROM_IGN_TABLE      100    // 64 bytes (values)
-#define EEPROM_IGN_AXIS_X     164    // 16 bytes (8 × uint16_t RPM)
-#define EEPROM_IGN_AXIS_Y     180    // 8 bytes (8 × uint8_t MAP)
+// Tabela Ignição 16x16
+#define EEPROM_IGN_TABLE      (EEPROM_VE_AXIS_Y + 16)  // 256 bytes (values)
+#define EEPROM_IGN_AXIS_X     (EEPROM_IGN_TABLE + 256) // 32 bytes
+#define EEPROM_IGN_AXIS_Y     (EEPROM_IGN_AXIS_X + 32) // 16 bytes
 
 // Config pages
-#define EEPROM_CONFIG1        200    // 128 bytes - fuel config
-#define EEPROM_CONFIG2        328    // 128 bytes - ignition config
+#define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + 16) // 128 bytes - fuel config
+#define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 128)   // 128 bytes - ignition config
 
 // Tabelas de calibração
-#define EEPROM_CLT_TABLE      456    // 64 bytes (32 × int8_t temp)
-#define EEPROM_IAT_TABLE      520    // 64 bytes (32 × int8_t temp)
+#define EEPROM_CLT_TABLE      (EEPROM_CONFIG2 + 128)   // 64 bytes (32 × int8_t temp)
+#define EEPROM_IAT_TABLE      (EEPROM_CLT_TABLE + 64)  // 64 bytes (32 × int8_t temp)
 
-// Reserva para expansão futura
-#define EEPROM_SPARE          584    // 440 bytes livres
+// Reserva para expansão futura (22 bytes restantes)
+#define EEPROM_SPARE          (EEPROM_IAT_TABLE + 64)
 
 // ============================================================================
 // FLAGS DE TIMER (Loop principal)
@@ -243,51 +243,69 @@ extern volatile uint8_t loopTimerFlags;
 // VALORES PADRÃO INICIAIS
 // ============================================================================
 
-// Tabela VE padrão (8x8) - valores conservadores para primeiro start
+// Tabela VE padrão (16x16) - valores conservadores para primeiro start
 // 50% VE em idle, 80% em carga média, 100% em alta carga
 // Deve ser ajustado no TunerStudio conforme o motor
 const uint8_t DEFAULT_VE_TABLE[TABLE_SIZE_Y][TABLE_SIZE_X] PROGMEM = {
-  // RPM:  500   1000  1500  2000  3000  4000  5000  6000
-  /*  20*/{ 45,   50,   52,   54,   56,   58,   60,   62 },  // MAP  20 kPa
-  /*  40*/{ 50,   55,   58,   60,   62,   65,   68,   70 },  //      40 kPa
-  /*  60*/{ 55,   60,   65,   68,   72,   75,   78,   80 },  //      60 kPa
-  /*  80*/{ 60,   65,   70,   75,   78,   82,   85,   88 },  //      80 kPa
-  /* 100*/{ 65,   70,   75,   80,   85,   90,   93,   95 },  //     100 kPa (WOT)
-  /* 120*/{ 70,   75,   80,   85,   90,   95,   98,  100 },
-  /* 140*/{ 75,   78,   82,   88,   92,   97,  100,  102 },
-  /* 160*/{ 78,   80,   85,   90,   95,  100,  102,  105 }
+  /*  20*/{ 45, 47, 50, 51, 52, 53, 54, 55, 55, 56, 57, 58, 59, 60, 61, 62 },
+  /*  30*/{ 47, 50, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66 },
+  /*  40*/{ 50, 52, 54, 56, 57, 58, 59, 60, 61, 62, 64, 65, 66, 68, 69, 69 },
+  /*  50*/{ 52, 54, 57, 59, 60, 62, 63, 64, 65, 67, 68, 69, 71, 72, 73, 74 },
+  /*  60*/{ 54, 57, 59, 61, 63, 65, 66, 68, 70, 71, 73, 74, 75, 77, 78, 79 },
+  /*  70*/{ 57, 59, 61, 64, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 82, 83 },
+  /*  80*/{ 59, 61, 64, 66, 68, 71, 73, 74, 76, 78, 79, 81, 82, 84, 85, 86 },
+  /*  90*/{ 61, 64, 66, 68, 71, 73, 75, 77, 79, 81, 83, 85, 86, 87, 89, 90 },
+  /* 100*/{ 64, 66, 68, 71, 73, 75, 78, 80, 82, 84, 86, 88, 90, 91, 92, 93 },
+  /* 110*/{ 66, 68, 71, 73, 75, 78, 80, 82, 85, 87, 89, 91, 93, 94, 95, 96 },
+  /* 120*/{ 68, 71, 73, 75, 78, 80, 82, 85, 87, 89, 92, 94, 95, 96, 97, 98 },
+  /* 130*/{ 71, 73, 75, 77, 80, 82, 84, 87, 89, 91, 94, 96, 97, 98, 99,100 },
+  /* 140*/{ 73, 75, 77, 79, 81, 83, 86, 88, 90, 92, 95, 97, 98, 99,100,101 },
+  /* 150*/{ 75, 77, 78, 80, 82, 84, 87, 89, 91, 93, 96, 98, 99,100,101,102 },
+  /* 160*/{ 77, 78, 79, 81, 83, 85, 88, 90, 92, 95, 97, 99,100,101,102,104 },
+  /* 170*/{ 78, 79, 80, 82, 84, 87, 89, 91, 94, 96, 98,100,101,102,104,105 }
 };
 
 // Eixos padrão da tabela VE
 const uint16_t DEFAULT_VE_AXIS_X[TABLE_SIZE_X] PROGMEM = {
-  500, 1000, 1500, 2000, 3000, 4000, 5000, 6000  // RPM
+   500, 1000, 1500, 2000, 2500, 3000, 3500, 4000,
+  4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000
 };
 
 const uint8_t DEFAULT_VE_AXIS_Y[TABLE_SIZE_Y] PROGMEM = {
-  20, 40, 60, 80, 100, 120, 140, 160  // MAP (kPa)
+   20,  30,  40,  50,  60,  70,  80,  90,
+  100, 110, 120, 130, 140, 150, 160, 170
 };
 
-// Tabela de Ignição padrão (8x8) - graus BTDC
+// Tabela de Ignição padrão (16x16) - graus BTDC
 // Conservador: mais avanço em baixa carga, menos em alta
 const int8_t DEFAULT_IGN_TABLE[TABLE_SIZE_Y][TABLE_SIZE_X] PROGMEM = {
-  // RPM:  500   1000  1500  2000  3000  4000  5000  6000
-  /*  20*/{ 15,   18,   22,   26,   30,   32,   34,   36 },  // MAP  20 kPa
-  /*  40*/{ 12,   15,   18,   22,   26,   28,   30,   32 },  //      40 kPa
-  /*  60*/{ 10,   12,   15,   18,   22,   24,   26,   28 },  //      60 kPa
-  /*  80*/{  8,   10,   12,   15,   18,   20,   22,   24 },  //      80 kPa
-  /* 100*/{  6,    8,   10,   12,   15,   17,   19,   21 },  //     100 kPa (WOT)
-  /* 120*/{  5,    7,    9,   11,   14,   16,   18,   20 },
-  /* 140*/{  4,    6,    8,   10,   13,   15,   17,   19 },
-  /* 160*/{  3,    5,    7,    9,   12,   14,   16,   18 }
+  /*  20*/{ 15, 16, 18, 20, 21, 23, 25, 27, 29, 30, 31, 32, 33, 34, 35, 36 },
+  /*  30*/{ 14, 15, 16, 18, 20, 21, 23, 25, 27, 29, 29, 30, 31, 32, 33, 34 },
+  /*  40*/{ 12, 14, 15, 16, 18, 20, 21, 23, 25, 27, 28, 29, 29, 30, 31, 32 },
+  /*  50*/{ 11, 12, 14, 15, 16, 18, 20, 21, 23, 25, 26, 27, 28, 29, 29, 30 },
+  /*  60*/{ 10, 11, 12, 14, 15, 16, 18, 20, 21, 23, 24, 25, 26, 27, 28, 29 },
+  /*  70*/{  9, 10, 11, 12, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27 },
+  /*  80*/{  8,  9, 10, 11, 12, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25 },
+  /*  90*/{  7,  8,  9, 10, 11, 12, 14, 15, 16, 18, 19, 19, 20, 21, 22, 23 },
+  /* 100*/{  7,  7,  8,  9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22 },
+  /* 110*/{  6,  7,  8,  9, 10, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21 },
+  /* 120*/{  5,  6,  7,  8,  9, 10, 11, 12, 14, 15, 16, 17, 18, 18, 19, 20 },
+  /* 130*/{  5,  6,  7,  8,  9, 10, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
+  /* 140*/{  4,  5,  6,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 18, 19 },
+  /* 150*/{  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 },
+  /* 160*/{  3,  4,  5,  6,  7,  8,  9, 10, 12, 13, 14, 15, 16, 17, 18, 18 },
+  /* 170*/{  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }
 };
 
 // Eixos padrão da tabela Ignição (mesmos da VE)
 const uint16_t DEFAULT_IGN_AXIS_X[TABLE_SIZE_X] PROGMEM = {
-  500, 1000, 1500, 2000, 3000, 4000, 5000, 6000  // RPM
+   500, 1000, 1500, 2000, 2500, 3000, 3500, 4000,
+  4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000
 };
 
 const uint8_t DEFAULT_IGN_AXIS_Y[TABLE_SIZE_Y] PROGMEM = {
-  20, 40, 60, 80, 100, 120, 140, 160  // MAP (kPa)
+   20,  30,  40,  50,  60,  70,  80,  90,
+  100, 110, 120, 130, 140, 150, 160, 170
 };
 
 #endif // CONFIG_H

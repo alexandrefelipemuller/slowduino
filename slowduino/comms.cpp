@@ -5,6 +5,7 @@
 
 #include "comms.h"
 #include "storage.h"
+#include "tables.h"
 
 // ============================================================================
 // TABELA CRC32
@@ -55,15 +56,81 @@ static const uint32_t crc32_table[256] PROGMEM = {
 // sizeof() pode retornar valores incorretos devido a padding do compilador
 const uint16_t pageSize[PAGE_COUNT] PROGMEM = {
   0,    // Page 0: não usada
-  128,  // Page 1: fuel config (Speeduino padrão)
-  288   // Page 2: ignition config (Speeduino padrão)
+  128,  // Page 1: config VE (veSetPage)
+  288,  // Page 2: VE map
+  288,  // Page 3: Ign map
+  128,  // Page 4: Ign config
+  288,  // Page 5: AFR map
+  128,  // Page 6: AFR config
+  240,  // Page 7: Boost/VVT map
+  384,  // Page 8: Seq fuel trims
+  192,  // Page 9: CAN config
+  192,  // Page10: Warmup
+  288,  // Page11: Fuel map 2
+  192,  // Page12: WMI / aux maps
+  128,  // Page13: Programmable outputs
+  288,  // Page14: Ign map 2
+  256   // Page15: Boost/VVT map 2
 };
+
+static_assert(sizeof(ConfigPage1) >= 128, "ConfigPage1 precisa ter 128 bytes");
+static_assert(sizeof(ConfigPage2) >= 128, "ConfigPage2 precisa ter 128 bytes");
 
 // Buffer serial
 static uint8_t serialBuffer[SERIAL_BUFFER_SIZE];
 static uint8_t serialBytesReceived = 0;
 static bool modernProtocol = false;
 static uint16_t expectedLength = 0;
+
+// ============================================================================
+// CONSTANTES AUXILIARES PARA PÁGINAS SPEEDUINO
+// ============================================================================
+static constexpr uint8_t SPEEDUINO_TABLE_DIM = 16;
+static constexpr uint16_t SPEEDUINO_TABLE_CELLS = SPEEDUINO_TABLE_DIM * SPEEDUINO_TABLE_DIM;  // 256
+static constexpr uint16_t SPEEDUINO_TABLE_AXIS_LEN = SPEEDUINO_TABLE_DIM;                     // 16
+static constexpr uint16_t SPEEDUINO_TABLE_PAGE_SIZE = SPEEDUINO_TABLE_CELLS + (2 * SPEEDUINO_TABLE_AXIS_LEN);  // 288
+static_assert(SPEEDUINO_TABLE_PAGE_SIZE == 288, "Tabela Speeduino deve ter 288 bytes");
+static_assert(TABLE_SIZE_X == SPEEDUINO_TABLE_DIM, "VE table deve ser 16x16 para compatibilidade Speeduino");
+static_assert(TABLE_SIZE_Y == SPEEDUINO_TABLE_DIM, "VE table deve ser 16x16 para compatibilidade Speeduino");
+
+enum PageWriteStatus : uint8_t {
+  PAGE_WRITE_FAIL = 0,
+  PAGE_WRITE_OK = 1,
+  PAGE_WRITE_TABLE_CHANGED = 2
+};
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+static inline uint32_t crc32Update(uint32_t crc, uint8_t dataByte) {
+  uint8_t index = (crc ^ dataByte) & 0xFF;
+  return (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
+}
+
+static inline uint8_t clampU8(int16_t value) {
+  if (value < 0) return 0;
+  if (value > 255) return 255;
+  return (uint8_t)value;
+}
+
+static inline uint8_t encodeIgnitionValue(int8_t advance) {
+  return clampU8((int16_t)advance + 40);
+}
+
+static inline int8_t decodeIgnitionValue(uint8_t stored) {
+  return (int8_t)((int16_t)stored - 40);
+}
+
+static inline uint8_t encodeRpmBin(uint16_t rpm) {
+  return clampU8(rpm / 100);
+}
+
+static inline uint16_t decodeRpmBin(uint8_t stored) {
+  return (uint16_t)stored * 100U;
+}
+
+static bool readPageByte(uint8_t page, uint16_t offset, uint8_t& value);
+static PageWriteStatus writePageByte(uint8_t page, uint16_t offset, uint8_t value);
 
 // ============================================================================
 // INICIALIZAÇÃO
@@ -524,28 +591,154 @@ void processModernCommand() {
 // FUNÇÕES DE PÁGINA
 // ============================================================================
 
-uint8_t* getPagePointer(uint8_t page) {
-  switch (page) {
-    case 1:
-      return (uint8_t*)&configPage1;
-    case 2:
-      return (uint8_t*)&configPage2;
-    default:
-      return nullptr;
-  }
-}
-
 uint16_t getPageSize(uint8_t page) {
   if (page >= PAGE_COUNT) return 0;
   return pgm_read_word(&pageSize[page]);
 }
 
+static bool readStructPageByte(const uint8_t* base, uint16_t size, uint16_t offset, uint8_t& value) {
+  if (offset >= size) return false;
+  value = base[offset];
+  return true;
+}
+
+static PageWriteStatus writeStructPageByte(uint8_t* base, uint16_t size, uint16_t offset, uint8_t value) {
+  if (offset >= size) return PAGE_WRITE_FAIL;
+  base[offset] = value;
+  return PAGE_WRITE_OK;
+}
+
+static bool readStubPageByte(uint8_t page, uint16_t offset, uint8_t& value) {
+  uint16_t size = getPageSize(page);
+  if (offset >= size) return false;
+  value = 0;
+  return true;
+}
+
+static bool readVeTablePageByte(uint16_t offset, uint8_t& value) {
+  if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return false;
+
+  if (offset < SPEEDUINO_TABLE_CELLS) {
+    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
+    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
+    value = veTable.values[y][x];
+    return true;
+  }
+
+  if (offset < SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN) {
+    uint8_t idx = offset - SPEEDUINO_TABLE_CELLS;
+    value = encodeRpmBin(veTable.axisX[idx]);
+    return true;
+  }
+
+  uint8_t idx = offset - (SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN);
+  value = veTable.axisY[idx];
+  return true;
+}
+
+static PageWriteStatus writeVeTablePageByte(uint16_t offset, uint8_t value) {
+  if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return PAGE_WRITE_FAIL;
+
+  if (offset < SPEEDUINO_TABLE_CELLS) {
+    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
+    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
+    veTable.values[y][x] = value;
+    return PAGE_WRITE_TABLE_CHANGED;
+  }
+
+  if (offset < SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN) {
+    uint8_t idx = offset - SPEEDUINO_TABLE_CELLS;
+    veTable.axisX[idx] = decodeRpmBin(value);
+    return PAGE_WRITE_TABLE_CHANGED;
+  }
+
+  uint8_t idx = offset - (SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN);
+  veTable.axisY[idx] = value;
+  return PAGE_WRITE_TABLE_CHANGED;
+}
+
+static bool readIgnTablePageByte(uint16_t offset, uint8_t& value) {
+  if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return false;
+
+  if (offset < SPEEDUINO_TABLE_CELLS) {
+    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
+    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
+    value = encodeIgnitionValue(ignTable.valuesI[y][x]);
+    return true;
+  }
+
+  if (offset < SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN) {
+    uint8_t idx = offset - SPEEDUINO_TABLE_CELLS;
+    value = encodeRpmBin(ignTable.axisX[idx]);
+    return true;
+  }
+
+  uint8_t idx = offset - (SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN);
+  value = ignTable.axisY[idx];
+  return true;
+}
+
+static PageWriteStatus writeIgnTablePageByte(uint16_t offset, uint8_t value) {
+  if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return PAGE_WRITE_FAIL;
+
+  if (offset < SPEEDUINO_TABLE_CELLS) {
+    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
+    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
+    ignTable.valuesI[y][x] = decodeIgnitionValue(value);
+    return PAGE_WRITE_TABLE_CHANGED;
+  }
+
+  if (offset < SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN) {
+    uint8_t idx = offset - SPEEDUINO_TABLE_CELLS;
+    ignTable.axisX[idx] = decodeRpmBin(value);
+    return PAGE_WRITE_TABLE_CHANGED;
+  }
+
+  uint8_t idx = offset - (SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN);
+  ignTable.axisY[idx] = value;
+  return PAGE_WRITE_TABLE_CHANGED;
+}
+
+static bool readPageByte(uint8_t page, uint16_t offset, uint8_t& value) {
+  switch (page) {
+    case 1:
+      return readStructPageByte((uint8_t*)&configPage1, sizeof(ConfigPage1), offset, value);
+    case 2:
+      return readVeTablePageByte(offset, value);
+    case 3:
+      return readIgnTablePageByte(offset, value);
+    case 4:
+      return readStructPageByte((uint8_t*)&configPage2, sizeof(ConfigPage2), offset, value);
+    default:
+      return readStubPageByte(page, offset, value);
+  }
+}
+
+static PageWriteStatus writePageByte(uint8_t page, uint16_t offset, uint8_t value) {
+  switch (page) {
+    case 1:
+      return writeStructPageByte((uint8_t*)&configPage1, sizeof(ConfigPage1), offset, value);
+    case 2:
+      return writeVeTablePageByte(offset, value);
+    case 3:
+      return writeIgnTablePageByte(offset, value);
+    case 4:
+      return writeStructPageByte((uint8_t*)&configPage2, sizeof(ConfigPage2), offset, value);
+    default:
+      {
+        uint16_t pageSz = getPageSize(page);
+        if (pageSz == 0 || offset >= pageSz) {
+          return PAGE_WRITE_FAIL;
+        }
+        return PAGE_WRITE_OK;
+      }
+  }
+}
+
 void sendPageValues(uint8_t page, uint16_t offset, uint16_t length) {
-  uint8_t* pagePtr = getPagePointer(page);
   uint16_t pageSz = getPageSize(page);
 
-  if (pagePtr == nullptr || page >= PAGE_COUNT) {
-    // Página inválida
+  if (pageSz == 0) {
     uint8_t err = SERIAL_RC_RANGE_ERR;
     sendU16BE(1);
     sendByte(err);
@@ -553,41 +746,36 @@ void sendPageValues(uint8_t page, uint16_t offset, uint16_t length) {
     return;
   }
 
-  // Limita ao tamanho real da página
   uint16_t available = (offset < pageSz) ? (pageSz - offset) : 0;
   uint16_t actualLength = (length < available) ? length : available;
-
-  // Monta resposta: [status OK] [dados]
   uint16_t responseLength = 1 + actualLength;
 
-  // Envia length header
   sendU16BE(responseLength);
 
-  // Para evitar VLA (RAM limitada), usamos buffer temporário pequeno
-  // Enviamos e calculamos CRC simultaneamente
-  uint8_t tempBuf[32];  // Buffer temporário para envio em blocos
-
-  // Inicializa CRC manual (método robusto para streams)
+  uint8_t tempBuf[32];
   uint32_t crc = 0xFFFFFFFF;
 
-  // Passo 1: CRC do status byte
-  tempBuf[0] = SERIAL_RC_OK;
-  sendByte(tempBuf[0]);
-  uint8_t index = (crc ^ tempBuf[0]) & 0xFF;
-  crc = (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
+  // Status byte
+  sendByte(SERIAL_RC_OK);
+  crc = crc32Update(crc, SERIAL_RC_OK);
 
-  // Passo 2: Envia dados em blocos e calcula CRC
   uint16_t remaining = actualLength;
   uint16_t pos = 0;
+
   while (remaining > 0) {
-    uint16_t blockSize = (remaining < 32) ? remaining : 32;
-    memcpy(tempBuf, pagePtr + offset + pos, blockSize);
+    uint16_t blockSize = (remaining < sizeof(tempBuf)) ? remaining : sizeof(tempBuf);
+    for (uint16_t i = 0; i < blockSize; i++) {
+      uint8_t byteValue = 0;
+      if (!readPageByte(page, offset + pos + i, byteValue)) {
+        byteValue = 0;
+      }
+      tempBuf[i] = byteValue;
+    }
+
     sendBytes(tempBuf, blockSize);
 
-    // Calcula CRC do bloco
     for (uint16_t i = 0; i < blockSize; i++) {
-      index = (crc ^ tempBuf[i]) & 0xFF;
-      crc = (crc >> 8) ^ pgm_read_dword(&crc32_table[index]);
+      crc = crc32Update(crc, tempBuf[i]);
     }
 
     pos += blockSize;
@@ -599,29 +787,34 @@ void sendPageValues(uint8_t page, uint16_t offset, uint16_t length) {
 }
 
 uint8_t writePageValues(uint8_t page, uint16_t offset, uint16_t length, const uint8_t* data) {
-  uint8_t* pagePtr = getPagePointer(page);
   uint16_t pageSz = getPageSize(page);
 
-  if (pagePtr == nullptr || page >= PAGE_COUNT) {
+  if (pageSz == 0 || (offset + length) > pageSz) {
     return SERIAL_RC_RANGE_ERR;
   }
 
-  // Verifica range
-  if (offset + length > pageSz) {
-    return SERIAL_RC_RANGE_ERR;
+  bool tableChanged = false;
+  for (uint16_t i = 0; i < length; i++) {
+    PageWriteStatus status = writePageByte(page, offset + i, data[i]);
+    if (status == PAGE_WRITE_FAIL) {
+      return SERIAL_RC_RANGE_ERR;
+    }
+    if (status == PAGE_WRITE_TABLE_CHANGED) {
+      tableChanged = true;
+    }
   }
 
-  // Escreve dados
-  memcpy(pagePtr + offset, data, length);
+  if (tableChanged) {
+    clearTableCaches();
+  }
 
   return SERIAL_RC_OK;
 }
 
 void sendPageCRC32(uint8_t page) {
-  uint8_t* pagePtr = getPagePointer(page);
   uint16_t pageSz = getPageSize(page);
 
-  if (pagePtr == nullptr || page >= PAGE_COUNT) {
+  if (pageSz == 0) {
     uint8_t err = SERIAL_RC_RANGE_ERR;
     sendU16BE(1);
     sendByte(err);
@@ -629,16 +822,22 @@ void sendPageCRC32(uint8_t page) {
     return;
   }
 
-  // Calcula CRC32 da página
-  uint32_t pageCRC = calculateCRC32(pagePtr, pageSz);
+  uint32_t crc = 0xFFFFFFFF;
+  for (uint16_t i = 0; i < pageSz; i++) {
+    uint8_t byteValue = 0;
+    if (!readPageByte(page, i, byteValue)) {
+      byteValue = 0;
+    }
+    crc = crc32Update(crc, byteValue);
+  }
 
-  // Reverte bytes do CRC32 (big-endian → little-endian) como Speeduino real
+  uint32_t pageCRC = ~crc;
+
   uint32_t reversedCRC = ((pageCRC & 0xFF) << 24) |
                          ((pageCRC & 0xFF00) << 8) |
                          ((pageCRC & 0xFF0000) >> 8) |
                          ((pageCRC & 0xFF000000) >> 24);
 
-  // Monta resposta: [status OK] [CRC32 reversed, depois little-endian]
   uint8_t response[5];
   response[0] = SERIAL_RC_OK;
   response[1] = reversedCRC & 0xFF;
@@ -646,8 +845,7 @@ void sendPageCRC32(uint8_t page) {
   response[3] = (reversedCRC >> 16) & 0xFF;
   response[4] = (reversedCRC >> 24) & 0xFF;
 
-  // Envia
-  sendU16BE(5);  // Length
+  sendU16BE(5);
   sendBytes(response, 5);
   sendU32BE(calculateCRC32(response, 5));
 }
@@ -828,4 +1026,3 @@ void buildRealtimePacket(uint8_t* buffer) {
 
   // Resto: zeros (já foi feito com memset)
 }
-

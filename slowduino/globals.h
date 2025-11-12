@@ -15,7 +15,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.1.0"
-#define EEPROM_DATA_VERSION 1
+#define EEPROM_DATA_VERSION 2
 
 // ============================================================================
 // MAPEAMENTO DE PINOS (Arduino Uno/Nano)
@@ -190,9 +190,8 @@ struct ConfigPage1 {
   uint8_t  stoich;             // Razão estequiométrica * 10 (ex: 147 = 14.7:1)
 
   // Reserva para compatibilidade com Speeduino (página 1 = 128 bytes)
-  // ConfigPage1 atual: 45 bytes (1+1+2+1+2+3+4+12+2+4+1+1+1+10)
-  // Padding necessário: 128 - 45 = 83 bytes
-  uint8_t  spare[83];
+  // Conteúdo atual: 35 bytes → padding de 93 bytes
+  uint8_t  spare[93];
 
 } __attribute__((packed));
 
@@ -231,13 +230,16 @@ struct ConfigPage2 {
   uint8_t  ignInvert;          // 0=Normal, 1=Invertido
 
   // Reserva para compatibilidade com Speeduino (página 2 = 288 bytes)
-  // ConfigPage2 atual: 38 bytes (4+6+1+1+1+1+8+1+15)
-  // Padding necessário: 288 - 38 = 250 bytes
-  uint8_t  spare[250];
+  // ConfigPage2 atual: 23 bytes
+  // Padding necessário: 128 - 23 = 105 bytes
+  uint8_t  spare[105];
 
 } __attribute__((packed));
 
 extern struct ConfigPage2 configPage2;
+
+static_assert(sizeof(ConfigPage1) == 128, "ConfigPage1 deve ocupar 128 bytes");
+static_assert(sizeof(ConfigPage2) == 128, "ConfigPage2 deve ocupar 128 bytes");
 
 // ============================================================================
 // MACROS ÚTEIS

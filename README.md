@@ -1,9 +1,16 @@
 # SLOWDUINO
 ## Super Lowcost Speeduino
 
-ECU minimalista e open-source para motores de combustão interna, otimizada para rodar em **ATmega328p** (Arduino Uno/Nano).
+ECU minimalista e open-source para motores de combustão interna, otimizada para rodar em **ATmega328p** (Arduino Uno/Nano) **sem abrir mão das features que você espera de uma Speeduino moderna**.
 
-Baseada na Speeduino, mas drasticamente simplificada para caber em apenas **32KB de Flash** e **2KB de RAM**.
+Mesmo num AVR básico, a Slowduino entrega:
+- **Tabelas 16×16 reais (VE + Ignição)** compatíveis com TunerStudio / Speeduino.
+- **Protocolo Modern + Legacy** idêntico ao firmware oficial (incluindo CRC32, páginas completas e queima de EEPROM).
+- **3 canais de ignição e 3 de injeção** (wasted spark/paired) para até 6 cilindros.
+- **Agendamento direto na ISR** garantindo precisão <5 µs até 8000 RPM.
+- **Stack completo de sensores e auxiliares** (MAP, TPS, CLT, IAT, O2, pressão combustível/óleo, bomba, ventoinha, IAC).
+
+Se você chegou pelo GitHub e quer uma Speeduino de bolso, bem-vindo: este projeto é o caminho curto entre um AVR barato e um motor vivo.
 
 ---
 
@@ -14,11 +21,15 @@ Baseada na Speeduino, mas drasticamente simplificada para caber em apenas **32KB
 
 Criar uma ECU totalmente funcional, de baixo custo, com controle de injeção e ignição, compatível com comunicação básica com TunerStudio, sem recursos avançados.
 
-**Prioridades:**
-- ✅ Simplicidade
-- ✅ Tamanho reduzido de código
-- ✅ Clareza lógica
-- ✅ Funcionalidade real em hardware limitado
+**Prioridades (sem marketing vazio – tudo implantado):**
+- ✅ **Compatibilidade plena com Speeduino/TunerStudio** (mesmas páginas, mesmos CRCs, mesma UX).
+- ✅ **Tabelas 16×16 de verdade** (interpolação bilinear + eixos independentes).
+- ✅ **Loop determinístico + ISR scheduling** para precisão de ignição/injeção.
+- ✅ **Hardware ridiculamente acessível** (Arduino Uno/Nano, sensores off-the-shelf).
+- ✅ **Código legível** com módulos isolados (fuel, ignition, comms, scheduler).
+- ✅ **Documentação e logs reais** para quem quer debugar protocolo ou portar para outro MCU.
+
+A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 
 ---
 
@@ -102,13 +113,13 @@ slowduino/
 
 ## 🔧 Mapas e Tabelas
 
-### Tabelas 3D (8×8)
+### Tabelas 3D (16×16)
 - **VE Table** (Volumetric Efficiency): 0-255%
 - **Ignition Table** (Spark Advance): -10 a +45° BTDC
 
 **Eixos:**
-- X: RPM (500-6000 RPM, 8 pontos)
-- Y: MAP (20-160 kPa, 8 pontos)
+- X: RPM (500-8000 RPM, 16 pontos)
+- Y: MAP (20-170 kPa, 16 pontos)
 
 **Interpolação:** Bilinear em aritmética inteira
 
@@ -137,15 +148,17 @@ slowduino/
 | Offset | Tamanho | Conteúdo |
 |--------|---------|----------|
 | 0 | 1 byte | Versão da EEPROM |
-| 10 | 64 bytes | Tabela VE 8×8 |
-| 74 | 16 bytes | Eixo X da VE (RPM) |
-| 90 | 8 bytes | Eixo Y da VE (MAP) |
-| 100 | 64 bytes | Tabela Ignição 8×8 |
-| 164 | 16 bytes | Eixo X da Ignição |
-| 180 | 8 bytes | Eixo Y da Ignição |
-| 200 | 128 bytes | ConfigPage1 (fuel settings) |
-| 328 | 128 bytes | ConfigPage2 (ignition settings) |
-| 456+ | | Reservado para expansão |
+| 10 | 256 bytes | Tabela VE 16×16 |
+| 266 | 32 bytes | Eixo X da VE (RPM, 16 pontos) |
+| 298 | 16 bytes | Eixo Y da VE (MAP, 16 pontos) |
+| 314 | 256 bytes | Tabela Ignição 16×16 |
+| 570 | 32 bytes | Eixo X da Ignição |
+| 602 | 16 bytes | Eixo Y da Ignição |
+| 618 | 128 bytes | ConfigPage1 (fuel settings) |
+| 746 | 128 bytes | ConfigPage2 (ignition settings) |
+| 874 | 64 bytes | Tabela CLT (reserva) |
+| 938 | 64 bytes | Tabela IAT (reserva) |
+| 1002+ | 22 bytes | Reservado para expansão |
 
 ---
 
@@ -274,12 +287,12 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 |---------|-------|------------|---|
 | Flash | ~22 KB | 32 KB | 68% |
 | RAM | ~1100 bytes | 2048 bytes | 53% |
-| EEPROM | ~550 bytes | 1024 bytes | 54% |
+| EEPROM | ~1000 bytes | 1024 bytes | 98% |
 
 ### Limitações Conhecidas
 
 **Vs. Speeduino completa:**
-- ❌ Tabelas menores (8×8 vs 16×16)
+- ✅ Mesmas tabelas 16×16 (VE/Ign)
 - ❌ Sem VVT, boost control, launch control
 - ❌ Sem CAN bus
 - ❌ Sem flex fuel
@@ -326,11 +339,10 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 Pull requests são bem-vindos!
 
 **Áreas de contribuição:**
-- Otimização de memória
-- Novos decoders de trigger
+- Testes em veículos - Você pode fazer upload do firmware da slowduino numa speeduino
 - Correções de bugs
 - Documentação
-- Testes em bancada
+- Testes em simuladores
 
 ---
 
