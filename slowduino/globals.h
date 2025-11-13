@@ -10,49 +10,20 @@
 #define GLOBALS_H
 
 #include <Arduino.h>
+#include "board_config.h"  // Configuração de hardware (Slowduino ou Speeduino v0.4)
 
 // ============================================================================
 // VERSÃO DO FIRMWARE
 // ============================================================================
-#define SLOWDUINO_VERSION "0.1.0"
+#define SLOWDUINO_VERSION "0.2.1-multi"
 #define EEPROM_DATA_VERSION 2
 
 // ============================================================================
-// MAPEAMENTO DE PINOS (Arduino Uno/Nano)
+// MAPEAMENTO DE PINOS
 // ============================================================================
-
-// Entradas Digitais (TRIGGER PRECISA DE INT0 - SOMENTE D2 NO UNO/NANO!)
-#define PIN_TRIGGER_PRIMARY   2   // Sensor de rotação (crank) - INT0 (D2)
-// NOTA: PIN_TRIGGER_SECONDARY (D3) REMOVIDO - não usaremos sensor de fase
-//       Wasted spark é suficiente para até 6 cilindros (3 canais)
-
-// Saídas Digitais - Ignição (wasted spark para 1-6 cilindros)
-#define PIN_IGNITION_1      4   // Ignição 1 (cilindros 1+4)
-#define PIN_IGNITION_2      5   // Ignição 2 (cilindros 2+5)
-#define PIN_IGNITION_3      3   // Ignição 3 (cilindros 3+6) - LIBERADO por remover sensor de fase!
-
-// Saídas Digitais - Injeção (wasted paired para 1-6 cilindros)
-#define PIN_INJECTOR_1     10   // Bico 1 (cilindros 1+4)
-#define PIN_INJECTOR_2     11   // Bico 2 (cilindros 2+5)
-#define PIN_INJECTOR_3      7   // Bico 3 (cilindros 3+6) - LIBERADO!
-
-// Saídas Digitais - Auxiliares
-#define PIN_FUEL_PUMP       6   // Relé da bomba de combustível
-#define PIN_FAN             8   // Ventoinha do radiador
-#define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC - PWM)
-
-// Outras Entradas Digitais
-#define PIN_VSS            12   // Velocidade do veículo
-
-// Entradas Analógicas
-#define PIN_CLT             A0   // Temperatura do motor
-#define PIN_IAT             A1   // Temperatura do ar
-#define PIN_MAP             A2   // Pressão do coletor
-#define PIN_TPS             A3   // Posição da borboleta
-#define PIN_O2              A4   // Sonda Lambda
-#define PIN_BAT             A5   // Tensão da bateria
-#define PIN_OIL_PRESSURE    A6   // Pressão de óleo do motor
-#define PIN_FUEL_PRESSURE   A7   // Pressão da linha de combustível
+// NOTA: Pinos agora definidos em board_config.h
+// Descomente BOARD_SPEEDUINO_V04 em board_config.h para usar pinagem Speeduino v0.4
+// Ou deixe BOARD_SLOWDUINO (padrão) para Arduino Uno/Nano
 
 // ============================================================================
 // CONSTANTES DE CONVERSÃO
@@ -147,7 +118,7 @@ extern struct Statuses currentStatus;
 // ============================================================================
 struct ConfigPage1 {
   // Configuração do motor
-  uint8_t  nCylinders;         // Número de cilindros (1-6)
+  uint8_t  nCylinders;         // Número de cilindros (1-6, 3 canais wasted)
   uint8_t  injectorLayout;     // 0=Wasted Paired (sempre, sem sensor de fase)
 
   // Required fuel

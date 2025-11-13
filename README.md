@@ -14,6 +14,24 @@ Se você chegou pelo GitHub e quer uma Speeduino de bolso, bem-vindo: este proje
 
 ---
 
+## 🎯 Compatibilidade com Speeduino v0.4
+
+**Você já tem uma Speeduino v0.4?** Faça upload do firmware Slowduino e ajude nos testes!
+
+- ✅ **100% compatível** com hardware Speeduino v0.4 (Arduino Mega)
+- ✅ **Protocolo TunerStudio** idêntico ao firmware oficial
+- ✅ **Tabelas 16×16** completas (VE + Ignition)
+- ⚠️ **Limitação**: Máximo 6 cilindros (3 canais wasted spark/paired)
+- 🔧 **Configuração simples**: Edite `board_config.h` e compile para Mega 2560
+
+**Por que testar?**
+- Valida a compatibilidade do protocolo
+- Ajuda a encontrar bugs em hardware real
+- Contribui para o projeto open-source
+- Alternativa mais leve ao firmware oficial
+
+---
+
 ![](https://raw.githubusercontent.com/alexandrefelipemuller/slowduino/refs/heads/main/resources/PCB_3d.jpeg)
 
 
@@ -36,43 +54,61 @@ A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 ## ⚙️ Especificações Técnicas
 
 ### Hardware Suportado
+
+#### Opção 1: Slowduino (Arduino Uno/Nano)
 - **MCU**: ATmega328p (Arduino Uno, Nano, Pro Mini)
 - **Clock**: 16 MHz
 - **Flash**: 32 KB (firmware ~20-24 KB)
 - **RAM**: 2 KB (uso ~50-60%)
 - **EEPROM**: 1 KB
 
+#### Opção 2: Speeduino v0.4 Board (Arduino Mega)
+- **MCU**: ATmega2560 (Arduino Mega)
+- **Clock**: 16 MHz
+- **Flash**: 256 KB (firmware ~20-24 KB)
+- **RAM**: 8 KB (uso ~1-2 KB)
+- **EEPROM**: 4 KB
+- **Compatibilidade**: 100% compatível com hardware Speeduino v0.4
+- **⚠️ Limitação**: Firmware Slowduino usa apenas 3 canais (máx 6 cilindros)
+
 ### Capacidades do Motor
-- **Cilindros**: 1-4
-- **Injeção**: Wasted Paired (2 canais)
-- **Ignição**: Wasted Spark (2 canais)
+- **Cilindros**: 1-6 (3 canais wasted paired/spark)
+- **Injeção**: Wasted Paired (3 canais)
+- **Ignição**: Wasted Spark (3 canais)
 - **Trigger Wheels**: Missing Tooth (36-1, 60-2) ou Basic Distributor
 
 ---
 
 ## 📊 Mapeamento de Pinos
 
-### Saídas Digitais
-| Função | Pino Arduino | Descrição |
-|--------|--------------|-----------|
+**NOTA**: Pinagem configurável via `board_config.h`
+- Descomente `BOARD_SLOWDUINO` para Arduino Uno/Nano (padrão)
+- Descomente `BOARD_SPEEDUINO_V04` para Speeduino v0.4 board (Mega)
+
+### Pinagem: Slowduino (Arduino Uno/Nano)
+
+#### Saídas Digitais
+| Função | Pino | Descrição |
+|--------|------|-----------|
 | Injetor 1 | D10 | Cilindros 1+4 (wasted paired) |
-| Injetor 2 | D11 | Cilindros 2+3 (wasted paired) |
+| Injetor 2 | D11 | Cilindros 2+5 (wasted paired) |
+| Injetor 3 | D7 | Cilindros 3+6 (wasted paired) |
 | Bobina 1 | D4 | Ignição cilindros 1+4 |
-| Bobina 2 | D5 | Ignição cilindros 2+3 |
+| Bobina 2 | D5 | Ignição cilindros 2+5 |
+| Bobina 3 | D3 | Ignição cilindros 3+6 |
 | Ventoinha | D8 | Relé da ventoinha do radiador |
 | Válvula Marcha Lenta | D9 | Selenoide IAC (PWM) |
 | Bomba Combustível | D6 | Relé da bomba de combustível |
 
-### Entradas Digitais
-| Função | Pino Arduino | Descrição |
-|--------|--------------|-----------|
+#### Entradas Digitais
+| Função | Pino | Descrição |
+|--------|------|-----------|
 | Trigger Primário | D2 (INT0) | Sensor de rotação (crank) |
-| Trigger Secundário | D3 | Sensor de fase (cam) - futuro |
 | Velocidade | D12 | Sensor de velocidade (VSS) |
 
-### Entradas Analógicas
-| Função | Pino Arduino | Descrição |
-|--------|--------------|-----------|
+#### Entradas Analógicas
+| Função | Pino | Descrição |
+|--------|------|-----------|
 | CLT | A0 | Temperatura do motor (NTC 10K) |
 | IAT | A1 | Temperatura do ar (NTC 10K) |
 | MAP | A2 | Pressão do coletor (sensor MPX4250) |
@@ -81,6 +117,39 @@ A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 | Bateria | A5 | Tensão da bateria (divisor 10K:1K5) |
 | Pressão Óleo | A6 | Sensor de pressão de óleo (0-5V = 0-1000 kPa) |
 | Pressão Combustível | A7 | Sensor de pressão de combustível (0-5V = 0-1000 kPa) |
+
+### Pinagem: Speeduino v0.4 Board (Arduino Mega)
+
+#### Saídas Digitais
+| Função | Pino Mega | Pino Speeduino v0.4 | Descrição |
+|--------|-----------|---------------------|-----------|
+| Injetor 1 | 8 | Pin 1 (Injector 1 - 1/2) | Cilindros 1+4 |
+| Injetor 2 | 9 | Pin 2 (Injector 2 - 1/2) | Cilindros 2+5 |
+| Injetor 3 | 10 | Pin 3 (Injector 3 - 1/2) | Cilindros 3+6 |
+| Bobina 1 | 40 | Pin 7 (Ignition 1) | Cilindros 1+4 |
+| Bobina 2 | 38 | Pin 34 (Ignition 2) | Cilindros 2+5 |
+| Bobina 3 | 52 | Pin 33 (Ignition 3) | Cilindros 3+6 |
+| Bomba Combustível | 45 | Pin 16 (Proto Area 3) | Relé bomba |
+| Ventoinha | 47 | Pin 15 (Proto Area 2) | Relé ventoinha |
+| Válvula Marcha Lenta | 46 | Pin 36/37 (Idle PWM) | Selenoide IAC |
+
+#### Entradas Digitais
+| Função | Pino Mega | Pino Speeduino v0.4 | Descrição |
+|--------|-----------|---------------------|-----------|
+| Trigger Primário | 19 (INT2) | Pin 25 (Crank VR1+) | Sensor rotação |
+| VSS | 20 | Pin 18 (Proto Area 5) | Velocidade |
+
+#### Entradas Analógicas
+| Função | Pino Mega | Pino Speeduino v0.4 | Descrição |
+|--------|-----------|---------------------|-----------|
+| CLT | A0 | Pin 19 (Coolant) | Temperatura motor |
+| IAT | A1 | Pin 20 (IAT) | Temperatura ar |
+| O2 | A2 | Pin 21 (O2 Sensor) | Sonda Lambda |
+| TPS | A3 | Pin 22 (TPS) | Posição borboleta |
+| MAP | A4 | Pin 11 (MAP Sensor) | Pressão coletor |
+| Bateria | A5 | N/A (adaptado) | Tensão bateria |
+| Pressão Óleo | A6 | N/A (adaptado) | Pressão óleo |
+| Pressão Combustível | A7 | N/A (adaptado) | Pressão combustível |
 
 ---
 
@@ -182,14 +251,47 @@ slowduino/
 
 ### 2. Software
 
+**Configuração de Hardware:**
+
+Antes de compilar, edite `slowduino/board_config.h`:
+
+```cpp
+// Para Arduino Uno/Nano (Slowduino original)
+#define BOARD_SLOWDUINO
+// #define BOARD_SPEEDUINO_V04
+
+// OU para Speeduino v0.4 board (Arduino Mega)
+// #define BOARD_SLOWDUINO
+#define BOARD_SPEEDUINO_V04
+```
+
 **Upload do Firmware:**
+
+**Para Slowduino (Arduino Uno/Nano):**
 ```bash
 # Via Arduino IDE
-1. Abrir slowduino.ino
-2. Selecionar placa: "Arduino Uno" ou "Arduino Nano"
-3. Selecionar porta serial
-4. Upload
+1. Editar board_config.h: descomentar BOARD_SLOWDUINO
+2. Abrir slowduino.ino
+3. Selecionar placa: "Arduino Uno" ou "Arduino Nano"
+4. Selecionar porta serial
+5. Upload
 ```
+
+**Para Speeduino v0.4 (Arduino Mega):**
+```bash
+# Via Arduino IDE
+1. Editar board_config.h: descomentar BOARD_SPEEDUINO_V04
+2. Abrir slowduino.ino
+3. Selecionar placa: "Arduino Mega 2560"
+4. Selecionar porta serial
+5. Upload
+```
+
+**⚠️ IMPORTANTE - Limitações na Speeduino v0.4:**
+- Firmware usa apenas 3 canais (máximo 6 cilindros)
+- Motores com 7-8 cilindros NÃO são suportados
+- Injetor 4 e Bobina 4 não serão utilizados
+- Ideal para testes e motores até 6 cilindros
 
 **Primeira Inicialização:**
 - Ao ligar, firmware carrega valores padrão na EEPROM
@@ -293,12 +395,14 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 
 **Vs. Speeduino completa:**
 - ✅ Mesmas tabelas 16×16 (VE/Ign)
+- ✅ Protocolo TunerStudio compatível
+- ✅ Pode rodar em hardware Speeduino v0.4 original
 - ❌ Sem VVT, boost control, launch control
 - ❌ Sem CAN bus
 - ❌ Sem flex fuel
-- ❌ Máximo 4 cilindros
+- ❌ Máximo 6 cilindros (3 canais wasted)
 - ❌ Sem modo sequential
-- ✅ Mas funciona em hardware 4× mais barato!
+- ✅ Mas funciona em hardware 4× mais barato (Uno/Nano)!
 
 **Precisão de Timing:**
 - Timer1 @ 2 MHz = **0.5 µs de resolução**
@@ -339,10 +443,11 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 Pull requests são bem-vindos!
 
 **Áreas de contribuição:**
-- Testes em veículos - Você pode fazer upload do firmware da slowduino numa speeduino
+- **Testes em Speeduino v0.4**: Firmware 100% compatível! Faça upload e reporte bugs
 - Correções de bugs
 - Documentação
 - Testes em simuladores
+- Otimizações de código
 
 ---
 
