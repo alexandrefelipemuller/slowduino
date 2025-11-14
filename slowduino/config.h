@@ -21,16 +21,15 @@
 // ============================================================================
 
 // Timer1 - 16 bits, usado para scheduler de injeção e ignição
-// Prescaler 8: 16MHz / 8 = 2MHz -> 0.5µs por tick
-// Máximo: 65536 * 0.5µs = 32.768ms
-#define TIMER1_PRESCALER    8
-#define TIMER1_RESOLUTION   0.5  // microsegundos por tick (não usado diretamente, apenas doc)
+// Prescaler 256: 16MHz / 256 = 62.5kHz -> 16µs por tick
+// Máximo: 65536 * 16µs = 1.048s (cobre cranking lento sem overflow)
+#define TIMER1_PRESCALER    256
+#define TIMER1_RESOLUTION   16.0  // microsegundos por tick (não usado diretamente, apenas doc)
 
 // Conversão de microsegundos para ticks do Timer1
-#define US_TO_TIMER1(us)    ((us) * 2)
+#define US_TO_TIMER1(us)    ((uint16_t)((us) / 16))
 
-// Conversão de ticks para microsegundos
-#define TIMER1_TO_US(ticks) ((ticks) / 2)
+#define TIMER1_TO_US(ticks) ((uint32_t)(ticks) * 16U)
 
 // ============================================================================
 // CONSTANTES DE SENSORES
@@ -197,6 +196,11 @@ extern volatile uint8_t loopTimerFlags;
 // Trigger patterns
 #define TRIGGER_MISSING_TOOTH     0   // Missing tooth (36-1, 60-2)
 #define TRIGGER_BASIC_DIST        1   // Distribuidor básico (1 dente/rev)
+
+// Trigger edges (compatível com Speeduino)
+#define TRIGGER_EDGE_RISING       0
+#define TRIGGER_EDGE_FALLING      1
+#define TRIGGER_EDGE_BOTH         2
 
 // MAP sampling
 #define MAP_SAMPLE_INSTANT        0   // Leitura instantânea

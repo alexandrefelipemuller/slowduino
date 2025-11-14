@@ -15,6 +15,9 @@ void scheduleIgnition();
 // Estado global do trigger
 volatile struct TriggerState triggerState;
 
+// Quantos pulsos por dente físico (CHANGE = 2, RISING/FALLING = 1)
+static uint8_t triggerEdgesPerTooth = 2;
+
 // Ponteiro para ISR atual (permite trocar decoder dinamicamente)
 typedef void (*TriggerISR)(void);
 volatile TriggerISR currentTriggerISR = nullptr;
@@ -23,13 +26,17 @@ volatile TriggerISR currentTriggerISR = nullptr;
 volatile uint8_t revolutionCounter = 0;  // 0 ou 1 (para alternar cilindros)
 
 // Ângulos de evento
-#define INJECTION_ANGLE 355   // 5° BTDC (fixo - pode ser configurável depois)
+// NOTA: Injeção precisa começar CEDO o suficiente para terminar antes do próximo gap!
+// A 1000 RPM, 1 revolução = 30ms. PW típico = 8ms.
+// Se começar a 355°, termina a 355° + (8ms/30ms)*360° = 355° + 96° = 451° (= 91° da próxima rev!)
+// SOLUÇÃO: Começar mais cedo, ex: 270° (90° BTDC)
+#define INJECTION_ANGLE 270   // 90° BTDC (garante término antes do TDC)
 
 // ============================================================================
 // FUNÇÕES INLINE PARA AGENDAMENTO RÁPIDO NA ISR
 // ============================================================================
 
-// Agenda injeção - CHAMADO DIRETAMENTE DA ISR
+// Agenda injeção VIA POLLING - CHAMADO DIRETAMENTE DA ISR
 inline void scheduleInjectionISR() __attribute__((always_inline));
 inline void scheduleInjectionISR() {
   if (triggerState.revolutionTime == 0) return;
@@ -40,27 +47,19 @@ inline void scheduleInjectionISR() {
   // Obtém PW (calculado no loop principal)
   uint16_t pw1 = currentStatus.PW1;
   uint16_t pw2 = currentStatus.PW2;
-  uint16_t pw3 = currentStatus.PW3;
 
   // Valida PW
   if (pw1 < INJ_MIN_PW || pw1 > INJ_MAX_PW) pw1 = INJ_MIN_PW;
   if (pw2 < INJ_MIN_PW || pw2 > INJ_MAX_PW) pw2 = INJ_MIN_PW;
-  if (pw3 < INJ_MIN_PW || pw3 > INJ_MAX_PW) pw3 = INJ_MIN_PW;
 
-  // Agenda baseado em revolução e número de cilindros (wasted paired)
-  uint8_t nCyl = configPage1.nCylinders;
-
+  // Agenda VIA POLLING (não usa compare match)
   if (revolutionCounter == 0) {
-    // Primeira revolução: canais 1 e 3 (se necessário)
-    setFuelSchedule(&fuelSchedule1, timeToInjection, pw1, 1);
-
-    // Canal 3 só para motores 5-6 cilindros
-    if (nCyl >= 5) {
-      setFuelSchedule(&fuelSchedule3, timeToInjection, pw3, 3);
-    }
+    // Primeira revolução: banco 1
+    scheduleInjectorPolling(&injector1Polling, timeToInjection, pw1);
+    // Canal 3 fica livre para estágio auxiliar (boost, metanol, etc.) - não agendado automaticamente
   } else {
-    // Segunda revolução: canal 2
-    setFuelSchedule(&fuelSchedule2, timeToInjection, pw2, 2);
+    // Segunda revolução: banco 2
+    scheduleInjectorPolling(&injector2Polling, timeToInjection, pw2);
   }
 }
 
@@ -80,29 +79,39 @@ inline void scheduleIgnitionISR() {
   // Calcula ângulo do dwell em graus
   uint16_t dwellAngle = ((uint32_t)dwellTime * 360UL) / triggerState.revolutionTime;
 
+  // PROTEÇÃO: Limita dwell a no máximo 50% da revolução (180°)
+  if (dwellAngle > 180) {
+    dwellAngle = 180;
+    // Recalcula dwellTime baseado no ângulo limitado
+    dwellTime = (180UL * triggerState.revolutionTime) / 360UL;
+  }
+
   // Ângulo de faísca (advance é BTDC, então 360 - advance)
   // Ex: 15° BTDC = 345° ATDC
   uint16_t sparkAngle = (advance > 0) ? (360 - advance) : 360;
 
   // Ângulo de início do dwell (antes da faísca)
-  uint16_t dwellStartAngle = (sparkAngle > dwellAngle) ? (sparkAngle - dwellAngle) : 0;
+  // PROTEÇÃO: Garante que dwellStartAngle seja sempre válido
+  uint16_t dwellStartAngle;
+  if (sparkAngle > dwellAngle) {
+    dwellStartAngle = sparkAngle - dwellAngle;
+  } else {
+    // Dwell muito longo para este avanço, inicia mais cedo
+    dwellStartAngle = 0;
+    // Ajusta dwell para caber
+    dwellAngle = sparkAngle;
+    dwellTime = (dwellAngle * triggerState.revolutionTime) / 360UL;
+  }
 
   // Calcula tempo até início do dwell
   uint32_t timeToDwell = ((uint32_t)dwellStartAngle * triggerState.revolutionTime) / 360UL;
 
-  // Agenda baseado em revolução e número de cilindros
-  uint8_t nCyl = configPage1.nCylinders;
-
   if (revolutionCounter == 0) {
-    // Primeira revolução: canais 1 e 3 (se necessário)
+    // Primeira revolução: bobina 1
     setIgnitionSchedule(&ignitionSchedule1, timeToDwell, dwellTime, 1);
 
-    // Canal 3 só para motores 5-6 cilindros
-    if (nCyl >= 5) {
-      setIgnitionSchedule(&ignitionSchedule3, timeToDwell, dwellTime, 3);
-    }
   } else {
-    // Segunda revolução: canal 2
+    // Segunda revolução: bobina 2
     setIgnitionSchedule(&ignitionSchedule2, timeToDwell, dwellTime, 2);
   }
 }
@@ -215,10 +224,11 @@ void triggerPri_MissingTooth() {
   // Aceita TODOS os pulsos, mas detecta gap pelo tamanho absoluto
   triggerState.toothCurrentCount++;
 
-  // Detecta missing tooth por tamanho ABSOLUTO do gap
-  // Gap normal: ~500-1000us
-  // Missing tooth gap: ~1500-2500us (bem maior!)
-  bool isGap = (triggerState.curGap > 1200);  // Threshold fixo
+  // Detecta missing tooth com threshold DINÂMICO baseado no último dente
+  // Gap normal ≈ gap anterior; missing tooth precisa ser pelo menos 1.5x maior
+  uint32_t baseGap = (triggerState.lastGap > 0) ? triggerState.lastGap : triggerState.curGap;
+  uint32_t dynamicThreshold = baseGap + (baseGap >> 1);  // 1.5x
+  bool isGap = (triggerState.curGap > dynamicThreshold);
 
   if (isGap) {
     // Encontrou o gap!
@@ -226,7 +236,7 @@ void triggerPri_MissingTooth() {
     // Com CHANGE, esperamos ~70 pulsos (35 dentes × 2 bordas)
     // Mas o gap também gera 2 pulsos, então ~72 total
     // Validação flexível: entre 60-80 pulsos
-    uint16_t expectedPulses = triggerState.triggerActualTeeth * 2;  // 35 × 2 = 70
+    uint16_t expectedPulses = triggerState.triggerActualTeeth * triggerEdgesPerTooth;
 
     if (triggerState.toothCurrentCount >= (expectedPulses - 10) &&
         triggerState.toothCurrentCount <= (expectedPulses + 10)) {
@@ -407,15 +417,32 @@ void attachTriggerInterrupt() {
   // Configura pino como entrada com pullup
   pinMode(PIN_TRIGGER_PRIMARY, INPUT_PULLUP);
 
+  uint8_t edgeConfig = configPage2.triggerEdge;
+  uint8_t interruptMode;
+  switch (edgeConfig) {
+    case TRIGGER_EDGE_RISING:
+      interruptMode = RISING;
+      triggerEdgesPerTooth = 1;
+      break;
+    case TRIGGER_EDGE_FALLING:
+      interruptMode = FALLING;
+      triggerEdgesPerTooth = 1;
+      break;
+    default:
+      interruptMode = CHANGE;
+      triggerEdgesPerTooth = 2;
+      break;
+  }
+
   // Anexa interrupção INT0 (pino D2 no Uno/Nano - PIN_TRIGGER_PRIMARY)
-  // CHANGE = detecta AMBAS bordas (subida E descida)
+  // Pode ser RISING, FALLING ou CHANGE (ambas as bordas)
   // NOTA: Com CHANGE, cada dente físico gera 2 pulsos!
   // Lambda chama ISR atual dinamicamente (permite trocar decoder em runtime)
   attachInterrupt(digitalPinToInterrupt(PIN_TRIGGER_PRIMARY), []() {
     if (currentTriggerISR != nullptr) {
       currentTriggerISR();
     }
-  }, CHANGE);
+  }, interruptMode);
 }
 
 void detachTriggerInterrupt() {

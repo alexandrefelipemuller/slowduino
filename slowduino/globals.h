@@ -64,10 +64,10 @@ struct Statuses {
   uint8_t  oilPressure;        // Pressão óleo kPa (0-1000 kPa)
   uint8_t  fuelPressure;       // Pressão combustível kPa (0-1000 kPa)
 
-  // Combustível (3 canais para até 6 cilindros)
-  uint16_t PW1;                // Pulsewidth injetor 1 (microsegundos) - cil 1+4
-  uint16_t PW2;                // Pulsewidth injetor 2 - cil 2+5
-  uint16_t PW3;                // Pulsewidth injetor 3 - cil 3+6
+  // Combustível (2 bancos principais + canal auxiliar opcional)
+  uint16_t PW1;                // Pulsewidth injetor 1 (microsegundos) - bancadas 1+4
+  uint16_t PW2;                // Pulsewidth injetor 2 - bancadas 2+3 (motores 4c)
+  uint16_t PW3;                // Pulsewidth auxiliar (staged / nitro / boost)
   uint8_t  VE;                 // Volumetric Efficiency % (0-255)
   uint16_t corrections;        // Correções acumuladas (base 100)
 
@@ -118,8 +118,8 @@ extern struct Statuses currentStatus;
 // ============================================================================
 struct ConfigPage1 {
   // Configuração do motor
-  uint8_t  nCylinders;         // Número de cilindros (1-6, 3 canais wasted)
-  uint8_t  injectorLayout;     // 0=Wasted Paired (sempre, sem sensor de fase)
+  uint8_t  nCylinders;         // Número de cilindros (1-4, 2 canais wasted)
+  uint8_t  injectorLayout;     // 0=Wasted Paired (fixo, sem sensor de fase)
 
   // Required fuel
   uint16_t reqFuel;            // Required fuel em microsegundos (base para cálculo de PW)
@@ -200,10 +200,13 @@ struct ConfigPage2 {
   // Ignition output
   uint8_t  ignInvert;          // 0=Normal, 1=Invertido
 
+  // Trigger edge (como na Speeduino)
+  uint8_t  triggerEdge;        // 0=Rising, 1=Falling, 2=Both (CHANGE)
+
   // Reserva para compatibilidade com Speeduino (página 2 = 288 bytes)
-  // ConfigPage2 atual: 23 bytes
-  // Padding necessário: 128 - 23 = 105 bytes
-  uint8_t  spare[105];
+  // ConfigPage2 atual: 24 bytes
+  // Padding necessário: 128 - 24 = 104 bytes
+  uint8_t  spare[104];
 
 } __attribute__((packed));
 

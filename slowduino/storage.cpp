@@ -15,6 +15,8 @@ void saveVETable();
 void saveIgnTable();
 void saveCalibrationTables();
 void loadDefaultTables();
+static void enforceBoardLimits();
+static void sanitizeConfigValues();
 
 // ============================================================================
 // INICIALIZAÇÃO
@@ -28,11 +30,15 @@ void storageInit() {
     // Primeira inicialização ou versão incompatível
     DEBUG_PRINTLN(F("EEPROM: Versão inválida ou primeira inicialização"));
     loadDefaults();
+    sanitizeConfigValues();
+    enforceBoardLimits();
     saveAllConfig();
   } else {
     // Versão OK, carrega configuração
     DEBUG_PRINTLN(F("EEPROM: Carregando configuração"));
     loadAllConfig();
+    sanitizeConfigValues();
+    enforceBoardLimits();
   }
 }
 
@@ -104,6 +110,24 @@ void loadIgnTable() {
 void loadCalibrationTables() {
   // TODO: implementar quando tivermos tabelas de calibração CLT/IAT
   // Por enquanto usaremos valores calculados direto
+}
+
+static void enforceBoardLimits() {
+  if (configPage1.nCylinders == 0) {
+    configPage1.nCylinders = 1;
+  }
+
+  if (configPage1.nCylinders > BOARD_MAX_CYLINDERS) {
+    DEBUG_PRINT(F("Limite da placa atingido, ajustando cilindros para "));
+    DEBUG_PRINTLN(BOARD_MAX_CYLINDERS);
+    configPage1.nCylinders = BOARD_MAX_CYLINDERS;
+  }
+}
+
+static void sanitizeConfigValues() {
+  if (configPage2.triggerEdge > TRIGGER_EDGE_BOTH) {
+    configPage2.triggerEdge = TRIGGER_EDGE_BOTH;
+  }
 }
 
 // ============================================================================
@@ -237,6 +261,7 @@ void loadDefaults() {
   configPage2.triggerTeeth = 36;
   configPage2.triggerMissing = 1;
   configPage2.triggerAngle = 0;           // Calibrar depois
+  configPage2.triggerEdge = TRIGGER_EDGE_BOTH;  // Mesmo comportamento anterior (CHANGE)
 
   // Dwell
   configPage2.dwellRun = DWELL_DEFAULT;

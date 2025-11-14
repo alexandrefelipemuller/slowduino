@@ -51,30 +51,30 @@
 // ============================================================================
 #if defined(BOARD_SPEEDUINO_V04)
 
-  #define BOARD_NAME "Speeduino v0.4 (Slowduino firmware - 3ch/6cyl max)"
-  #define BOARD_MAX_CYLINDERS 6
+  #define BOARD_NAME "Speeduino v0.4 (Slowduino firmware - 2 ign ch / 4 cyl max)"
+  #define BOARD_MAX_CYLINDERS 4
+  #define BOARD_INJ_CHANNELS  3
+  #define BOARD_IGN_CHANNELS  2
 
-  // NOTA: Firmware Slowduino usa apenas 3 canais (wasted spark/paired)
-  //       Limitação: máximo 6 cilindros
-  //       Usuários com motores 7-8 cilindros não podem usar este firmware
+  // NOTA: Firmware Slowduino padronizado usa apenas 2 canais de ignição (wasted spark)
+  //       Limitação: máximo 4 cilindros em qualquer placa
 
   // Entradas Digitais (Trigger)
   #define PIN_TRIGGER_PRIMARY   19  // Crank Input (VR1+) - INT2
   // PIN_TRIGGER_SECONDARY não usado (sem sensor de fase no Slowduino)
 
-  // Saídas Digitais - Injeção (APENAS 3 canais usados)
+  // Saídas Digitais - Injeção (2 bancos + auxiliar)
   // Speeduino v0.4 usa drivers duplos (1/2 e 2/2 para cada canal)
   // Aqui mapeamos apenas o pino de controle principal (1/2)
-  #define PIN_INJECTOR_1     8   // Injector 1 - Pin 1/2 (cil 1+4)
-  #define PIN_INJECTOR_2     9   // Injector 2 - Pin 1/2 (cil 2+5)
-  #define PIN_INJECTOR_3    10   // Injector 3 - Pin 1/2 (cil 3+6)
+  #define PIN_INJECTOR_1     8   // Injector 1 - Pin 1/2 (banco 1)
+  #define PIN_INJECTOR_2     9   // Injector 2 - Pin 1/2 (banco 2)
+  #define PIN_INJECTOR_3    10   // Injector auxiliar / staging
   // PIN_INJECTOR_4 não usado no firmware Slowduino
 
-  // Saídas Digitais - Ignição (APENAS 3 canais usados)
+  // Saídas Digitais - Ignição (2 canais padronizados)
   #define PIN_IGNITION_1    40   // Ignition 1 (cil 1+4)
-  #define PIN_IGNITION_2    38   // Ignition 2 (cil 2+5)
-  #define PIN_IGNITION_3    52   // Ignition 3 (cil 3+6)
-  // PIN_IGNITION_4 não usado no firmware Slowduino
+  #define PIN_IGNITION_2    38   // Ignition 2 (cil 2+3)
+  // D52 permanece livre (pode virar ignição auxiliar em outro firmware)
 
   // Saídas Digitais - Auxiliares (Proto Area - Speeduino 0.4.4b+)
   #define PIN_FUEL_PUMP     45   // Proto Area 3 - Fuel Pump
@@ -104,22 +104,24 @@
 #elif defined(BOARD_SLOWDUINO)
 
   #define BOARD_NAME "Slowduino (Uno/Nano)"
-  #define BOARD_MAX_CYLINDERS 6
+  // ATmega328p só dispõe de 2 comparadores → padrão geral de 2 canais de ignição (4 cilindros wasted)
+  #define BOARD_MAX_CYLINDERS 4
+  #define BOARD_INJ_CHANNELS  3
+  #define BOARD_IGN_CHANNELS  2
 
   // Entradas Digitais (TRIGGER PRECISA DE INT0 - SOMENTE D2 NO UNO/NANO!)
   #define PIN_TRIGGER_PRIMARY   2   // Sensor de rotação (crank) - INT0 (D2)
-  // NOTA: PIN_TRIGGER_SECONDARY (D3) REMOVIDO - não usaremos sensor de fase
-  //       Wasted spark é suficiente para até 6 cilindros (3 canais)
+  // NOTA: PIN_TRIGGER_SECONDARY (D3) REMOVIDO - sem sensor de fase (wasted spark 2 canais)
 
-  // Saídas Digitais - Ignição (wasted spark para 1-6 cilindros)
+  // Saídas Digitais - Ignição (wasted spark para motores 1-4 cilindros)
   #define PIN_IGNITION_1      4   // Ignição 1 (cilindros 1+4)
   #define PIN_IGNITION_2      5   // Ignição 2 (cilindros 2+5)
-  #define PIN_IGNITION_3      3   // Ignição 3 (cilindros 3+6)
+  // D3 fica disponível (ex: ign kill, tach, auxiliar)
 
-  // Saídas Digitais - Injeção (wasted paired para 1-6 cilindros)
+  // Saídas Digitais - Injeção (2 bancos principais + canal auxiliar)
   #define PIN_INJECTOR_1     10   // Bico 1 (cilindros 1+4)
-  #define PIN_INJECTOR_2     11   // Bico 2 (cilindros 2+5)
-  #define PIN_INJECTOR_3      7   // Bico 3 (cilindros 3+6)
+  #define PIN_INJECTOR_2     11   // Bico 2 (cilindros 2+3)
+  #define PIN_INJECTOR_3      7   // Bico auxiliar / staging
 
   // Saídas Digitais - Auxiliares
   #define PIN_FUEL_PUMP       6   // Relé da bomba de combustível
@@ -150,8 +152,9 @@
 // ============================================================================
 
 // Define número de canais disponíveis (sempre 3 no firmware Slowduino)
-#define BOARD_INJ_CHANNELS  3
-#define BOARD_IGN_CHANNELS  3
+#if !defined(BOARD_INJ_CHANNELS) || !defined(BOARD_IGN_CHANNELS)
+  #error "BOARD_INJ_CHANNELS e BOARD_IGN_CHANNELS devem ser definidos pela placa selecionada"
+#endif
 
 // ============================================================================
 // INFORMAÇÕES DE DEBUG

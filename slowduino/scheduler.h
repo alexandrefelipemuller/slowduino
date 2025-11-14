@@ -39,13 +39,12 @@ struct IgnitionSchedule {
   volatile uint8_t channel;           // Canal (1, 2 ou 3)
 };
 
-// Schedules globais (3 canais para 1-6 cilindros)
+// Schedules globais
 extern volatile FuelSchedule fuelSchedule1;
 extern volatile FuelSchedule fuelSchedule2;
 extern volatile FuelSchedule fuelSchedule3;
 extern volatile IgnitionSchedule ignitionSchedule1;
 extern volatile IgnitionSchedule ignitionSchedule2;
-extern volatile IgnitionSchedule ignitionSchedule3;
 
 // ============================================================================
 // FUNÇÕES DE INICIALIZAÇÃO
@@ -61,7 +60,7 @@ void schedulerInit();
 /**
  * @brief Configura Timer1 para scheduler
  *
- * Modo CTC, prescaler 8 (0.5us por tick)
+ * Modo normal (free running) + prescaler 256 (16us por tick)
  * Habilita interrupções de Compare Match
  */
 void setupTimer1();
@@ -97,7 +96,7 @@ void clearFuelSchedule(volatile FuelSchedule* schedule);
  * @param duration Duração do dwell (microsegundos)
  * @param channel Canal da bobina (1, 2 ou 3)
  */
-void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel);
+void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint32_t startTime, uint16_t duration, uint8_t channel);
 
 /**
  * @brief Cancela schedule de ignição
@@ -198,27 +197,39 @@ inline void endCoil2Charge() {
   }
 }
 
-/**
- * @brief Inicia carga da bobina 3
- */
-inline void beginCoil3Charge() {
-  if (configPage2.ignInvert) {
-    digitalWrite(PIN_IGNITION_3, LOW);
-  } else {
-    digitalWrite(PIN_IGNITION_3, HIGH);
-  }
-}
+// ============================================================================
+// INJEÇÃO VIA POLLING (Precisão Relaxada ±100µs)
+// ============================================================================
 
 /**
- * @brief Termina carga da bobina 3
+ * @brief Estado de um injetor para controle via polling
  */
-inline void endCoil3Charge() {
-  if (configPage2.ignInvert) {
-    digitalWrite(PIN_IGNITION_3, HIGH);
-  } else {
-    digitalWrite(PIN_IGNITION_3, LOW);
-  }
-}
+struct InjectorPollingState {
+  bool isScheduled;     // Tem agendamento pendente
+  bool isOpen;          // Injetor atualmente aberto
+  uint32_t openTime;    // Tempo absoluto para abrir (micros)
+  uint32_t closeTime;   // Tempo absoluto para fechar (micros)
+};
+
+// Estados globais dos 3 injetores
+extern InjectorPollingState injector1Polling;
+extern InjectorPollingState injector2Polling;
+extern InjectorPollingState injector3Polling;
+
+/**
+ * @brief Agenda injeção via polling (chamado na ISR do trigger)
+ *
+ * @param injState Ponteiro para estado do injetor
+ * @param startDelay Delay até abertura (microsegundos)
+ * @param pulseWidth Duração da injeção (microsegundos)
+ */
+void scheduleInjectorPolling(InjectorPollingState* injState, uint32_t startDelay, uint16_t pulseWidth);
+
+/**
+ * @brief Processa polling de injetores (chamado no loop)
+ * DEVE ser chamado a cada iteração do loop principal (alta prioridade)
+ */
+void processInjectorPolling();
 
 // ============================================================================
 // UTILITÁRIOS

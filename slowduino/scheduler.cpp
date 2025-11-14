@@ -5,13 +5,14 @@
 
 #include "scheduler.h"
 
+static const uint16_t IGNITION_MIN_DELAY_US = 25;  // Proteção contra eventos já vencidos
+
 // Instancia schedules globais
 volatile FuelSchedule fuelSchedule1 = {SCHED_OFF, 0, 0, 0, 1};
 volatile FuelSchedule fuelSchedule2 = {SCHED_OFF, 0, 0, 0, 2};
 volatile FuelSchedule fuelSchedule3 = {SCHED_OFF, 0, 0, 0, 3};
 volatile IgnitionSchedule ignitionSchedule1 = {SCHED_OFF, 0, 0, 0, 1};
 volatile IgnitionSchedule ignitionSchedule2 = {SCHED_OFF, 0, 0, 0, 2};
-volatile IgnitionSchedule ignitionSchedule3 = {SCHED_OFF, 0, 0, 0, 3};
 
 // ============================================================================
 // INICIALIZAÇÃO
@@ -24,7 +25,6 @@ void schedulerInit() {
   pinMode(PIN_INJECTOR_3, OUTPUT);
   pinMode(PIN_IGNITION_1, OUTPUT);
   pinMode(PIN_IGNITION_2, OUTPUT);
-  pinMode(PIN_IGNITION_3, OUTPUT);
 
   // Garante que tudo está desligado
   closeInjector1();
@@ -32,7 +32,6 @@ void schedulerInit() {
   closeInjector3();
   endCoil1Charge();
   endCoil2Charge();
-  endCoil3Charge();
 
   // Configura Timer1
   setupTimer1();
@@ -46,16 +45,15 @@ void setupTimer1() {
   TCCR1B = 0;
   TCNT1 = 0;
 
-  // Modo CTC (Clear Timer on Compare Match) com TOP em OCR1A
-  // WGM13:0 = 0100 (CTC, TOP = OCR1A)
-  TCCR1B |= (1 << WGM12);
+  // Modo Normal (contagem livre até overflow 0xFFFF)
+  // WGM13:0 = 0000 → nenhum reset no compare, permite usar OCR1A/B como agendadores absolutos
 
-  // Prescaler = 8
-  // CS12:0 = 010
-  // 16MHz / 8 = 2MHz -> 0.5us por tick
-  TCCR1B |= (1 << CS11);
+  // Prescaler = 256
+  // CS12:0 = 100
+  // 16MHz / 256 = 62.5kHz -> 16us por tick (cobre cranking lento)
+  TCCR1B |= (1 << CS12);
 
-  // TOP value alto para não resetar contador (queremos free-running)
+  // Valor inicial alto evita interrupção imediata antes do primeiro agendamento
   OCR1A = 0xFFFF;
 
   // Habilita interrupções de Compare Match para Channels A, B
@@ -68,6 +66,12 @@ void setupTimer1() {
 // ============================================================================
 
 void setFuelSchedule(volatile FuelSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel) {
+  // Proteção: Não agendar se schedule anterior ainda está RUNNING
+  if (schedule->status == SCHED_RUNNING) {
+    // Cancela schedule anterior
+    clearFuelSchedule(schedule);
+  }
+
   // Converte microsegundos para ticks do timer (× 2)
   uint16_t startTicks = US_TO_TIMER1(startTime);
   uint16_t durationTicks = US_TO_TIMER1(duration);
@@ -81,9 +85,11 @@ void setFuelSchedule(volatile FuelSchedule* schedule, uint16_t startTime, uint16
   schedule->status = SCHED_PENDING;
 
   // Configura compare register apropriado
-  if (channel == 1) {
+  if (channel == 1 || channel == 3) {
+    // Canais 1 e 3 compartilham OCR1A
     OCR1A = schedule->startCompare;
   } else {
+    // Canal 2 usa OCR1B
     OCR1B = schedule->startCompare;
   }
 }
@@ -105,24 +111,57 @@ void clearFuelSchedule(volatile FuelSchedule* schedule) {
 // AGENDAMENTO DE IGNIÇÃO
 // ============================================================================
 
-void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel) {
-  uint16_t startTicks = US_TO_TIMER1(startTime);
-  uint16_t durationTicks = US_TO_TIMER1(duration);
+void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint32_t startTime, uint16_t duration, uint8_t channel) {
+  if (channel > BOARD_IGN_CHANNELS) {
+    schedule->status = SCHED_OFF;
+    return;
+  }
+
+  // Proteção: Não agendar se schedule anterior ainda está RUNNING
+  if (schedule->status == SCHED_RUNNING) {
+    // Cancela schedule anterior
+    clearIgnitionSchedule(schedule);
+  }
+
+  if (startTime < IGNITION_MIN_DELAY_US) {
+    schedule->status = SCHED_OFF;
+    return;
+  }
+
+  uint32_t startTicks = US_TO_TIMER1(startTime);
+  uint32_t durationTicks = US_TO_TIMER1(duration);
+  if (durationTicks == 0) {
+    durationTicks = 1;  // Garante pelo menos 1 tick
+  }
+
+  uint32_t totalTicks = startTicks + durationTicks;
+  uint32_t minTicks = US_TO_TIMER1(IGNITION_MIN_DELAY_US);
+
+  if (startTicks < minTicks) {
+    startTicks = minTicks;
+    if (totalTicks > startTicks) {
+      durationTicks = totalTicks - startTicks;
+    } else {
+      durationTicks = 1;  // Sem janela suficiente → pulso mínimo
+    }
+  }
 
   uint16_t currentCount = TCNT1;
-  schedule->startCompare = currentCount + startTicks;
-  schedule->endCompare = schedule->startCompare + durationTicks;
-  schedule->duration = durationTicks;
+  uint16_t startTicks16 = (uint16_t)startTicks;
+  uint16_t durationTicks16 = (uint16_t)durationTicks;
+
+  schedule->startCompare = currentCount + startTicks16;
+  schedule->endCompare = schedule->startCompare + durationTicks16;
+  schedule->duration = durationTicks16;
   schedule->channel = channel;
+
   schedule->status = SCHED_PENDING;
 
-  // Nota: Ignição compartilha compare registers com fuel
-  // Channel 1 usa OCR1A, Channel 2 usa OCR1B
-  // ISR precisa distinguir entre fuel e ignition
-
   if (channel == 1) {
+    // Canal 1 usa OCR1A
     OCR1A = schedule->startCompare;
   } else {
+    // Canal 2 usa OCR1B
     OCR1B = schedule->startCompare;
   }
 }
@@ -135,193 +174,102 @@ void clearIgnitionSchedule(volatile IgnitionSchedule* schedule) {
     endCoil1Charge();
   } else if (schedule->channel == 2) {
     endCoil2Charge();
-  } else if (schedule->channel == 3) {
-    endCoil3Charge();
   }
 }
 
 // ============================================================================
-// ISRs DO TIMER1
+// INJEÇÃO VIA POLLING - Implementação
 // ============================================================================
 
-// ISR para Compare Match A (Fuel/Ign Channel 1 e 3)
+// Estados globais dos injetores
+InjectorPollingState injector1Polling = {false, false, 0, 0};
+InjectorPollingState injector2Polling = {false, false, 0, 0};
+InjectorPollingState injector3Polling = {false, false, 0, 0};
+
+void scheduleInjectorPolling(InjectorPollingState* injState, uint32_t startDelay, uint16_t pulseWidth) {
+  uint32_t now = micros();
+  injState->openTime = now + startDelay;
+  injState->closeTime = injState->openTime + pulseWidth;
+  injState->isScheduled = true;
+  injState->isOpen = false;
+}
+
+void processInjectorPolling() {
+  uint32_t now = micros();
+
+  // Injector 1
+  if (injector1Polling.isScheduled) {
+    if (!injector1Polling.isOpen && now >= injector1Polling.openTime) {
+      // Hora de abrir
+      openInjector1();
+      injector1Polling.isOpen = true;
+    } else if (injector1Polling.isOpen && now >= injector1Polling.closeTime) {
+      // Hora de fechar
+      closeInjector1();
+      injector1Polling.isOpen = false;
+      injector1Polling.isScheduled = false;
+    }
+  }
+
+  // Injector 2
+  if (injector2Polling.isScheduled) {
+    if (!injector2Polling.isOpen && now >= injector2Polling.openTime) {
+      openInjector2();
+      injector2Polling.isOpen = true;
+    } else if (injector2Polling.isOpen && now >= injector2Polling.closeTime) {
+      closeInjector2();
+      injector2Polling.isOpen = false;
+      injector2Polling.isScheduled = false;
+    }
+  }
+
+  // Injector 3
+  if (injector3Polling.isScheduled) {
+    if (!injector3Polling.isOpen && now >= injector3Polling.openTime) {
+      openInjector3();
+      injector3Polling.isOpen = true;
+    } else if (injector3Polling.isOpen && now >= injector3Polling.closeTime) {
+      closeInjector3();
+      injector3Polling.isOpen = false;
+      injector3Polling.isScheduled = false;
+    }
+  }
+}
+
+// ============================================================================
+// HELPERS PARA ISRs DE IGNIÇÃO
+// ============================================================================
+
+static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
+                                         void (*beginCharge)(),
+                                         void (*endCharge)(),
+                                         volatile uint16_t* compareReg) {
+  if (schedule->status == SCHED_PENDING) {
+    schedule->status = SCHED_RUNNING;
+    beginCharge();
+    *compareReg = schedule->endCompare;
+    return;
+  }
+
+  if (schedule->status == SCHED_RUNNING) {
+    schedule->status = SCHED_OFF;
+    endCharge();
+    currentStatus.ignitionCount++;
+  }
+}
+
+// ============================================================================
+// ISRs DO TIMER1 - APENAS IGNIÇÃO (Alta Precisão)
+// ============================================================================
+// NOTA: Injeção agora é feita por polling no loop (precisão relaxada OK)
+//       Ignição usa compare match (~±20µs após quantização de 16µs)
+
+// ISR para Compare Match A (Ignition Channel 1)
 ISR(TIMER1_COMPA_vect) {
-  // CRÍTICO: Fuel e Ignition compartilham o mesmo compare register (OCR1A)
-  // Prioridade: Fuel1 > Fuel3 > Ign1 > Ign3 (injeção tem precedência)
-
-  // Processa Fuel Schedule 1
-  if (fuelSchedule1.status == SCHED_PENDING) {
-    // Inicia injeção
-    fuelSchedule1.status = SCHED_RUNNING;
-    openInjector1();
-
-    // Agenda fim da injeção
-    OCR1A = fuelSchedule1.endCompare;
-    return;
-
-  } else if (fuelSchedule1.status == SCHED_RUNNING) {
-    // Termina injeção
-    fuelSchedule1.status = SCHED_OFF;
-    closeInjector1();
-
-    // Verifica se há fuel3 pendente
-    if (fuelSchedule3.status == SCHED_PENDING) {
-      uint16_t now = TCNT1;
-      if (fuelSchedule3.startCompare > now) {
-        OCR1A = fuelSchedule3.startCompare;
-      } else {
-        fuelSchedule3.status = SCHED_RUNNING;
-        openInjector3();
-        OCR1A = fuelSchedule3.endCompare;
-      }
-      return;
-    }
-
-    // Se ignição está pendente, agenda agora
-    if (ignitionSchedule1.status == SCHED_PENDING) {
-      uint16_t now = TCNT1;
-      if (ignitionSchedule1.startCompare > now) {
-        OCR1A = ignitionSchedule1.startCompare;
-      } else {
-        // Já passou o timing, executa imediatamente
-        ignitionSchedule1.status = SCHED_RUNNING;
-        beginCoil1Charge();
-        OCR1A = ignitionSchedule1.endCompare;
-      }
-    }
-    return;
-  }
-
-  // Processa Fuel Schedule 3 (compartilha OCR1A)
-  if (fuelSchedule3.status == SCHED_PENDING) {
-    fuelSchedule3.status = SCHED_RUNNING;
-    openInjector3();
-    OCR1A = fuelSchedule3.endCompare;
-    return;
-
-  } else if (fuelSchedule3.status == SCHED_RUNNING) {
-    fuelSchedule3.status = SCHED_OFF;
-    closeInjector3();
-
-    // Se ignição 1 ou 3 está pendente, agenda
-    if (ignitionSchedule1.status == SCHED_PENDING) {
-      uint16_t now = TCNT1;
-      if (ignitionSchedule1.startCompare > now) {
-        OCR1A = ignitionSchedule1.startCompare;
-      } else {
-        ignitionSchedule1.status = SCHED_RUNNING;
-        beginCoil1Charge();
-        OCR1A = ignitionSchedule1.endCompare;
-      }
-      return;
-    }
-    if (ignitionSchedule3.status == SCHED_PENDING) {
-      uint16_t now = TCNT1;
-      if (ignitionSchedule3.startCompare > now) {
-        OCR1A = ignitionSchedule3.startCompare;
-      } else {
-        ignitionSchedule3.status = SCHED_RUNNING;
-        beginCoil3Charge();
-        OCR1A = ignitionSchedule3.endCompare;
-      }
-    }
-    return;
-  }
-
-  // Processa Ignition Schedule 1 (apenas se fuel não estiver ativo)
-  if (ignitionSchedule1.status == SCHED_PENDING) {
-    // Inicia dwell
-    ignitionSchedule1.status = SCHED_RUNNING;
-    beginCoil1Charge();
-
-    // Agenda faísca
-    OCR1A = ignitionSchedule1.endCompare;
-
-  } else if (ignitionSchedule1.status == SCHED_RUNNING) {
-    // Faísca!
-    ignitionSchedule1.status = SCHED_OFF;
-    endCoil1Charge();
-
-    // Incrementa contador de ignições
-    currentStatus.ignitionCount++;
-
-    // Verifica se ign3 está pendente
-    if (ignitionSchedule3.status == SCHED_PENDING) {
-      uint16_t now = TCNT1;
-      if (ignitionSchedule3.startCompare > now) {
-        OCR1A = ignitionSchedule3.startCompare;
-      } else {
-        ignitionSchedule3.status = SCHED_RUNNING;
-        beginCoil3Charge();
-        OCR1A = ignitionSchedule3.endCompare;
-      }
-    }
-    return;
-  }
-
-  // Processa Ignition Schedule 3
-  if (ignitionSchedule3.status == SCHED_PENDING) {
-    ignitionSchedule3.status = SCHED_RUNNING;
-    beginCoil3Charge();
-    OCR1A = ignitionSchedule3.endCompare;
-
-  } else if (ignitionSchedule3.status == SCHED_RUNNING) {
-    ignitionSchedule3.status = SCHED_OFF;
-    endCoil3Charge();
-    currentStatus.ignitionCount++;
-  }
+  handleIgnitionChannel(&ignitionSchedule1, beginCoil1Charge, endCoil1Charge, &OCR1A);
 }
 
-// ISR para Compare Match B (Fuel/Ign Channel 2)
+// ISR para Compare Match B (Ignition Channel 2)
 ISR(TIMER1_COMPB_vect) {
-  // CRÍTICO: Mesma lógica do Channel A
-  // Prioridade: Fuel > Ignition
-
-  // Processa Fuel Schedule 2
-  if (fuelSchedule2.status == SCHED_PENDING) {
-    // Inicia injeção
-    fuelSchedule2.status = SCHED_RUNNING;
-    openInjector2();
-
-    // Agenda fim da injeção
-    OCR1B = fuelSchedule2.endCompare;
-    return;  // Ignição aguarda próximo ciclo
-
-  } else if (fuelSchedule2.status == SCHED_RUNNING) {
-    // Termina injeção
-    fuelSchedule2.status = SCHED_OFF;
-    closeInjector2();
-
-    // Se ignição está pendente, agenda agora
-    if (ignitionSchedule2.status == SCHED_PENDING) {
-      uint16_t now = TCNT1;
-      if (ignitionSchedule2.startCompare > now) {
-        OCR1B = ignitionSchedule2.startCompare;
-      } else {
-        // Já passou o timing, executa imediatamente
-        ignitionSchedule2.status = SCHED_RUNNING;
-        beginCoil2Charge();
-        OCR1B = ignitionSchedule2.endCompare;
-      }
-    }
-    return;
-  }
-
-  // Processa Ignition Schedule 2 (apenas se fuel não estiver ativo)
-  if (ignitionSchedule2.status == SCHED_PENDING) {
-    // Inicia dwell
-    ignitionSchedule2.status = SCHED_RUNNING;
-    beginCoil2Charge();
-
-    // Agenda faísca
-    OCR1B = ignitionSchedule2.endCompare;
-
-  } else if (ignitionSchedule2.status == SCHED_RUNNING) {
-    // Faísca!
-    ignitionSchedule2.status = SCHED_OFF;
-    endCoil2Charge();
-
-    // Incrementa contador de ignições
-    currentStatus.ignitionCount++;
-  }
+  handleIgnitionChannel(&ignitionSchedule2, beginCoil2Charge, endCoil2Charge, &OCR1B);
 }

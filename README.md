@@ -6,8 +6,9 @@ ECU minimalista e open-source para motores de combustão interna, otimizada para
 Mesmo num AVR básico, a Slowduino entrega:
 - **Tabelas 16×16 reais (VE + Ignição)** compatíveis com TunerStudio / Speeduino.
 - **Protocolo Modern + Legacy** idêntico ao firmware oficial (incluindo CRC32, páginas completas e queima de EEPROM).
-- **3 canais de ignição e 3 de injeção** (wasted spark/paired) para até 6 cilindros.
-- **Agendamento direto na ISR** garantindo precisão <5 µs até 8000 RPM.
+- **Ignição wasted spark com 2 canais determinísticos** (1-4 cilindros em qualquer placa) e **3 canais de injeção** (2 bancos principais + auxiliar para futuros recursos).
+- **Trigger edge configurável (Rising/Falling/Both)** igual Speeduino, pra casar com qualquer condicionador de rotação.
+- **Agendamento direto na ISR** garantindo precisão <20 µs (<0,3° @ 8000 RPM).
 - **Stack completo de sensores e auxiliares** (MAP, TPS, CLT, IAT, O2, pressão combustível/óleo, bomba, ventoinha, IAC).
 
 Se você chegou pelo GitHub e quer uma Speeduino de bolso, bem-vindo: este projeto é o caminho curto entre um AVR barato e um motor vivo.
@@ -21,7 +22,7 @@ Se você chegou pelo GitHub e quer uma Speeduino de bolso, bem-vindo: este proje
 - ✅ **100% compatível** com hardware Speeduino v0.4 (Arduino Mega)
 - ✅ **Protocolo TunerStudio** idêntico ao firmware oficial
 - ✅ **Tabelas 16×16** completas (VE + Ignition)
-- ⚠️ **Limitação**: Máximo 6 cilindros (3 canais wasted spark/paired)
+- ⚠️ **Limitação**: Máximo 4 cilindros (2 canais de ignição padronizados)
 - 🔧 **Configuração simples**: Edite `board_config.h` e compile para Mega 2560
 
 **Por que testar?**
@@ -69,12 +70,13 @@ A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 - **RAM**: 8 KB (uso ~1-2 KB)
 - **EEPROM**: 4 KB
 - **Compatibilidade**: 100% compatível com hardware Speeduino v0.4
-- **⚠️ Limitação**: Firmware Slowduino usa apenas 3 canais (máx 6 cilindros)
+- **⚠️ Limitação**: Firmware Slowduino usa os mesmos 2 canais de ignição (máx 4 cilindros)
 
 ### Capacidades do Motor
-- **Cilindros**: 1-6 (3 canais wasted paired/spark)
-- **Injeção**: Wasted Paired (3 canais)
-- **Ignição**: Wasted Spark (3 canais)
+- **Slowduino (ATmega328p)**: 1-4 cilindros (2 canais de ignição precisos)
+- **Speeduino v0.4 (Mega)**: também limitado a 1-4 cilindros (firmware usa apenas 2 comparadores)
+- **Injeção**: Wasted Paired com 2 bancos principais + canal auxiliar (polling de precisão relaxada)
+- **Ignição**: Wasted Spark (sempre 2 canais)
 - **Trigger Wheels**: Missing Tooth (36-1, 60-2) ou Basic Distributor
 
 ---
@@ -87,15 +89,17 @@ A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 
 ### Pinagem: Slowduino (Arduino Uno/Nano)
 
+> ⚠️ Firmware Slowduino (ATmega328p) usa comparadores de hardware apenas para **Bobina 1 (D4)** e **Bobina 2 (D5)**. O pino D3 permanece reservado/desligado enquanto não migrar para hardware com 3 comparadores.
+
 #### Saídas Digitais
 | Função | Pino | Descrição |
 |--------|------|-----------|
-| Injetor 1 | D10 | Cilindros 1+4 (wasted paired) |
-| Injetor 2 | D11 | Cilindros 2+5 (wasted paired) |
-| Injetor 3 | D7 | Cilindros 3+6 (wasted paired) |
+| Injetor 1 | D10 | Banco 1 (cilindros 1+4) |
+| Injetor 2 | D11 | Banco 2 (cilindros 2+3) |
+| Injetor 3 | D7 | Canal auxiliar / staged (desligado por padrão) |
 | Bobina 1 | D4 | Ignição cilindros 1+4 |
-| Bobina 2 | D5 | Ignição cilindros 2+5 |
-| Bobina 3 | D3 | Ignição cilindros 3+6 |
+| Bobina 2 | D5 | Ignição cilindros 2+3 |
+| (Livre) | D3 | Disponível para ign kill / tach / expansão |
 | Ventoinha | D8 | Relé da ventoinha do radiador |
 | Válvula Marcha Lenta | D9 | Selenoide IAC (PWM) |
 | Bomba Combustível | D6 | Relé da bomba de combustível |
@@ -123,12 +127,12 @@ A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 #### Saídas Digitais
 | Função | Pino Mega | Pino Speeduino v0.4 | Descrição |
 |--------|-----------|---------------------|-----------|
-| Injetor 1 | 8 | Pin 1 (Injector 1 - 1/2) | Cilindros 1+4 |
-| Injetor 2 | 9 | Pin 2 (Injector 2 - 1/2) | Cilindros 2+5 |
-| Injetor 3 | 10 | Pin 3 (Injector 3 - 1/2) | Cilindros 3+6 |
+| Injetor 1 | 8 | Pin 1 (Injector 1 - 1/2) | Banco 1 (1+4) |
+| Injetor 2 | 9 | Pin 2 (Injector 2 - 1/2) | Banco 2 (2+3) |
+| Injetor 3 | 10 | Pin 3 (Injector 3 - 1/2) | Auxiliar / staged |
 | Bobina 1 | 40 | Pin 7 (Ignition 1) | Cilindros 1+4 |
-| Bobina 2 | 38 | Pin 34 (Ignition 2) | Cilindros 2+5 |
-| Bobina 3 | 52 | Pin 33 (Ignition 3) | Cilindros 3+6 |
+| Bobina 2 | 38 | Pin 34 (Ignition 2) | Cilindros 2+3 |
+| (Livre) | 52 | Pin 33 (Ignition 3) | Disponível / não usado |
 | Bomba Combustível | 45 | Pin 16 (Proto Area 3) | Relé bomba |
 | Ventoinha | 47 | Pin 15 (Proto Area 2) | Relé ventoinha |
 | Válvula Marcha Lenta | 46 | Pin 36/37 (Idle PWM) | Selenoide IAC |
@@ -288,10 +292,10 @@ Antes de compilar, edite `slowduino/board_config.h`:
 ```
 
 **⚠️ IMPORTANTE - Limitações na Speeduino v0.4:**
-- Firmware usa apenas 3 canais (máximo 6 cilindros)
-- Motores com 7-8 cilindros NÃO são suportados
-- Injetor 4 e Bobina 4 não serão utilizados
-- Ideal para testes e motores até 6 cilindros
+- Firmware usa os mesmos 2 canais de ignição (máximo 4 cilindros)
+- Motores acima de 4 cilindros NÃO são suportados neste firmware
+- Injetor 4 e Bobina 3/4 do hardware original ficam desligados
+- Ideal para testes comparativos com hardware Speeduino, mas sempre em motores 1-4c
 
 **Primeira Inicialização:**
 - Ao ligar, firmware carrega valores padrão na EEPROM
@@ -400,14 +404,14 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 - ❌ Sem VVT, boost control, launch control
 - ❌ Sem CAN bus
 - ❌ Sem flex fuel
-- ❌ Máximo 6 cilindros (3 canais wasted)
+- ❌ Máximo 4 cilindros (2 canais wasted spark em qualquer placa)
 - ❌ Sem modo sequential
 - ✅ Mas funciona em hardware 4× mais barato (Uno/Nano)!
 
 **Precisão de Timing:**
-- Timer1 @ 2 MHz = **0.5 µs de resolução**
-- Erro típico de agendamento: **< 5 µs**
-- Suficiente até 8000 RPM
+- Timer1 @ 62,5 kHz (prescaler 256) = **16 µs de resolução**
+- Erro típico de agendamento: **< 20 µs** (quantização + ISR)
+- Suficiente até 8000 RPM e, agora, também durante cranking < 200 RPM
 
 ---
 
@@ -434,7 +438,7 @@ RPM: 1850 | Sync: OK | MAP: 45 kPa | TPS: 12% | CLT: 82C | PW: 8450us | Adv: 18d
 - [ ] Datalogger SD card
 - [ ] Compatibilidade completa com TunerStudio INI
 - [ ] Launch control básico
-- [ ] Expansão para 6 cilindros (ATmega2560)
+- [ ] Estudar expansão para 6 cilindros em MCU com comparadores extras (ex: ATmega2560)
 
 ---
 

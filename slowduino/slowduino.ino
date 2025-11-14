@@ -5,8 +5,21 @@
  * ECU minimalista para ATmega328p (Arduino Uno/Nano)
  * Baseado na Speeduino, otimizado para 32KB Flash / 2KB RAM
  *
+ * ARQUITETURA DE AGENDAMENTO:
+ * ---------------------------
+ * IGNIÇÃO: Compare Match (Timer1) - Alta precisão (±5µs)
+ *   - OCR1A: Ignition Channels 1
+ *   - OCR1B: Ignition Channel 2
+ *
+ * INJEÇÃO: Polling no loop - Precisão relaxada (±100µs, ~2-3% do PW)
+ *   - processInjectorPolling() executado a cada iteração
+ *   - Suficiente para wasted paired (semi-sequential)
+ *
+ * RAZÃO: Arduino Uno tem apenas 2 compare registers (OCR1A, OCR1B)
+ *        Não há hardware suficiente para agendar 6+ eventos simultâneos
+ *
  * @author Claude + User
- * @version 0.1.0
+ * @version 0.2.1
  * @date 2025
  */
 
@@ -131,7 +144,14 @@ void loop() {
   currentStatus.loopCount++;
 
   // ------------------------------------------------------------------------
-  // COMUNICAÇÃO SERIAL - MÁXIMA PRIORIDADE
+  // POLLING DE INJETORES - MÁXIMA PRIORIDADE (DEVE SER PRIMEIRO!)
+  // ------------------------------------------------------------------------
+  // CRÍTICO: Processa abertura/fechamento de injetores via polling
+  // Precisão: ±100µs (tempo de loop típico)
+  processInjectorPolling();
+
+  // ------------------------------------------------------------------------
+  // COMUNICAÇÃO SERIAL - ALTA PRIORIDADE
   // ------------------------------------------------------------------------
   commsProcess();
 

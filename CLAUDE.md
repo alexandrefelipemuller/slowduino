@@ -1,19 +1,20 @@
 # Memória do Projeto - Slowduino
 
 ## 📱 Visão Geral
-- **Tipo:** ECU minimalista para motores 1-6 cilindros
+- **Tipo:** ECU minimalista para motores 1-4 cilindros
 - **Hardware:** ATmega328p (Arduino Uno/Nano)
 - **Limitações:** 32KB Flash, 2KB RAM, 1KB EEPROM
 - **Linguagem:** C++ (Arduino)
 - **Arquitetura:** ISR-driven, offline-first, integer-only, wasted spark/paired
 - **Inspiração:** Speeduino (protocolo compatível com TunerStudio)
-- **Versão:** 0.2.1 (3 canais, até 6 cilindros)
+- **Versão:** 0.2.1 (2 canais de ignição, até 4 cilindros)
+- **Trigger Edge:** Configurável (Rising/Falling/Both) como na Speeduino
 
 ## 🎯 Objetivos do Projeto
 
 Criar uma ECU funcional que:
-- ✅ Controla injeção (wasted paired, **3 canais para 1-6 cilindros**)
-- ✅ Controla ignição (wasted spark, **3 canais**)
+- ✅ Controla injeção (wasted paired, **2 bancos + 1 auxiliar**)
+- ✅ Controla ignição (wasted spark, **2 canais padronizados**)
 - ✅ Lê sensores (MAP, TPS, CLT, IAT, O2, Battery, Oil Press, Fuel Press)
 - ✅ Decodifica trigger wheels (Missing Tooth 36-1/60-2, Basic Distributor)
 - ✅ Comunica com TunerStudio via serial (Legacy + Modern protocol)
@@ -21,7 +22,7 @@ Criar uma ECU funcional que:
 - ✅ Aplica correções (WUE, ASE, AE, CLT, Battery)
 - ✅ Agendamento em tempo real via ISR direta
 - ✅ Controla auxiliares (ventoinha, IAC, bomba combustível)
-- ✅ **SEM sensor de fase** (wasted spark suficiente para 6 cilindros)
+- ✅ **SEM sensor de fase** (wasted spark suficiente para 4 cilindros)
 
 ## 🏗️ Estrutura de Arquivos
 
@@ -76,26 +77,23 @@ inline void scheduleInjectionISR() {
 - ✅ ISR direta = zero latência, precisão máxima
 - ✅ Scheduler usa Timer1 para precisão de 0.5µs
 
-### 2. Wasted Paired Injection/Ignition (3 Canais)
+### 2. Wasted Paired Injection/Ignition (2 Canais + Aux)
 
 **Conceito:** 1 canal controla 2 cilindros simultaneamente (wasted spark/paired)
 
-**Injeção (3 canais para 1-6 cilindros):**
-- Canal 1 (PIN_INJECTOR_1 - D10) → Cilindros 1 + 4
-- Canal 2 (PIN_INJECTOR_2 - D11) → Cilindros 2 + 5
-- Canal 3 (PIN_INJECTOR_3 - D7) → Cilindros 3 + 6
-- Todos injetam mesma quantidade (PW1 = PW2 = PW3)
+**Injeção (2 bancos + auxiliar):**
+- Canal 1 (PIN_INJECTOR_1 - D10) → Banco 1 (cilindros 1+4 em motores 4c)
+- Canal 2 (PIN_INJECTOR_2 - D11) → Banco 2 (cilindros 2+3)
+- Canal 3 (PIN_INJECTOR_3 - D7) → Livre para estágio auxiliar / nitro / metanol
+- PW principal é o mesmo para bancos 1 e 2 (semi-sequencial)
 - Alternância via `revolutionCounter` (0 ou 1)
-- **Motores 1-4 cil:** Usa canais 1 e 2
-- **Motores 5-6 cil:** Usa todos 3 canais
+- **Motores 1-4 cil:** Usam canais 1 e 2
 
-**Ignição (3 canais para 1-6 cilindros):**
+**Ignição (2 canais para 1-4 cilindros):**
 - Canal 1 (PIN_IGNITION_1 - D4) → Cilindros 1 + 4
-- Canal 2 (PIN_IGNITION_2 - D5) → Cilindros 2 + 5
-- Canal 3 (PIN_IGNITION_3 - D3) → Cilindros 3 + 6
+- Canal 2 (PIN_IGNITION_2 - D5) → Cilindros 2 + 3
 - Mesmos timing de avanço e dwell para todos
-- **SEM sensor de fase** - wasted spark é suficiente
-
+- **SEM sensor de fase** - wasted spark suficiente até 4 cilindros
 ### 3. Trigger Decoders
 
 **Missing Tooth (36-1, 60-2):**
@@ -263,23 +261,23 @@ struct Table3D {
 
 **⚠️ IMPORTANTE:** Arduino Uno/Nano só tem interrupção em D2 (INT0)!
 - INT0 → Pino D2 (trigger primário - roda fônica)
-- **D3 LIBERADO** para ignição 3 (sem sensor de fase)
+- **D3** permanece livre para usos auxiliares (tach, corte, etc.)
 
 ```cpp
 // Trigger input (CRÍTICO: PRECISA de INT0 - SOMENTE D2!)
 #define PIN_TRIGGER_PRIMARY   2  // D2 - INT0 (roda fônica) ⚡
 // NOTA: PIN_TRIGGER_SECONDARY (D3) REMOVIDO
-//       Wasted spark é suficiente para 6 cilindros
+//       Wasted spark usa somente 2 comparadores → limite em 4 cilindros
 
-// Saídas - Ignição (wasted spark para 1-6 cilindros)
+// Saídas - Ignição (wasted spark para 1-4 cilindros)
 #define PIN_IGNITION_1     4   // D4 - Bobinas 1+4
-#define PIN_IGNITION_2     5   // D5 - Bobinas 2+5
-#define PIN_IGNITION_3     3   // D3 - Bobinas 3+6 (LIBERADO!)
+#define PIN_IGNITION_2     5   // D5 - Bobinas 2+3
+// D3 disponível para futura ignição auxiliar / tach
 
-// Saídas - Injeção (wasted paired para 1-6 cilindros)
-#define PIN_INJECTOR_1    10   // D10 - Injetores 1+4
-#define PIN_INJECTOR_2    11   // D11 - Injetores 2+5
-#define PIN_INJECTOR_3     7   // D7 - Injetores 3+6 (LIBERADO!)
+// Saídas - Injeção (2 bancos + auxiliar)
+#define PIN_INJECTOR_1    10   // D10 - Banco 1 (1+4)
+#define PIN_INJECTOR_2    11   // D11 - Banco 2 (2+3)
+#define PIN_INJECTOR_3     7   // D7 - Auxiliar / staged
 
 // Saídas - Auxiliares
 #define PIN_FUEL_PUMP      6   // D6 - Relé bomba combustível
@@ -597,43 +595,45 @@ uint32_t value32 = pgm_read_dword(&data32[i]);
 
 ## 📝 Changelog Recente
 
-### [07/01/2025] - Expansão para 6 Cilindros (3 Canais)
+### [07/01/2025] - Expansão para 6 Cilindros (3 Canais) **(OBSOLETA/Revertida)**
+
+> OBS: Esta seção descreve um experimento antigo. Hoje o firmware Slowduino é **padronizado em 2 canais de ignição (máx 4 cilindros)** para todos os builds. Mantemos o texto abaixo apenas como histórico.
 
 **Mudança arquitetural:** Remoção do sensor de fase para liberar pinos
 
 **Motivação:**
 - ❌ Arduino Uno/Nano tem apenas 2 pinos com interrupção (D2 e D3)
 - ❌ D3 estava reservado para sensor de fase (cam), mas não era usado
-- ✅ Wasted spark/paired é suficiente para até 6 cilindros
+- ✅ Wasted spark/paired atende bem até 4 cilindros (limite atual)
 - ✅ Injeção sequencial não é possível (sem pinos suficientes)
 
 **Mudanças implementadas:**
 
 1. **globals.h**
    - Removido `PIN_TRIGGER_SECONDARY` (D3)
-   - Adicionado `PIN_IGNITION_3` no D3 (liberado!)
+   - Adicionado (na época) `PIN_IGNITION_3` no D3 — hoje REMOVIDO para padronizar 2 canais
    - Adicionado `PIN_INJECTOR_3` no D7 (liberado!)
-   - Adicionado `currentStatus.PW3` para terceiro canal
-   - Atualizado `nCylinders` para suportar 1-6 cilindros
+   - Adicionado `currentStatus.PW3` para terceiro canal auxiliar
+   - Atualizado `nCylinders` para suportar 1-4 cilindros (limite atual)
    - Comentários explicando uso de D3 e D7
 
-2. **scheduler.h**
-   - Adicionado `fuelSchedule3` e `ignitionSchedule3`
-   - Adicionadas funções inline: `openInjector3()`, `closeInjector3()`
-   - Adicionadas funções inline: `beginCoil3Charge()`, `endCoil3Charge()`
-   - Atualizada documentação dos canais (1, 2 ou 3)
+2. **scheduler.h** *(revertido posteriormente)*
+   - Adicionado `fuelSchedule3` e `ignitionSchedule3` (hoje removidos)
+   - Adicionadas funções inline: `openInjector3()`, `closeInjector3()` (mantidas para canal auxiliar)
+   - Adicionadas funções inline: `beginCoil3Charge()`, `endCoil3Charge()` (hoje removidas)
+   - Atualizada documentação dos canais (1, 2 ou 3) — voltou para 2 canais
 
-3. **scheduler.cpp**
-   - Inicialização de `fuelSchedule3` e `ignitionSchedule3`
-   - Atualizado `schedulerInit()` para pinMode de canal 3
-   - ISR Timer1 COMPA estendida para suportar schedules 1 e 3
+3. **scheduler.cpp** *(revertido posteriormente)*
+   - Inicialização de `fuelSchedule3` e `ignitionSchedule3` (removidas)
+   - Atualizado `schedulerInit()` para pinMode de canal 3 (hoje D3 livre)
+   - ISR Timer1 COMPA estendida para suportar schedules 1 e 3 (voltamos para padrão 2 canais)
    - Prioridade: Fuel1 > Fuel3 > Ign1 > Ign3
 
-4. **decoders.cpp**
-   - `scheduleInjectionISR()`: adiciona schedule3 para motores 5-6 cil
-   - `scheduleIgnitionISR()`: adiciona schedule3 para motores 5-6 cil
-   - Lógica: canal 3 dispara apenas se `nCylinders >= 5`
-   - Wasted paired: rev0 → canais 1+3, rev1 → canal 2
+4. **decoders.cpp** *(revertido posteriormente)*
+   - `scheduleInjectionISR()`: adicionava schedule3 para motores 5-6 cil
+   - `scheduleIgnitionISR()`: adicionava schedule3 para motores 5-6 cil
+   - Lógica antiga: canal 3 disparava apenas se `nCylinders >= 5`
+   - Atualmente: apenas canais 1 e 2 são usados; canal 3 fica livre para aux
 
 5. **fuel.cpp**
    - `calculateInjection()`: atualiza `PW1 = PW2 = PW3`
@@ -645,17 +645,15 @@ uint32_t value32 = pgm_read_dword(&data32[i]);
 
 **Configuração por número de cilindros:**
 
-| Cilindros | Canais Usados | Firing Order |
-|-----------|---------------|--------------|
-| 1         | 1             | 1 |
-| 2         | 1, 2          | 1-2 |
-| 3         | 1, 2, 3       | 1-2-3 |
-| 4         | 1, 2          | 1-3-4-2 (wasted) |
-| 5         | 1, 2, 3       | 1-2-4-5-3 |
-| 6         | 1, 2, 3       | 1-5-3-6-2-4 |
+| Cilindros | Canais Usados | Observação |
+|-----------|---------------|------------|
+| 1         | 1             | Wasted spark com bobina 1 |
+| 2         | 1, 2          | Wasted spark clássico |
+| 3         | 1, 2          | Banco extra replica (3ª bobina não suportada) |
+| 4         | 1, 2          | 1-3 e 2-4 compartilhando bobinas |
 
 **Resultado:**
-- ✅ Suporte completo para 1-6 cilindros
+- ✅ Suporte testado para 1-4 cilindros (limite atual)
 - ✅ Sem necessidade de sensor de fase
 - ✅ Wasted spark/paired suficiente
 - ✅ Todos pinos do Arduino otimizados
