@@ -157,7 +157,9 @@ A ideia é que você possa encomendar uma central sem pegar num ferro de solda.
 
 ---
 
-![](https://github.com/alexandrefelipemuller/slowduino/blob/main/resources/Schematic_Slowduino-injection_2025-11-06.png)
+## Slowduino board
+
+![](https://github.com/alexandrefelipemuller/slowduino/blob/main/resources/Schematic_Slowduino-injection_2025-11-14.png)
 
 
 [Schematic Overview](Schematic.md)

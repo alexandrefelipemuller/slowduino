@@ -1,0 +1,103 @@
+===============================================
+DEBUG DO SCHEDULER - COMPORTAMENTO ESPERADO
+===============================================
+
+MOTOR 4 CILINDROS - WASTED PAIRED (2 CANAIS)
+-------------------------------------------
+
+### TIMING A 1000 RPM (30ms/revolução)
+
+Revolução 0 (revolutionCounter = 0):
+  t=0ms:    Gap detectado
+  t=0.1ms:  Agenda Bico1 + Ign1
+
+  t=22.5ms: Bico 1 ABRE (270° × 30ms / 360° = 22.5ms)
+  t=30.5ms: Bico 1 FECHA (PW = 8ms)
+
+  t=27ms:   Bobina 1 CARGA (15° BTDC com dwell 3ms)
+  t=30ms:   Bobina 1 FAÍSCA (0° TDC)
+
+Revolução 1 (revolutionCounter = 1):
+  t=30ms:   Gap detectado
+  t=30.1ms: Agenda Bico2 + Ign2
+
+  t=52.5ms: Bico 2 ABRE
+  t=60.5ms: Bico 2 FECHA
+
+  t=57ms:   Bobina 2 CARGA
+  t=60ms:   Bobina 2 FAÍSCA
+
+Revolução 2 (revolutionCounter = 0):
+  t=60ms:   Gap detectado
+  (repete ciclo)
+
+
+### VISUALIZAÇÃO GRÁFICA
+
+Gap    Gap    Gap    Gap
+ ↓      ↓      ↓      ↓
+ |------|------|------|------|  Revoluções
+ |  0   |  1   |  0   |  1   |  RevCounter
+
+ |B1    |      |B1    |      |  Bico 1
+ |  I1  |      |  I1  |      |  Ignição 1
+
+ |      |B2    |      |B2    |  Bico 2
+ |      |  I2  |      |  I2  |  Ignição 2
+
+
+### SINAIS ESPERADOS NO SIMULADOR
+
+Pino D10 (Bico 1):    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|______|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|______|
+Pino D11 (Bico 2):    ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|______|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|______|
+Pino D4 (Ign 1):      ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|_|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|_|
+Pino D5 (Ign 2):      ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|_|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾|_|
+                      |<------ 30ms ------>|<------ 30ms ------>|
+
+
+### BUGS COMUNS
+
+❌ ERRADO - Sequencial (pisca-pisca de natal):
+   B1 → B2 → I1 → I2 → B1 → B2 → I1 → I2
+
+✅ CORRETO - Pareado por revolução:
+   (B1+I1) → (B2+I2) → (B1+I1) → (B2+I2)
+
+
+❌ ERRADO - Bico travado aberto:
+   Causa: PW muito longo + timing muito tarde (355°)
+   Solução: Mover INJECTION_ANGLE para 270°
+
+✅ CORRETO - Bico abre e fecha dentro da mesma revolução:
+   Injeção a 270° garante término antes do gap (360°)
+
+
+### COMANDOS DEBUG
+
+Adicione no decoders.cpp após linha 256:
+
+  Serial.print(F("R"));
+  Serial.print(revolutionCounter);
+  Serial.print(F(" B"));
+  Serial.print((revolutionCounter == 0) ? 1 : 2);
+  Serial.print(F(" I"));
+  Serial.println((revolutionCounter == 0) ? 1 : 2);
+
+Saída esperada:
+  R0 B1 I1
+  R1 B2 I2
+  R0 B1 I1
+  R1 B2 I2
+
+
+### CHECKLIST
+
+□ INJECTION_ANGLE mudado para 270° (não 355°)
+□ Proteção contra RUNNING adicionada em setFuelSchedule()
+□ Proteção contra RUNNING adicionada em setIgnitionSchedule()
+□ Canal 3 usa OCR1A (compartilhado com canal 1)
+□ revolutionCounter alterna corretamente (0 → 1 → 0 → 1)
+□ Bico 1 e Ignição 1 disparam juntos na mesma revolução
+□ Bico 2 e Ignição 2 disparam juntos na revolução seguinte
+
+===============================================

@@ -1,0 +1,208 @@
+===============================================
+DEBUG DE IGNIÇÃO - Correções Aplicadas
+===============================================
+
+## 🐛 Problema Identificado
+
+**Sintoma:** "Pulso fica perdido, às vezes só muda de fase"
+
+**Causa:** Dwell angle maior que disponível antes do spark angle
+
+## 📊 Exemplo do Bug (Antes da Correção)
+
+### A 6000 RPM com advance=15° e dwell=3ms:
+
+```
+revolutionTime = 10.000µs (10ms por revolução)
+dwellTime = 3.000µs (3ms fixo)
+dwellAngle = (3000 × 360) / 10000 = 108°  ← MUITO GRANDE!
+
+advance = 15° BTDC
+sparkAngle = 360 - 15 = 345°
+
+dwellStartAngle = 345 - 108 = 237°  ← Válido, mas muito cedo
+```
+
+### A 8000 RPM (pior caso):
+
+```
+revolutionTime = 7.500µs
+dwellAngle = (3000 × 360) / 7500 = 144°  ← MAIOR QUE 180°!
+
+sparkAngle = 345°
+dwellStartAngle = 345 - 144 = 201°  ← Ainda válido mas...
+
+Se advance < 10°:
+sparkAngle = 350°
+dwellStartAngle = 350 - 144 = 206°
+```
+
+### Quando advance=5° (idle):
+
+```
+sparkAngle = 360 - 5 = 355°
+dwellStartAngle = 355 - 144 = 211°
+
+Mas se dwellAngle > sparkAngle:
+dwellStartAngle = 0  ← PROBLEMA!
+```
+
+---
+
+## ✅ Correções Aplicadas
+
+### 1. Limitar Dwell Angle a 180° Máximo
+
+```cpp
+// decoders.cpp linha 87-92
+if (dwellAngle > 180) {
+  dwellAngle = 180;
+  dwellTime = (180UL * triggerState.revolutionTime) / 360UL;
+}
+```
+
+**Resultado:**
+- A 8000 RPM: dwell limitado a 3.75ms (180° × 7500µs / 360°)
+- Ainda suficiente para carga completa da bobina
+
+### 2. Proteção Quando Dwell > Spark Angle
+
+```cpp
+// decoders.cpp linha 100-109
+if (sparkAngle > dwellAngle) {
+  dwellStartAngle = sparkAngle - dwellAngle;
+} else {
+  // Ajusta dwell para caber
+  dwellStartAngle = 0;
+  dwellAngle = sparkAngle;
+  dwellTime = (dwellAngle * triggerState.revolutionTime) / 360UL;
+}
+```
+
+**Resultado:**
+- Se não couber, ajusta dwell para começar em 0° e terminar no spark angle
+
+### 3. Validação de Timing Mínimo
+
+```cpp
+// scheduler.cpp linha 134-137
+if (startTicks < 50) {  // Menos de 25µs
+  schedule->status = SCHED_OFF;
+  return;
+}
+```
+
+**Resultado:**
+- Não agenda ignição se timing é impossível
+- Evita "pulso perdido" ou "só muda de fase"
+
+---
+
+## 🧪 Teste de Validação
+
+### Valores Esperados A 1000 RPM:
+
+```
+revolutionTime = 60.000µs
+dwellTime = 3.000µs
+dwellAngle = 18°  ← OK!
+
+advance = 15° BTDC
+sparkAngle = 345°
+dwellStartAngle = 327°
+
+timeToDwell = (327 × 60000) / 360 = 54.500µs = 54.5ms
+```
+
+**Visualização:**
+```
+0°                    327°         345°    360°
+|---------------------|------------|------|
+    54.5ms                3ms dwell   spark
+    Gap aqui                    Bobina carga ↑
+                                           Faísca! ⚡
+```
+
+### Valores Esperados A 6000 RPM:
+
+```
+revolutionTime = 10.000µs
+dwellTime = 3.000µs
+dwellAngle = 108°  ← Maior que 180°? NÃO mais!
+
+Após proteção:
+dwellAngle = 108°  (ainda menor que 180°, OK)
+
+sparkAngle = 345°
+dwellStartAngle = 345 - 108 = 237°
+
+timeToDwell = (237 × 10000) / 360 = 6.583µs
+```
+
+**Válido!** Bobina tem 3ms para carregar antes da faísca.
+
+---
+
+## 📊 Checklist de Validação no Simulador
+
+Após recompilar:
+
+- [ ] Ignição 1 pulsa a cada 2 revoluções (junto com Bico 1)
+- [ ] Ignição 2 pulsa a cada 2 revoluções (junto com Bico 2)
+- [ ] **NÃO** há "pulso perdido" (ignição sempre tem pulso visível)
+- [ ] **NÃO** há "só muda de fase" (sempre HIGH → LOW → HIGH)
+- [ ] Pulso de ignição é **CURTO** (~3ms @ 1000 RPM)
+- [ ] Pulso ocorre **LOGO ANTES** do próximo gap (near TDC)
+
+### Padrão Visual Esperado:
+
+```
+Gap    Bico1  Ign1   Gap    Bico2  Ign2   Gap
+ ↓      ___     _      ↓      ___     _     ↓
+ |_____|   |___|_|_____|_____|   |___|_|____|
+ 0°    270° 345° 360°  0°    270° 345° 360°
+      inj  dwell       inj  dwell
+```
+
+---
+
+## 🔬 Debug Adicional (Se Problema Persistir)
+
+Adicione no final de `scheduleIgnitionISR()` (linha 112):
+
+```cpp
+#ifdef DEBUG_ENABLED
+  Serial.print(F("Ign"));
+  Serial.print((revolutionCounter == 0) ? 1 : 2);
+  Serial.print(F(" dA:"));
+  Serial.print(dwellAngle);
+  Serial.print(F(" sA:"));
+  Serial.print(sparkAngle);
+  Serial.print(F(" dsA:"));
+  Serial.print(dwellStartAngle);
+  Serial.print(F(" ttd:"));
+  Serial.println(timeToDwell);
+#endif
+```
+
+**Saída esperada @ 1000 RPM:**
+```
+Ign1 dA:18 sA:345 dsA:327 ttd:54500
+Ign2 dA:18 sA:345 dsA:327 ttd:54500
+```
+
+**Se dA > 180 aparecer:** Proteção não está funcionando
+**Se dsA = 0 aparecer:** Spark angle muito pequeno
+**Se ttd < 100 aparecer:** Timing inválido (deve ser rejeitado)
+
+---
+
+## ✅ Resultado Esperado
+
+Após essas correções:
+- ✅ Ignição sempre tem pulso completo
+- ✅ Dwell limitado a valores seguros
+- ✅ Timing sempre válido ou rejeitado
+- ✅ Sem "mudança de fase" sem pulso
+
+===============================================
