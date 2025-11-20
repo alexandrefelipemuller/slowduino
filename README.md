@@ -4,6 +4,14 @@ Slowduino is the fastest way to go from an inexpensive Arduino to a working EFI 
 
 Slowduino is for DIY tuners, hobbyists, educators, and anyone who wants to build a full-featured ECU without the premium price tag. The project ships with ignition control, injection scheduling, sensor support, protective cut logic, and TunerStudio compatibility—everything you need to boot a motor in a garage, classroom, or lean workshop.
 
+## Visual Tour
+![Slowduino board 3D render](resources/PCB_3d.jpeg)
+*Slowduino board layout rendered for reference.*
+
+## Circuit Diagram
+![Slowduino schematic](resources/Schematic_Slowduino-injection_2025-11-14.png)
+*Injection and ignition wiring overview for the Slowduino board.*
+
 ### Highlights
 - Runs on **Arduino Uno/Nano** or Speeduino v0.4 hardware with the same peripheral set and protocol.
 - **16×16 VE + Ignition tables**, closed-loop narrowband control, and Speeduino-style CRC pages for TunerStudio.

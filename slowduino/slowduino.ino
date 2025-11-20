@@ -18,7 +18,7 @@
  * RAZÃO: Arduino Uno tem apenas 2 compare registers (OCR1A, OCR1B)
  *        Não há hardware suficiente para agendar 6+ eventos simultâneos
  *
- * @author Claude + User
+ * @author Alexandre F M SOUZA
  * @version 0.2.1
  * @date 2025
  */
