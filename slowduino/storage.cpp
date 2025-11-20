@@ -271,6 +271,27 @@ void loadDefaults() {
   configPage1.egoTarget = EGO_TARGET_DEFAULT;
   configPage1.egoHysteresis = EGO_HYST_DEFAULT;
 
+  // Oil pressure protection defaults (off)
+  configPage1.oilPressureProtEnable = 0;
+  configPage1.oilPressureProtThreshold = 40;
+  configPage1.oilPressureProtHysteresis = 4;
+  configPage1.oilPressureProtDelay = 2;
+
+  // Closed-loop O2 defaults
+  configPage1.egoType = EGO_TYPE_OFF;
+  configPage1.egoAlgorithm = EGO_ALGO_SIMPLE;
+  configPage1.egoDelay = EGO_DELAY_DEFAULT;
+  configPage1.egoTemp = EGO_TEMP_DEFAULT;
+  configPage1.egoRPM = EGO_RPM_DEFAULT;
+  configPage1.egoTPSMax = EGO_TPS_MAX_DEFAULT;
+  configPage1.egoMin = EGO_MIN_DEFAULT;
+  configPage1.egoMax = EGO_MAX_DEFAULT;
+  configPage1.egoLimit = EGO_LIMIT_DEFAULT;
+  configPage1.egoStep = EGO_STEP_DEFAULT;
+  configPage1.egoIgnEvents = EGO_IGN_EVENTS_DEFAULT;
+  configPage1.egoTarget = EGO_TARGET_DEFAULT;
+  configPage1.egoHysteresis = EGO_HYST_DEFAULT;
+
   // Oil pressure protection defaults (disabled)
   configPage1.oilPressureProtEnable = 0;
   configPage1.oilPressureProtThreshold = 40;
@@ -310,6 +331,12 @@ void loadDefaults() {
   // Ignition output
   configPage2.ignInvert = 0;              // Normal (active low)
 
+  configPage2.engineProtectEnable = 0;
+  configPage2.engineProtectRPM = 70;
+  configPage2.engineProtectRPMHysteresis = 3;
+  configPage2.engineProtectCutType = ENGINE_PROTECT_CUT_FUEL | ENGINE_PROTECT_CUT_SPARK;
+
+  // Engine protection defaults
   configPage2.engineProtectEnable = 0;
   configPage2.engineProtectRPM = 70;
   configPage2.engineProtectRPMHysteresis = 3;

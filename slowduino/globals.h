@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 2
+#define EEPROM_DATA_VERSION 3
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -60,6 +60,7 @@ struct Statuses {
   int8_t   coolant;            // Temperatura motor °C (-40 a +215)
   int8_t   IAT;                // Temperatura ar °C (-40 a +215)
   uint8_t  O2;                 // Lambda % (0-255, 100 = lambda 1.0)
+  uint8_t  afrTarget;          // AFR target (same scale as O2)
   uint8_t  battery10;          // Tensão bateria * 10 (ex: 145 = 14.5V)
   uint8_t  oilPressure;        // Pressão óleo kPa (0-1000 kPa)
   uint8_t  fuelPressure;       // Pressão combustível kPa (0-1000 kPa)
@@ -82,6 +83,7 @@ struct Statuses {
   uint8_t  aeCorrection;       // Accel Enrichment %
   uint8_t  cltCorrection;      // CLT correction %
   uint8_t  batCorrection;      // Battery correction %
+  uint8_t  egoCorrection;      // Closed-loop O2 correction %
 
   // Estado do motor
   uint8_t  engineStatus;       // Flags de estado (bit field)
@@ -182,7 +184,6 @@ struct ConfigPage1 {
   uint8_t  oilPressureProtThreshold;  // Limite (0-250 scale)
   uint8_t  oilPressureProtHysteresis; // Histeresis
   uint8_t  oilPressureProtDelay;      // Delay ticks
-
   // Reserva para compatibilidade com Speeduino (página 1 = 128 bytes)
   uint8_t  spare[76];
 
@@ -258,6 +259,13 @@ static_assert(sizeof(ConfigPage2) == 128, "ConfigPage2 deve ocupar 128 bytes");
 
 // Percentual (evita overflow em multiplicação)
 #define PERCENT(val, pct) (((uint32_t)(val) * (pct)) / 100)
+
+// Protections
+#define PROTECTION_RPM_BIT 0x01
+#define PROTECTION_OIL_BIT 0x02
+
+#define ENGINE_PROTECT_CUT_FUEL  0x01
+#define ENGINE_PROTECT_CUT_SPARK 0x02
 
 // Protections
 #define PROTECTION_RPM_BIT 0x01
