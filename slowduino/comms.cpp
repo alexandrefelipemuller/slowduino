@@ -636,27 +636,6 @@ static bool readVeTablePageByte(uint16_t offset, uint8_t& value) {
   return true;
 }
 
-static bool readAfrTablePageByte(uint16_t offset, uint8_t& value) {
-  if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return false;
-
-  if (offset < SPEEDUINO_TABLE_CELLS) {
-    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
-    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
-    value = afrTable.values[y][x];
-    return true;
-  }
-
-  if (offset < SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN) {
-    uint8_t idx = offset - SPEEDUINO_TABLE_CELLS;
-    value = encodeRpmBin(afrTable.axisX[idx]);
-    return true;
-  }
-
-  uint8_t idx = offset - (SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN);
-  value = afrTable.axisY[idx];
-  return true;
-}
-
 static PageWriteStatus writeVeTablePageByte(uint16_t offset, uint8_t value) {
   if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return PAGE_WRITE_FAIL;
 
@@ -720,27 +699,6 @@ static PageWriteStatus writeIgnTablePageByte(uint16_t offset, uint8_t value) {
   return PAGE_WRITE_TABLE_CHANGED;
 }
 
-static PageWriteStatus writeAfrTablePageByte(uint16_t offset, uint8_t value) {
-  if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return PAGE_WRITE_FAIL;
-
-  if (offset < SPEEDUINO_TABLE_CELLS) {
-    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
-    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
-    afrTable.values[y][x] = value;
-    return PAGE_WRITE_TABLE_CHANGED;
-  }
-
-  if (offset < SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN) {
-    uint8_t idx = offset - SPEEDUINO_TABLE_CELLS;
-    afrTable.axisX[idx] = decodeRpmBin(value);
-    return PAGE_WRITE_TABLE_CHANGED;
-  }
-
-  uint8_t idx = offset - (SPEEDUINO_TABLE_CELLS + SPEEDUINO_TABLE_AXIS_LEN);
-  afrTable.axisY[idx] = value;
-  return PAGE_WRITE_TABLE_CHANGED;
-}
-
 static bool readPageByte(uint8_t page, uint16_t offset, uint8_t& value) {
   switch (page) {
     case 1:
@@ -751,8 +709,6 @@ static bool readPageByte(uint8_t page, uint16_t offset, uint8_t& value) {
       return readIgnTablePageByte(offset, value);
     case 4:
       return readStructPageByte((uint8_t*)&configPage2, sizeof(ConfigPage2), offset, value);
-    case 5:
-      return readAfrTablePageByte(offset, value);
     default:
       return readStubPageByte(page, offset, value);
   }
@@ -768,8 +724,6 @@ static PageWriteStatus writePageByte(uint8_t page, uint16_t offset, uint8_t valu
       return writeIgnTablePageByte(offset, value);
     case 4:
       return writeStructPageByte((uint8_t*)&configPage2, sizeof(ConfigPage2), offset, value);
-    case 5:
-      return writeAfrTablePageByte(offset, value);
     default:
       {
         uint16_t pageSz = getPageSize(page);
@@ -1008,7 +962,7 @@ void buildRealtimePacket(uint8_t* buffer) {
   buffer[10] = currentStatus.O2;
 
   // Offset 11: egoCorrection
-  buffer[11] = currentStatus.egoCorrection;
+  buffer[11] = 100;  // Sem correção O2 ainda
 
   // Offset 12: iatCorrection
   buffer[12] = 100;

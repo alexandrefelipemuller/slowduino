@@ -4,7 +4,7 @@
 #include "globals.h"
 
 void protectionProcess();
-bool protectionFuelCutActive();
-bool protectionSparkCutActive();
+bool protectionRPMActive();
+bool protectionOilActive();
 
 #endif // PROTECTIONS_H

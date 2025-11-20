@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 3
+#define EEPROM_DATA_VERSION 2
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -60,7 +60,6 @@ struct Statuses {
   int8_t   coolant;            // Temperatura motor °C (-40 a +215)
   int8_t   IAT;                // Temperatura ar °C (-40 a +215)
   uint8_t  O2;                 // Lambda % (0-255, 100 = lambda 1.0)
-  uint8_t  afrTarget;          // Alvo atual de lambda/AFR da tabela
   uint8_t  battery10;          // Tensão bateria * 10 (ex: 145 = 14.5V)
   uint8_t  oilPressure;        // Pressão óleo kPa (0-1000 kPa)
   uint8_t  fuelPressure;       // Pressão combustível kPa (0-1000 kPa)
@@ -76,13 +75,13 @@ struct Statuses {
   int8_t   advance;            // Avanço de ignição (graus BTDC)
   uint16_t dwell;              // Tempo de carga da bobina (microsegundos)
 
+
   // Correções individuais (para debug/tuning)
   uint8_t  wueCorrection;      // Warm-Up Enrichment %
   uint8_t  aseCorrection;      // After-Start Enrichment %
   uint8_t  aeCorrection;       // Accel Enrichment %
   uint8_t  cltCorrection;      // CLT correction %
   uint8_t  batCorrection;      // Battery correction %
-  uint8_t  egoCorrection;      // Closed-loop O2 correction %
 
   // Estado do motor
   uint8_t  engineStatus;       // Flags de estado (bit field)
@@ -179,13 +178,12 @@ struct ConfigPage1 {
   uint8_t  egoHysteresis;      // Banda morta ao redor do alvo
 
   // Proteção de pressão de óleo
-  uint8_t  oilPressureProtEnable;     // 0=Desliga, 1=Habilita
-  uint8_t  oilPressureProtThreshold;  // Valor limite em escala de 0-250 (kPa/4)
-  uint8_t  oilPressureProtHysteresis; // Histerese no mesmo scale
-  uint8_t  oilPressureProtDelay;      // Loops de 250ms antes de acionar
+  uint8_t  oilPressureProtEnable;     // 0=Off, 1=On
+  uint8_t  oilPressureProtThreshold;  // Limite (0-250 scale)
+  uint8_t  oilPressureProtHysteresis; // Histeresis
+  uint8_t  oilPressureProtDelay;      // Delay ticks
 
   // Reserva para compatibilidade com Speeduino (página 1 = 128 bytes)
-  // Conteúdo atual: 48 bytes → padding de 76 bytes
   uint8_t  spare[76];
 
 } __attribute__((packed));
@@ -228,14 +226,14 @@ struct ConfigPage2 {
   uint8_t  triggerEdge;        // 0=Rising, 1=Falling, 2=Both (CHANGE)
 
   // Proteções adicionais do motor
-  uint8_t  engineProtectEnable;         // 0=Desliga, 1=Habilita (usa limite abaixo)
-  uint8_t  engineProtectRPM;            // RPM / 100 para proteção
-  uint8_t  engineProtectRPMHysteresis;  // Histerese em RPM/100
-  uint8_t  engineProtectCutType;        // Bitmask: 1=combustível, 2=ignição
+  uint8_t  engineProtectEnable;         // 0=Off, 1=On
+  uint8_t  engineProtectRPM;            // RPM / 100
+  uint8_t  engineProtectRPMHysteresis;  // RPM / 100
+  uint8_t  engineProtectCutType;        // Bitmask: 1=fuel, 2=spark
 
   // Reserva para compatibilidade com Speeduino (página 2 = 288 bytes)
-  // ConfigPage2 atual: 24 bytes
-  // Padding necessário: 128 - 24 = 104 bytes
+  // ConfigPage2 atual: 28 bytes
+  // Padding necessário: 128 - 28 = 100 bytes
   uint8_t  spare[100];
 
 } __attribute__((packed));
@@ -261,7 +259,7 @@ static_assert(sizeof(ConfigPage2) == 128, "ConfigPage2 deve ocupar 128 bytes");
 // Percentual (evita overflow em multiplicação)
 #define PERCENT(val, pct) (((uint32_t)(val) * (pct)) / 100)
 
-// Proteções de motor
+// Protections
 #define PROTECTION_RPM_BIT 0x01
 #define PROTECTION_OIL_BIT 0x02
 

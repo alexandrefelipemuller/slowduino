@@ -63,7 +63,6 @@ struct Table2D {
 
 extern struct Table3D veTable;      // Tabela VE (Volumetric Efficiency)
 extern struct Table3D ignTable;     // Tabela de Ignição (Advance)
-extern struct Table3D afrTable;     // Tabela alvo AFR/lambda
 
 // ============================================================================
 // FUNÇÕES DE INICIALIZAÇÃO

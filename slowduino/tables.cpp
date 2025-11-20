@@ -11,7 +11,6 @@
 
 struct Table3D veTable;
 struct Table3D ignTable;
-struct Table3D afrTable;
 
 // ============================================================================
 // INICIALIZAÇÃO DAS TABELAS
@@ -21,7 +20,6 @@ void initTables() {
   // Inicializa flags de tipo
   veTable.isSigned = false;   // VE usa valores unsigned
   ignTable.isSigned = true;   // Ignição usa valores signed (pode ser negativo)
-  afrTable.isSigned = false;  // AFR alvo é unsigned
 
   // Limpa cache
   clearTableCaches();
@@ -251,9 +249,4 @@ void clearTableCaches() {
   ignTable.lastInputY = 0xFF;
   ignTable.lastX = 0;
   ignTable.lastY = 0;
-
-  afrTable.lastInputX = 0xFFFF;
-  afrTable.lastInputY = 0xFF;
-  afrTable.lastX = 0;
-  afrTable.lastY = 0;
 }

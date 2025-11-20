@@ -86,14 +86,6 @@ uint8_t correctionCLT();
  */
 uint8_t correctionBattery();
 
-/**
- * @brief Correção fechada baseada na sonda O2 (malha fechada)
- *
- * Replica algoritmo Simple EGO da Speeduino
- * @return Percentual (base 100)
- */
-uint8_t correctionEGO();
-
 // ============================================================================
 // FUNÇÕES AUXILIARES
 // ============================================================================

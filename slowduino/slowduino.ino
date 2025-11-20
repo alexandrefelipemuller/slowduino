@@ -18,7 +18,7 @@
  * RAZÃO: Arduino Uno tem apenas 2 compare registers (OCR1A, OCR1B)
  *        Não há hardware suficiente para agendar 6+ eventos simultâneos
  *
- * @author Alexandre F M SOUZA
+ * @author Claude + User
  * @version 0.2.1
  * @date 2025
  */
@@ -106,8 +106,6 @@ void setup() {
   currentStatus.runSecs = 0;
   currentStatus.loopCount = 0;
   currentStatus.ignitionCount = 0;
-  currentStatus.egoCorrection = 100;
-  currentStatus.afrTarget = 100;
 
   // 9. Estado inicial do motor
   currentStatus.engineStatus = 0;
@@ -291,7 +289,9 @@ void loop() {
     Serial.print(currentStatus.PW1);
     Serial.print(F("us | Adv: "));
     Serial.print(currentStatus.advance);
-    Serial.println(F("deg"));
+    Serial.print(F("deg | Prot: "));
+    Serial.print(currentStatus.protectionStatus);
+    Serial.println();
   }
   #endif
 
