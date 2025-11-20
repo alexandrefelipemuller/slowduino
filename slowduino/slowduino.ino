@@ -34,6 +34,7 @@
 #include "scheduler.h"
 #include "comms.h"
 #include "auxiliaries.h"
+#include "protections.h"
 
 // ============================================================================
 // VARIÁVEIS DO LOOP
@@ -105,6 +106,8 @@ void setup() {
   currentStatus.runSecs = 0;
   currentStatus.loopCount = 0;
   currentStatus.ignitionCount = 0;
+  currentStatus.egoCorrection = 100;
+  currentStatus.afrTarget = 100;
 
   // 9. Estado inicial do motor
   currentStatus.engineStatus = 0;
@@ -257,6 +260,8 @@ void loop() {
 
     // Agendamento acontece automaticamente via ISR no trigger!
   }
+
+  protectionProcess();
 
   // ------------------------------------------------------------------------
   // Debug serial (a cada 1 segundo)

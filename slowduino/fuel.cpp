@@ -8,6 +8,12 @@
 // Variáveis estáticas para ASE
 static uint16_t aseCounter = 0;      // Contador de ignições restantes com ASE
 static uint16_t aseValue = 100;      // Valor atual de ASE (%)
+static uint16_t egoNextCycle = 0;    // Próxima ignição alvo para ajuste O2
+static uint8_t  egoIntegrator = 100; // Correção acumulada (base 100)
+
+static inline bool hasReachedCycle(uint16_t now, uint16_t target) {
+  return (int16_t)(now - target) >= 0;
+}
 
 // ============================================================================
 // CÁLCULO PRINCIPAL DE INJEÇÃO
@@ -89,7 +95,12 @@ uint16_t calculateCorrections() {
   currentStatus.batCorrection = bat;
   total = PERCENT(total, bat);
 
-  // 5. Acceleration Enrichment (aditivo)
+  // 5. Closed-loop O2 (malha fechada)
+  uint8_t ego = correctionEGO();
+  currentStatus.egoCorrection = ego;
+  total = PERCENT(total, ego);
+
+  // 6. Acceleration Enrichment (aditivo)
   uint8_t ae = correctionAE();
   currentStatus.aeCorrection = ae;
   total += ae;
@@ -251,6 +262,89 @@ uint8_t correctionBattery() {
   }
 
   return 100;  // 12-15V: sem correção
+}
+
+// ============================================================================
+// CLOSED-LOOP O2 (EGO)
+// ============================================================================
+
+static bool egoConditionsMet() {
+  if (configPage1.egoType == EGO_TYPE_OFF) return false;
+  if (configPage1.egoAlgorithm != EGO_ALGO_SIMPLE) return false;
+  if (!currentStatus.hasSync) return false;
+  if (currentStatus.runSecs < configPage1.egoDelay) return false;
+  if (currentStatus.coolant < (int8_t)configPage1.egoTemp) return false;
+
+  uint16_t rpmThreshold = (uint16_t)configPage1.egoRPM * 100U;
+  if (currentStatus.RPM < rpmThreshold) return false;
+
+  if (currentStatus.TPS > configPage1.egoTPSMax) return false;
+  if (currentStatus.O2 < configPage1.egoMin) return false;
+  if (currentStatus.O2 > configPage1.egoMax) return false;
+
+  return true;
+}
+
+uint8_t correctionEGO() {
+  uint8_t afrTarget = (uint8_t)constrain(getTableValue(&afrTable, currentStatus.MAP, currentStatus.RPM), 0, 255);
+  currentStatus.afrTarget = afrTarget;
+
+  if (!egoConditionsMet()) {
+    egoIntegrator = 100;
+    egoNextCycle = 0;
+    return 100;
+  }
+
+  uint8_t interval = configPage1.egoIgnEvents;
+  if (interval == 0) interval = 1;
+
+  uint16_t ignCount = currentStatus.ignitionCount;
+
+  if (egoNextCycle == 0) {
+    egoNextCycle = ignCount + interval;
+    return egoIntegrator;
+  }
+
+  if (!hasReachedCycle(ignCount, egoNextCycle)) {
+    return egoIntegrator;
+  }
+
+  egoNextCycle = ignCount + interval;
+
+  uint8_t limit = configPage1.egoLimit;
+  if (limit > 100) limit = 100;
+
+  uint8_t minCorr = (uint8_t)(100 - limit);
+  uint16_t maxCorr16 = 100 + limit;
+  if (maxCorr16 > 255) maxCorr16 = 255;
+  uint8_t maxCorr = (uint8_t)maxCorr16;
+
+  uint8_t step = configPage1.egoStep;
+  if (step == 0) step = 1;
+
+  uint8_t hysteresis = configPage1.egoHysteresis;
+  uint8_t lowerBand = (afrTarget > hysteresis) ? (afrTarget - hysteresis) : 0;
+  uint16_t upperBand16 = (uint16_t)afrTarget + hysteresis;
+  if (upperBand16 > 255) upperBand16 = 255;
+  uint8_t upperBand = (uint8_t)upperBand16;
+
+  uint8_t reading = currentStatus.O2;
+
+  if (reading < lowerBand) {
+    if (egoIntegrator < maxCorr) {
+      uint16_t next = (uint16_t)egoIntegrator + step;
+      if (next > maxCorr) next = maxCorr;
+      egoIntegrator = (uint8_t)next;
+    }
+  } else if (reading > upperBand) {
+    if (egoIntegrator > minCorr) {
+      int16_t next = (int16_t)egoIntegrator - step;
+      if (next < minCorr) next = minCorr;
+      egoIntegrator = (uint8_t)next;
+    }
+  }
+
+  return egoIntegrator;
 }
 
 // ============================================================================

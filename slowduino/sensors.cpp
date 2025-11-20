@@ -8,6 +8,24 @@
 // Variáveis estáticas para cálculo de TPSdot
 static uint32_t lastTPSReadTime = 0;
 
+static uint8_t convertNarrowbandToScale(uint16_t adc) {
+  uint16_t millivolts = adcToMillivolts(adc);
+
+  if (millivolts > 1000) {
+    millivolts = 1000;
+  }
+
+  // Escala 0-1000mV -> 0-200 (100 = ~0.5V, próximo a lambda 1.0)
+  uint32_t scaled = (uint32_t)millivolts * 200UL;
+  scaled /= 1000UL;
+
+  if (scaled > 200) {
+    scaled = 200;
+  }
+
+  return (uint8_t)scaled;
+}
+
 // ============================================================================
 // INICIALIZAÇÃO
 // ============================================================================
@@ -38,7 +56,8 @@ void sensorsInit() {
   currentStatus.TPS = fastMap(currentStatus.tpsADC, adc8to10(configPage1.tpsMin), adc8to10(configPage1.tpsMax), 0, 100);
   currentStatus.coolant = ntcToCelsius(currentStatus.cltADC);
   currentStatus.IAT = ntcToCelsius(currentStatus.iatADC);
-  currentStatus.O2 = adc10to8(currentStatus.o2ADC);
+  currentStatus.O2 = convertNarrowbandToScale(currentStatus.o2ADC);
+  currentStatus.afrTarget = 100;
   currentStatus.battery10 = (uint8_t)(((uint32_t)currentStatus.batADC * ADC_VREF * BAT_MULTIPLIER) / (1024UL * 1000UL));
   currentStatus.oilPressure = (uint8_t)fastMap(currentStatus.oilPressADC, 0, 1023, 0, 250);  // 0-1000 kPa em escala 0-250
   currentStatus.fuelPressure = (uint8_t)fastMap(currentStatus.fuelPressADC, 0, 1023, 0, 250);
@@ -145,10 +164,8 @@ void readO2() {
   // Aplica filtro
   currentStatus.o2ADC = applyFilter(rawADC, currentStatus.o2ADC, FILTER_O2);
 
-  // Converte para percentual (0-255, 100 = lambda 1.0)
-  // Sonda narrowband: 0.1V = lean (0%), 0.9V = rich (200%)
-  // Simplificado: ADC direto / 4 = ~0-255
-  currentStatus.O2 = adc10to8(currentStatus.o2ADC);
+  // Converte para escala 0-200 (0-1V). 100 ≈ 0,5V (~lambda 1.0)
+  currentStatus.O2 = convertNarrowbandToScale(currentStatus.o2ADC);
 }
 
 // ============================================================================

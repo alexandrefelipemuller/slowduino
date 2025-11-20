@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 2
+#define EEPROM_DATA_VERSION 3
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -60,6 +60,7 @@ struct Statuses {
   int8_t   coolant;            // Temperatura motor °C (-40 a +215)
   int8_t   IAT;                // Temperatura ar °C (-40 a +215)
   uint8_t  O2;                 // Lambda % (0-255, 100 = lambda 1.0)
+  uint8_t  afrTarget;          // Alvo atual de lambda/AFR da tabela
   uint8_t  battery10;          // Tensão bateria * 10 (ex: 145 = 14.5V)
   uint8_t  oilPressure;        // Pressão óleo kPa (0-1000 kPa)
   uint8_t  fuelPressure;       // Pressão combustível kPa (0-1000 kPa)
@@ -81,9 +82,11 @@ struct Statuses {
   uint8_t  aeCorrection;       // Accel Enrichment %
   uint8_t  cltCorrection;      // CLT correction %
   uint8_t  batCorrection;      // Battery correction %
+  uint8_t  egoCorrection;      // Closed-loop O2 correction %
 
   // Estado do motor
   uint8_t  engineStatus;       // Flags de estado (bit field)
+  uint8_t  protectionStatus;   // Bits de proteção (RPM/óleo)
 
   // Auxiliares (outputs)
   bool     fanActive;          // Ventoinha ativa
@@ -160,9 +163,30 @@ struct ConfigPage1 {
   // Misc
   uint8_t  stoich;             // Razão estequiométrica * 10 (ex: 147 = 14.7:1)
 
+  // Closed-loop O2 (EGO)
+  uint8_t  egoType;            // 0=Off, 1=Narrowband, 2=Wide
+  uint8_t  egoAlgorithm;       // 0=Disabled, 1=Simple
+  uint8_t  egoDelay;           // Delay pós-partida (segundos)
+  uint8_t  egoTemp;            // CLT mínimo (°C)
+  uint8_t  egoRPM;             // RPM mínimo / 100
+  uint8_t  egoTPSMax;          // TPS máximo %
+  uint8_t  egoMin;             // Leitura mínima válida
+  uint8_t  egoMax;             // Leitura máxima válida
+  uint8_t  egoLimit;           // Limite de correção (+/- %)
+  uint8_t  egoStep;            // Passo de correção (% por ciclo)
+  uint8_t  egoIgnEvents;       // Nº de ignições entre ajustes
+  uint8_t  egoTarget;          // Leitura alvo (mesma escala de O2)
+  uint8_t  egoHysteresis;      // Banda morta ao redor do alvo
+
+  // Proteção de pressão de óleo
+  uint8_t  oilPressureProtEnable;     // 0=Desliga, 1=Habilita
+  uint8_t  oilPressureProtThreshold;  // Valor limite em escala de 0-250 (kPa/4)
+  uint8_t  oilPressureProtHysteresis; // Histerese no mesmo scale
+  uint8_t  oilPressureProtDelay;      // Loops de 250ms antes de acionar
+
   // Reserva para compatibilidade com Speeduino (página 1 = 128 bytes)
-  // Conteúdo atual: 35 bytes → padding de 93 bytes
-  uint8_t  spare[93];
+  // Conteúdo atual: 48 bytes → padding de 76 bytes
+  uint8_t  spare[76];
 
 } __attribute__((packed));
 
@@ -203,10 +227,16 @@ struct ConfigPage2 {
   // Trigger edge (como na Speeduino)
   uint8_t  triggerEdge;        // 0=Rising, 1=Falling, 2=Both (CHANGE)
 
+  // Proteções adicionais do motor
+  uint8_t  engineProtectEnable;         // 0=Desliga, 1=Habilita (usa limite abaixo)
+  uint8_t  engineProtectRPM;            // RPM / 100 para proteção
+  uint8_t  engineProtectRPMHysteresis;  // Histerese em RPM/100
+  uint8_t  engineProtectCutType;        // Bitmask: 1=combustível, 2=ignição
+
   // Reserva para compatibilidade com Speeduino (página 2 = 288 bytes)
   // ConfigPage2 atual: 24 bytes
   // Padding necessário: 128 - 24 = 104 bytes
-  uint8_t  spare[104];
+  uint8_t  spare[100];
 
 } __attribute__((packed));
 
@@ -230,6 +260,13 @@ static_assert(sizeof(ConfigPage2) == 128, "ConfigPage2 deve ocupar 128 bytes");
 
 // Percentual (evita overflow em multiplicação)
 #define PERCENT(val, pct) (((uint32_t)(val) * (pct)) / 100)
+
+// Proteções de motor
+#define PROTECTION_RPM_BIT 0x01
+#define PROTECTION_OIL_BIT 0x02
+
+#define ENGINE_PROTECT_CUT_FUEL  0x01
+#define ENGINE_PROTECT_CUT_SPARK 0x02
 
 // Map rápido (assumindo range específico)
 inline uint16_t fastMap(uint16_t x, uint16_t in_min, uint16_t in_max, uint16_t out_min, uint16_t out_max) {

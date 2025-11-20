@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "fuel.h"
 #include "ignition.h"
+#include "protections.h"
 
 // Forward declarations
 void scheduleInjection();
@@ -41,6 +42,10 @@ inline void scheduleInjectionISR() __attribute__((always_inline));
 inline void scheduleInjectionISR() {
   if (triggerState.revolutionTime == 0) return;
 
+  if (protectionFuelCutActive()) {
+    return;
+  }
+
   // Calcula tempo até ângulo de injeção
   uint32_t timeToInjection = ((uint32_t)INJECTION_ANGLE * triggerState.revolutionTime) / 360UL;
 
@@ -67,6 +72,10 @@ inline void scheduleInjectionISR() {
 inline void scheduleIgnitionISR() __attribute__((always_inline));
 inline void scheduleIgnitionISR() {
   if (triggerState.revolutionTime == 0) return;
+
+  if (protectionSparkCutActive()) {
+    return;
+  }
 
   // Obtém valores (calculados no loop principal)
   int8_t advance = currentStatus.advance;

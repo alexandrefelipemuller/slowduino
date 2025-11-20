@@ -6,17 +6,35 @@
 #include "storage.h"
 #include "tables.h"
 #include <EEPROM.h>
+#include <string.h>
 
 // Forward declarations
 void loadVETable();
 void loadIgnTable();
 void loadCalibrationTables();
+void loadAFRTable();
 void saveVETable();
 void saveIgnTable();
 void saveCalibrationTables();
+void saveAFRTable();
 void loadDefaultTables();
+static void loadDefaultAFRTable();
 static void enforceBoardLimits();
 static void sanitizeConfigValues();
+
+static constexpr uint16_t AFR_VALUES_LEN = TABLE_SIZE_X * TABLE_SIZE_Y;
+static constexpr uint16_t AFR_AXIS_X_LEN = TABLE_SIZE_X * sizeof(uint16_t);
+static constexpr uint16_t AFR_AXIS_Y_LEN = TABLE_SIZE_Y;
+static constexpr uint16_t AFR_STORAGE_TOTAL = AFR_VALUES_LEN + AFR_AXIS_X_LEN + AFR_AXIS_Y_LEN;
+static constexpr uint16_t AFR_STORAGE_CHUNK_P1 = 80;
+static constexpr uint16_t AFR_STORAGE_CHUNK_P2 = 104;
+static constexpr uint16_t AFR_STORAGE_CHUNK_EXT = AFR_STORAGE_TOTAL - AFR_STORAGE_CHUNK_P1 - AFR_STORAGE_CHUNK_P2;
+static_assert(AFR_STORAGE_CHUNK_EXT <= EEPROM_AFR_STORAGE_LEN, "AFR chunk externo excede área reservada");
+static_assert((AFR_STORAGE_CHUNK_P1 + AFR_STORAGE_CHUNK_P2 + AFR_STORAGE_CHUNK_EXT) == AFR_STORAGE_TOTAL, "Chunks AFR inconsistentes");
+
+static void readAfrStorage(uint8_t* buffer);
+static void writeAfrStorage(const uint8_t* buffer);
+static bool isAfrStorageBlank(const uint8_t* buffer, uint16_t len);
 
 // ============================================================================
 // INICIALIZAÇÃO
@@ -50,6 +68,7 @@ void loadAllConfig() {
   loadConfigPages();
   loadVETable();
   loadIgnTable();
+  loadAFRTable();
   loadCalibrationTables();
 }
 
@@ -107,6 +126,32 @@ void loadIgnTable() {
   }
 }
 
+void loadAFRTable() {
+  uint8_t buffer[AFR_STORAGE_TOTAL];
+  readAfrStorage(buffer);
+
+  if (isAfrStorageBlank(buffer, AFR_STORAGE_TOTAL)) {
+    loadDefaultAFRTable();
+    return;
+  }
+
+  uint16_t idx = 0;
+  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
+    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
+      afrTable.values[y][x] = buffer[idx++];
+    }
+  }
+
+  for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
+    uint16_t rpm = buffer[idx++] | ((uint16_t)buffer[idx++] << 8);
+    afrTable.axisX[i] = rpm;
+  }
+
+  for (uint8_t i = 0; i < TABLE_SIZE_Y; i++) {
+    afrTable.axisY[i] = buffer[idx++];
+  }
+}
+
 void loadCalibrationTables() {
   // TODO: implementar quando tivermos tabelas de calibração CLT/IAT
   // Por enquanto usaremos valores calculados direto
@@ -128,6 +173,50 @@ static void sanitizeConfigValues() {
   if (configPage2.triggerEdge > TRIGGER_EDGE_BOTH) {
     configPage2.triggerEdge = TRIGGER_EDGE_BOTH;
   }
+
+  if (configPage1.egoType > EGO_TYPE_WIDE) {
+    configPage1.egoType = EGO_TYPE_OFF;
+  }
+
+  if (configPage1.egoAlgorithm > EGO_ALGO_SIMPLE) {
+    configPage1.egoAlgorithm = EGO_ALGO_SIMPLE;
+  }
+
+  if (configPage1.egoIgnEvents == 0) {
+    configPage1.egoIgnEvents = 1;
+  }
+
+  if (configPage1.egoMax < configPage1.egoMin) {
+    configPage1.egoMax = configPage1.egoMin;
+  }
+
+  if (configPage1.egoLimit > 100) {
+    configPage1.egoLimit = 100;
+  }
+
+  if (configPage1.egoStep == 0) {
+    configPage1.egoStep = 1;
+  }
+
+  if (configPage1.oilPressureProtThreshold > 250) {
+    configPage1.oilPressureProtThreshold = 250;
+  }
+
+  if (configPage1.oilPressureProtHysteresis > 250) {
+    configPage1.oilPressureProtHysteresis = 250;
+  }
+
+  if (configPage1.oilPressureProtDelay > 40) {
+    configPage1.oilPressureProtDelay = 40;
+  }
+
+  if ((configPage2.engineProtectCutType & ~(ENGINE_PROTECT_CUT_FUEL | ENGINE_PROTECT_CUT_SPARK)) != 0) {
+    configPage2.engineProtectCutType = ENGINE_PROTECT_CUT_FUEL | ENGINE_PROTECT_CUT_SPARK;
+  }
+
+  if (configPage2.engineProtectRPMHysteresis > configPage2.engineProtectRPM) {
+    configPage2.engineProtectRPMHysteresis = configPage2.engineProtectRPM;
+  }
 }
 
 // ============================================================================
@@ -138,6 +227,7 @@ void saveAllConfig() {
   // Atualiza versão
   eepromWriteByte(EEPROM_VERSION_ADDR, EEPROM_DATA_VERSION);
 
+  saveAFRTable();
   saveConfigPages();
   saveVETable();
   saveIgnTable();
@@ -200,8 +290,66 @@ void saveIgnTable() {
   }
 }
 
+void saveAFRTable() {
+  uint8_t buffer[AFR_STORAGE_TOTAL];
+  uint16_t idx = 0;
+
+  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
+    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
+      buffer[idx++] = afrTable.values[y][x];
+    }
+  }
+
+  for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
+    uint16_t rpm = afrTable.axisX[i];
+    buffer[idx++] = rpm & 0xFF;
+    buffer[idx++] = (rpm >> 8) & 0xFF;
+  }
+
+  for (uint8_t i = 0; i < TABLE_SIZE_Y; i++) {
+    buffer[idx++] = afrTable.axisY[i];
+  }
+
+  writeAfrStorage(buffer);
+}
+
 void saveCalibrationTables() {
   // TODO: implementar quando necessário
+}
+
+static void readAfrStorage(uint8_t* buffer) {
+  uint16_t idx = 0;
+  memcpy(buffer, configPage1.spare, AFR_STORAGE_CHUNK_P1);
+  idx += AFR_STORAGE_CHUNK_P1;
+
+  memcpy(buffer + idx, configPage2.spare, AFR_STORAGE_CHUNK_P2);
+  idx += AFR_STORAGE_CHUNK_P2;
+
+  for (uint16_t i = 0; i < AFR_STORAGE_CHUNK_EXT; i++) {
+    buffer[idx + i] = eepromReadByte(EEPROM_AFR_STORAGE + i);
+  }
+}
+
+static void writeAfrStorage(const uint8_t* buffer) {
+  uint16_t idx = 0;
+  memcpy(configPage1.spare, buffer, AFR_STORAGE_CHUNK_P1);
+  idx += AFR_STORAGE_CHUNK_P1;
+
+  memcpy(configPage2.spare, buffer + idx, AFR_STORAGE_CHUNK_P2);
+  idx += AFR_STORAGE_CHUNK_P2;
+
+  for (uint16_t i = 0; i < AFR_STORAGE_CHUNK_EXT; i++) {
+    eepromWriteByte(EEPROM_AFR_STORAGE + i, buffer[idx + i]);
+  }
+}
+
+static bool isAfrStorageBlank(const uint8_t* buffer, uint16_t len) {
+  for (uint16_t i = 0; i < len; i++) {
+    if (buffer[i] != 0xFF) {
+      return false;
+    }
+  }
+  return true;
 }
 
 // ============================================================================
@@ -256,6 +404,27 @@ void loadDefaults() {
   // Stoich
   configPage1.stoich = 147;               // 14.7:1 (gasolina)
 
+  // Closed-loop O2 (malha fechada)
+  configPage1.egoType = EGO_TYPE_OFF;
+  configPage1.egoAlgorithm = EGO_ALGO_SIMPLE;
+  configPage1.egoDelay = EGO_DELAY_DEFAULT;
+  configPage1.egoTemp = EGO_TEMP_DEFAULT;
+  configPage1.egoRPM = EGO_RPM_DEFAULT;
+  configPage1.egoTPSMax = EGO_TPS_MAX_DEFAULT;
+  configPage1.egoMin = EGO_MIN_DEFAULT;
+  configPage1.egoMax = EGO_MAX_DEFAULT;
+  configPage1.egoLimit = EGO_LIMIT_DEFAULT;
+  configPage1.egoStep = EGO_STEP_DEFAULT;
+  configPage1.egoIgnEvents = EGO_IGN_EVENTS_DEFAULT;
+  configPage1.egoTarget = EGO_TARGET_DEFAULT;
+  configPage1.egoHysteresis = EGO_HYST_DEFAULT;
+
+  // Oil pressure protection defaults (disabled)
+  configPage1.oilPressureProtEnable = 0;
+  configPage1.oilPressureProtThreshold = 40;  // ~160 kPa
+  configPage1.oilPressureProtHysteresis = 4;
+  configPage1.oilPressureProtDelay = 2;       // ~500ms at 4Hz
+
   // ---- ConfigPage2 (Ignition) ----
   configPage2.triggerPattern = TRIGGER_MISSING_TOOTH;
   configPage2.triggerTeeth = 36;
@@ -288,6 +457,12 @@ void loadDefaults() {
 
   // Ignition output
   configPage2.ignInvert = 0;              // Normal (active low)
+
+  // Engine protection defaults (disabled)
+  configPage2.engineProtectEnable = 0;
+  configPage2.engineProtectRPM = 70;            // 7000 RPM (if enabled)
+  configPage2.engineProtectRPMHysteresis = 3;  // ~300 RPM
+  configPage2.engineProtectCutType = ENGINE_PROTECT_CUT_FUEL | ENGINE_PROTECT_CUT_SPARK;
 
   // ---- Tabelas VE e Ignição ----
   loadDefaultTables();
@@ -323,6 +498,24 @@ void loadDefaultTables() {
 
   for (uint8_t i = 0; i < TABLE_SIZE_Y; i++) {
     ignTable.axisY[i] = pgm_read_byte(&DEFAULT_IGN_AXIS_Y[i]);
+  }
+
+  loadDefaultAFRTable();
+}
+
+static void loadDefaultAFRTable() {
+  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
+    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
+      afrTable.values[y][x] = pgm_read_byte(&DEFAULT_AFR_TABLE[y][x]);
+    }
+  }
+
+  for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
+    afrTable.axisX[i] = pgm_read_word(&DEFAULT_VE_AXIS_X[i]);
+  }
+
+  for (uint8_t i = 0; i < TABLE_SIZE_Y; i++) {
+    afrTable.axisY[i] = pgm_read_byte(&DEFAULT_VE_AXIS_Y[i]);
   }
 }
 

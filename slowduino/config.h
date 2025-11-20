@@ -117,6 +117,26 @@
 #define AE_THRESH_DEFAULT   10    // 10%/s de mudança no TPS
 #define AE_PCT_DEFAULT     120    // 20% de enriquecimento
 
+// Closed-loop O2 (EGO) - escala 0-200 ≈ 0-1V narrowband
+#define EGO_TYPE_OFF            0   // Sem correção
+#define EGO_TYPE_NARROW         1   // Narrowband 0-1V
+#define EGO_TYPE_WIDE           2   // Reservado / futuro
+
+#define EGO_ALGO_DISABLED       0
+#define EGO_ALGO_SIMPLE         1
+
+#define EGO_DELAY_DEFAULT      30   // Segundos após motor ligado
+#define EGO_TEMP_DEFAULT       60   // °C mínimo do motor
+#define EGO_RPM_DEFAULT        15   // RPM / 100
+#define EGO_TPS_MAX_DEFAULT    40   // TPS máximo (%)
+#define EGO_MIN_DEFAULT        40   // Leituras fora disso ignoradas
+#define EGO_MAX_DEFAULT       160
+#define EGO_LIMIT_DEFAULT      10   // +/- %
+#define EGO_STEP_DEFAULT        1   // % por iteração
+#define EGO_IGN_EVENTS_DEFAULT  4   // Nº de ignições por passo
+#define EGO_TARGET_DEFAULT    100   // Alvo (~lambda 1.0)
+#define EGO_HYST_DEFAULT        5   // Banda morta ao redor do alvo
+
 // ============================================================================
 // CONFIGURAÇÕES DE COMUNICAÇÃO SERIAL
 // ============================================================================
@@ -161,12 +181,15 @@
 #define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + 16) // 128 bytes - fuel config
 #define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 128)   // 128 bytes - ignition config
 
-// Tabelas de calibração
-#define EEPROM_CLT_TABLE      (EEPROM_CONFIG2 + 128)   // 64 bytes (32 × int8_t temp)
-#define EEPROM_IAT_TABLE      (EEPROM_CLT_TABLE + 64)  // 64 bytes (32 × int8_t temp)
+// Área auxiliar para AFR target (usa espaço antes reservado para CLT/IAT)
+#define EEPROM_AFR_STORAGE    (EEPROM_CONFIG2 + 128)   // 120 bytes usados para AFR
+#define EEPROM_AFR_STORAGE_LEN 120
 
-// Reserva para expansão futura (22 bytes restantes)
-#define EEPROM_SPARE          (EEPROM_IAT_TABLE + 64)
+// Reserva para expansão futura (restante da EEPROM)
+#define EEPROM_SPARE          (EEPROM_AFR_STORAGE + EEPROM_AFR_STORAGE_LEN)
+#if EEPROM_SPARE > 1024
+#error "Layout EEPROM ultrapassa 1024 bytes"
+#endif
 
 // ============================================================================
 // FLAGS DE TIMER (Loop principal)
@@ -310,6 +333,26 @@ const uint16_t DEFAULT_IGN_AXIS_X[TABLE_SIZE_X] PROGMEM = {
 const uint8_t DEFAULT_IGN_AXIS_Y[TABLE_SIZE_Y] PROGMEM = {
    20,  30,  40,  50,  60,  70,  80,  90,
   100, 110, 120, 130, 140, 150, 160, 170
+};
+
+// Tabela AFR target padrão (lambda% -> 100 = 14.7:1)
+const uint8_t DEFAULT_AFR_TABLE[TABLE_SIZE_Y][TABLE_SIZE_X] PROGMEM = {
+  /*  20*/{110,108,106,105,104,103,102,101,100,100,100,100,100,100,100,100},
+  /*  30*/{108,106,104,103,102,101,100,100, 98, 98, 98, 98, 98, 98, 98, 98},
+  /*  40*/{106,104,103,102,101,100, 98, 97, 96, 96, 96, 96, 96, 96, 96, 96},
+  /*  50*/{104,103,102,101,100, 99, 97, 96, 95, 95, 95, 95, 95, 95, 95, 95},
+  /*  60*/{103,102,101,100, 99, 97, 96, 95, 94, 94, 94, 94, 94, 94, 94, 94},
+  /*  70*/{102,101,100, 99, 98, 96, 95, 94, 93, 93, 93, 93, 93, 93, 93, 93},
+  /*  80*/{101,100, 99, 98, 97, 95, 94, 93, 92, 92, 92, 92, 92, 92, 92, 92},
+  /*  90*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
+  /* 100*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
+  /* 110*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
+  /* 120*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
+  /* 130*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
+  /* 140*/{101,100, 99, 98, 97, 95, 94, 93, 92, 92, 92, 92, 92, 92, 92, 92},
+  /* 150*/{102,101,100, 99, 98, 96, 95, 94, 93, 93, 93, 93, 93, 93, 93, 93},
+  /* 160*/{103,102,101,100, 99, 97, 96, 95, 94, 94, 94, 94, 94, 94, 94, 94},
+  /* 170*/{104,103,102,101,100, 98, 97, 96, 95, 95, 95, 95, 95, 95, 95, 95}
 };
 
 #endif // CONFIG_H

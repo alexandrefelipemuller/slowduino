@@ -60,8 +60,8 @@ void readIAT();
 /**
  * @brief Lê sonda Lambda (O2)
  *
- * Lê sensor de oxigênio narrowband (0-1V).
- * Converte para valor percentual (100 = lambda 1.0)
+ * Lê sensor de oxigênio narrowband (0-1V) e converte para escala 0-200.
+ * Cada ponto corresponde a ~5mV (100 ≈ 0,5V, próximo de lambda 1.0).
  * Frequência: 15-30Hz
  */
 void readO2();
