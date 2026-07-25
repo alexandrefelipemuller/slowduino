@@ -108,6 +108,45 @@ void clearFuelSchedule(volatile FuelSchedule* schedule) {
 }
 
 // ============================================================================
+// HELPERS PARA ISRs DE IGNIÇÃO
+// ============================================================================
+
+static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
+                                         void (*beginCharge)(),
+                                         void (*endCharge)(),
+                                         volatile uint16_t* compareReg) {
+  if (schedule->status == SCHED_PENDING) {
+    schedule->status = SCHED_RUNNING;
+    beginCharge();
+    *compareReg = schedule->endCompare;
+    return;
+  }
+
+  if (schedule->status == SCHED_RUNNING) {
+    schedule->status = SCHED_OFF;
+    endCharge();
+    currentStatus.ignitionCount++;
+  }
+}
+
+// Timer1 roda em modo Normal (free-running, não reseta no compare match).
+// Entre calcular startCompare e escrever OCR1x, TCNT1 pode já ter avançado
+// além do alvo (ex: interrupções atrasadas). Se isso acontecer, o compare
+// match só dispararia ~1s depois, na próxima volta do contador de 16 bits,
+// perdendo o evento de ignição. Detecta a corrida e processa na hora.
+static inline void armIgnitionCompare(volatile IgnitionSchedule* schedule,
+                                      void (*beginCharge)(),
+                                      void (*endCharge)(),
+                                      volatile uint16_t* compareReg) {
+  *compareReg = schedule->startCompare;
+
+  // Cast para int16_t faz a subtração respeitar o wraparound do contador
+  if ((int16_t)(TCNT1 - schedule->startCompare) >= 0) {
+    handleIgnitionChannel(schedule, beginCharge, endCharge, compareReg);
+  }
+}
+
+// ============================================================================
 // AGENDAMENTO DE IGNIÇÃO
 // ============================================================================
 
@@ -159,10 +198,10 @@ void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint32_t startTime
 
   if (channel == 1) {
     // Canal 1 usa OCR1A
-    OCR1A = schedule->startCompare;
+    armIgnitionCompare(schedule, beginCoil1Charge, endCoil1Charge, &OCR1A);
   } else {
     // Canal 2 usa OCR1B
-    OCR1B = schedule->startCompare;
+    armIgnitionCompare(schedule, beginCoil2Charge, endCoil2Charge, &OCR1B);
   }
 }
 
@@ -233,28 +272,6 @@ void processInjectorPolling() {
       injector3Polling.isOpen = false;
       injector3Polling.isScheduled = false;
     }
-  }
-}
-
-// ============================================================================
-// HELPERS PARA ISRs DE IGNIÇÃO
-// ============================================================================
-
-static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
-                                         void (*beginCharge)(),
-                                         void (*endCharge)(),
-                                         volatile uint16_t* compareReg) {
-  if (schedule->status == SCHED_PENDING) {
-    schedule->status = SCHED_RUNNING;
-    beginCharge();
-    *compareReg = schedule->endCompare;
-    return;
-  }
-
-  if (schedule->status == SCHED_RUNNING) {
-    schedule->status = SCHED_OFF;
-    endCharge();
-    currentStatus.ignitionCount++;
   }
 }
 
