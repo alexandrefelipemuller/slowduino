@@ -242,13 +242,22 @@ void loop() {
   // ------------------------------------------------------------------------
   if (currentStatus.hasSync && currentStatus.RPM > 0) {
 
-    // ---- Calcula injeção ----
-    currentStatus.PW1 = calculateInjection();
-    currentStatus.PW2 = currentStatus.PW1;  // Wasted paired = mesmo PW
+    // Calcula fora da seção crítica (cálculo pode ser custoso) e só então
+    // publica os valores. PW1/PW2/dwell são uint16_t: a ISR do trigger lê
+    // esses campos diretamente (scheduleInjectionISR/scheduleIgnitionISR) e,
+    // em AVR, uma escrita de 16 bits não é atômica - sem essa proteção a ISR
+    // podia ler um valor "torto" (metade byte antigo, metade novo) caso
+    // disparasse no meio da atribuição.
+    uint16_t newPW1 = calculateInjection();
+    int8_t newAdvance = calculateAdvance();
+    uint16_t newDwell = calculateDwell();
 
-    // ---- Calcula ignição ----
-    currentStatus.advance = calculateAdvance();
-    currentStatus.dwell = calculateDwell();
+    noInterrupts();
+    currentStatus.PW1 = newPW1;
+    currentStatus.PW2 = newPW1;  // Wasted paired = mesmo PW
+    currentStatus.advance = newAdvance;
+    currentStatus.dwell = newDwell;
+    interrupts();
 
     // Agendamento acontece automaticamente via ISR no trigger!
   }
