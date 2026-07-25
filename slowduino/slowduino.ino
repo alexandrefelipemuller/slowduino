@@ -48,7 +48,6 @@ static uint32_t lastLoop30Hz = 0;
 
 // Flags e controle de priming
 static bool primedFuel = false;
-static uint32_t primeStartTime = 0;
 
 // ============================================================================
 // SETUP
@@ -225,24 +224,17 @@ void loop() {
   // ------------------------------------------------------------------------
   // Priming pulse (ao obter primeiro sync)
   // ------------------------------------------------------------------------
+  // Agendado pela MESMA máquina de estados de polling usada pela injeção
+  // normal (em vez de digitalWrite direto): evita que o prime e uma injeção
+  // real disputem o mesmo pino sem coordenação (um fechando/cortando o pulso
+  // do outro logo na primeira sincronização do motor).
   if (!primedFuel && currentStatus.hasSync && currentStatus.RPM > 0) {
-    // Iniciar priming pulse
     if (configPage1.primePulse > 0) {
-      openInjector1();
-      openInjector2();
-      primeStartTime = micros();
+      uint16_t primeDuration = (uint16_t)((uint32_t)configPage1.primePulse * 100UL); // ms*10 -> us
+      scheduleInjectorPolling(&injector1Polling, 0, primeDuration);
+      scheduleInjectorPolling(&injector2Polling, 0, primeDuration);
     }
     primedFuel = true;
-  }
-
-  // Fechar injetores após priming (não-bloqueante)
-  if (primedFuel && primeStartTime > 0) {
-    uint32_t primeDuration = (uint32_t)configPage1.primePulse * 100UL; // ms*10 -> us
-    if ((micros() - primeStartTime) >= primeDuration) {
-      closeInjector1();
-      closeInjector2();
-      primeStartTime = 0; // Marca como concluído
-    }
   }
 
   // ------------------------------------------------------------------------
