@@ -295,7 +295,4 @@ void loop() {
     Serial.println(F("deg"));
   }
   #endif
-
-  // Pequeno delay para não saturar CPU (pode remover em produção)
-  delayMicroseconds(100);
 }
