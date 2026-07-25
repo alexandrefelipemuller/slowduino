@@ -207,8 +207,15 @@ void triggerPri_MissingTooth() {
   // Gap desde último dente
   triggerState.curGap = curTime - triggerState.toothLastToothTime;
 
-  // Filtro de debounce mínimo (50us absoluto)
+  // Filtro de debounce mínimo (50us absoluto - bounce de contato/EMI)
   if (triggerState.curGap < 50) {
+    return;  // Ignora ruído
+  }
+
+  // Rejeita pulso muito curto em relação à referência (ex: ruído de ignição/EMI
+  // causando double-trigger). Independente do filtro absoluto acima, que não
+  // pega ruído rápido em RPMs altos onde o gap normal já é pequeno.
+  if (triggerState.lastGap > 0 && triggerState.curGap < (triggerState.lastGap / 3)) {
     return;  // Ignora ruído
   }
 
@@ -224,10 +231,25 @@ void triggerPri_MissingTooth() {
   // Aceita TODOS os pulsos, mas detecta gap pelo tamanho absoluto
   triggerState.toothCurrentCount++;
 
+  // Auto-recuperação: se passou muito tempo sem detectar nenhum gap,
+  // força reset da contagem em vez de ficar esperando indefinidamente
+  // (ex: início ruidoso, ou perda de um gap por glitch).
+  if (triggerState.toothCurrentCount > (triggerState.toothTotalCount * 2)) {
+    triggerState.toothCurrentCount = 1;
+    triggerState.hasSync = false;
+  }
+
+  // Motor em cranking tem período mais instável entre dentes (partida manual,
+  // volante ainda ganhando inércia) - usa threshold de gap mais permissivo.
+  bool isCranking = (currentStatus.RPM > 0) &&
+                     (currentStatus.RPM < ((uint16_t)configPage1.crankRPM * 10));
+
   // Detecta missing tooth com threshold DINÂMICO baseado no último dente
   // Gap normal ≈ gap anterior; missing tooth precisa ser pelo menos 1.5x maior
+  // (1.4x durante cranking, para tolerar mais jitter no sinal)
   uint32_t baseGap = (triggerState.lastGap > 0) ? triggerState.lastGap : triggerState.curGap;
-  uint32_t dynamicThreshold = baseGap + (baseGap >> 1);  // 1.5x
+  uint32_t dynamicThreshold = isCranking ? (baseGap + ((baseGap * 2) / 5))  // 1.4x
+                                          : (baseGap + (baseGap >> 1));     // 1.5x
   bool isGap = (triggerState.curGap > dynamicThreshold);
 
   if (isGap) {
@@ -235,11 +257,12 @@ void triggerPri_MissingTooth() {
 
     // Com CHANGE, esperamos ~70 pulsos (35 dentes × 2 bordas)
     // Mas o gap também gera 2 pulsos, então ~72 total
-    // Validação flexível: entre 60-80 pulsos
+    // Validação flexível: janela mais larga durante cranking (mais jitter)
     uint16_t expectedPulses = triggerState.triggerActualTeeth * triggerEdgesPerTooth;
+    uint16_t toleranceWindow = isCranking ? 20 : 10;
 
-    if (triggerState.toothCurrentCount >= (expectedPulses - 10) &&
-        triggerState.toothCurrentCount <= (expectedPulses + 10)) {
+    if (triggerState.toothCurrentCount >= (expectedPulses - toleranceWindow) &&
+        triggerState.toothCurrentCount <= (expectedPulses + toleranceWindow)) {
 
       // Sincronismo OK
       triggerState.hasSync = true;
