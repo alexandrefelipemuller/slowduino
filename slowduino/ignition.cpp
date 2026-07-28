@@ -54,11 +54,29 @@ int8_t applyAdvanceCorrections(int8_t baseAdvance) {
   corrected += correctionCLTAdvance();
 
   // Correção de idle
-  if (currentStatus.RPM > 0 && currentStatus.RPM < (configPage2.idleRPM * 10)) {
-    corrected += correctionIdleAdvance();
+  if (isIdleAdvanceActive()) {
+    if (configPage2.idleAdvEnabled == IDLE_ADV_SWITCHED) {
+      // Modo Switched: o avanço de idle substitui o mapa
+      corrected = correctionIdleAdvance();
+    } else {
+      corrected += correctionIdleAdvance();
+    }
   }
 
   return corrected;
+}
+
+bool isIdleAdvanceActive() {
+  if (configPage2.idleAdvEnabled == IDLE_ADV_OFF) return false;
+  if (currentStatus.RPM == 0) return false;
+
+  // Só em marcha lenta de verdade: borboleta fechada e baixa rotação.
+  // O gate de TPS é o que impede o avanço de idle de ser aplicado com o
+  // acelerador aberto em baixo RPM - zona de detonação.
+  if (currentStatus.TPS > configPage2.idleAdvTPS) return false;
+  if (currentStatus.RPM > ((uint16_t)configPage2.idleAdvRPM * 100U)) return false;
+
+  return true;
 }
 
 int8_t correctionCLTAdvance() {
@@ -87,8 +105,16 @@ int8_t correctionCLTAdvance() {
 }
 
 int8_t correctionIdleAdvance() {
-  // Avanço adicional em idle (melhora estabilidade)
-  return configPage2.idleAdvance;
+  // Avanço em função de quanto o motor está ABAIXO do alvo de marcha lenta.
+  // Quanto mais afundado o RPM, mais avanço, o que devolve torque rápido -
+  // é a alça de controle rápida que complementa a válvula (lenta).
+  //
+  // Usa o mesmo CLIdleTarget do IAC. Antes havia dois alvos divergentes
+  // (850 na válvula, 800 aqui), e o idle advance nunca chegava a atuar.
+  int16_t delta = (int16_t)currentStatus.CLIdleTarget - (int16_t)currentStatus.RPM;
+  if (delta < 0) delta = 0;
+
+  return lookupCurveI8(configPage2.idleAdvBins, configPage2.idleAdvValues, 4, delta / 10);
 }
 
 // ============================================================================

@@ -79,7 +79,12 @@
   // Saídas Digitais - Auxiliares (Proto Area - Speeduino 0.4.4b+)
   #define PIN_FUEL_PUMP     45   // Proto Area 3 - Fuel Pump
   #define PIN_FAN           47   // Proto Area 2 - Fan
-  #define PIN_IDLE_VALVE    46   // Idle 2 / PWM Idle (pin 36/37)
+  #define PIN_IDLE_VALVE    46   // Idle 2 / PWM Idle (pin 36/37) = PL3
+
+  // Acesso direto à porta do IAC, usado pela ISR de PWM do Timer2.
+  // digitalWrite() custa ~4us e a ISR roda a 4kHz - caro demais.
+  #define IDLE_PIN_HIGH()   (PORTL |= (1 << PL3))
+  #define IDLE_PIN_LOW()    (PORTL &= ~(1 << PL3))
 
   // Outras Entradas Digitais
   #define PIN_VSS           20   // Proto Area 5 - Clutch/VSS (adaptado)
@@ -126,7 +131,16 @@
   // Saídas Digitais - Auxiliares
   #define PIN_FUEL_PUMP       6   // Relé da bomba de combustível
   #define PIN_FAN             8   // Ventoinha do radiador
-  #define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC - PWM)
+  #define PIN_IDLE_VALVE      9   // Selenoide de marcha lenta (IAC - PWM) = PB1
+
+  // ATENÇÃO: D9 é OC1A. NUNCA usar analogWrite() neste pino!
+  // analogWrite(9, v) do core Arduino faz sbi(TCCR1A, COM1A1) e escreve
+  // OCR1A = v - e OCR1A é o compare absoluto que o scheduler usa para
+  // agendar a ignição/injeção do canal 1 (scheduler.cpp). Isso destrói o
+  // timing de faísca. O PWM do IAC é gerado por software na ISR do Timer2
+  // (auxiliaries.cpp), que não toca em nenhum registrador do Timer1.
+  #define IDLE_PIN_HIGH()     (PORTB |= (1 << PB1))
+  #define IDLE_PIN_LOW()      (PORTB &= ~(1 << PB1))
 
   // Outras Entradas Digitais
   #define PIN_VSS            12   // Velocidade do veículo

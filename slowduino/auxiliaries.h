@@ -53,13 +53,44 @@ void fuelPumpControl();
 // ============================================================================
 
 /**
- * @brief Controla válvula de marcha lenta (PWM)
+ * @brief Inicializa o PWM da válvula de marcha lenta (Timer2)
  *
- * Ajusta duty cycle baseado no erro de RPM
- * - RPM < alvo: aumenta abertura
- * - RPM > alvo: diminui abertura
+ * ATENÇÃO: o PWM do IAC é gerado por software na ISR do Timer2, e NÃO por
+ * analogWrite(). No Uno/Nano o pino do IAC (D9) é OC1A, e analogWrite() nele
+ * sobrescreveria OCR1A - o registrador que o scheduler usa para agendar a
+ * ignição do canal 1. Ver o comentário em board_config.h.
  *
- * Usa banda morta (deadband) para evitar oscilação
+ * Deve ser chamada depois de storageInit(), pois lê configPage2.idleFreq.
+ */
+void idlePwmInit();
+
+/**
+ * @brief Define a frequência do PWM do IAC
+ *
+ * @param freqDiv2 Frequência em Hz dividida por 2 (ex: 80 = 160Hz)
+ *
+ * A resolução de duty é 1/(3968/freq): 160Hz dá ~4% por passo, 80Hz dá ~2%.
+ * Valores fora da faixa suportada são saturados.
+ */
+void idlePwmSetFrequency(uint8_t freqDiv2);
+
+/**
+ * @brief Aplica um duty cycle (0-100%) na válvula de marcha lenta
+ *
+ * Em 0% e 100% a ISR é desligada e o pino fica estático.
+ */
+void idleSetDuty(uint8_t duty);
+
+/**
+ * @brief Controla válvula de marcha lenta
+ *
+ * Estilo Speeduino, executado a 15Hz:
+ * - Partida: duty da curva iacCrankDuty por temperatura
+ * - Taper: transição suave partida -> funcionamento (idleTaperTime)
+ * - Open loop: duty da curva iacOLPWMVal por temperatura
+ * - Closed loop (iacAlgorithm == 2): PID inteiro sobre o duty open loop,
+ *   perseguindo currentStatus.CLIdleTarget, com anti-windup por TPS e por
+ *   clamp do acumulador
  */
 void idleControl();
 

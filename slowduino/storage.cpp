@@ -316,9 +316,52 @@ void loadDefaults() {
   // Rev limiter
   configPage2.revLimitRPM = 60;           // 6000 RPM
 
-  // Idle
-  configPage2.idleAdvance = 15;           // 15° BTDC em idle
-  configPage2.idleRPM = 80;               // 800 RPM
+  // Idle (legado)
+  configPage2.idleAdvance = 15;           // Mantido; não é mais usado no cálculo
+  configPage2.idleRPM = 80;               // Reservado (alvo real vem de iacCLValues)
+
+  // ---- Válvula de marcha lenta (IAC) ----
+  configPage2.iacAlgorithm = IAC_ALGORITHM_PWM_OLCL;
+  configPage2.idleFreq = 80;              // 160 Hz (resolução de duty ~4%)
+
+  // Curvas por temperatura. O alvo quente de 850 RPM preserva o
+  // comportamento do antigo IAC_IDLE_RPM.
+  const int8_t  iacBins[]     = {-10, 20, 50, 85};   // °C
+  const uint8_t iacOLPWM[]    = { 60, 45, 30, 22};   // Duty open loop %
+  const uint8_t iacCLTargets[]= {130, 110, 95,  85}; // Alvo RPM / 10
+  const int8_t  iacCrankBins[]= {-10, 20, 50, 85};   // °C
+  const uint8_t iacCrankDuty[]= { 85, 70, 55, 45};   // Duty na partida %
+  for (uint8_t i = 0; i < 4; i++) {
+    configPage2.iacBins[i]      = iacBins[i];
+    configPage2.iacOLPWMVal[i]  = iacOLPWM[i];
+    configPage2.iacCLValues[i]  = iacCLTargets[i];
+    configPage2.iacCrankBins[i] = iacCrankBins[i];
+    configPage2.iacCrankDuty[i] = iacCrankDuty[i];
+  }
+
+  // PID conservador. KD fica em 0: a 15Hz o RPM é ruidoso o bastante para o
+  // termo derivativo atrapalhar mais do que ajudar.
+  configPage2.idleKP = 8;                 // ~5% de duty por 100 RPM de erro
+  configPage2.idleKI = 4;
+  configPage2.idleKD = 0;
+
+  configPage2.iacCLminValue = 10;         // Faixa útil da válvula (%)
+  configPage2.iacCLmaxValue = 90;
+  configPage2.idleTaperTime = 30;         // 3,0 s de transição partida->run
+  configPage2.iacTPSlimit = 5;            // Acima de 5% de TPS, reseta a integral
+
+  // ---- Idle advance ----
+  configPage2.idleAdvEnabled = IDLE_ADV_ADDED;
+  configPage2.idleAdvTPS = 5;             // Só com borboleta fechada
+  configPage2.idleAdvRPM = 15;            // Até 1500 RPM
+
+  // Eixo = quanto o RPM está abaixo do alvo, em dezenas (0 a 200 RPM)
+  const uint8_t idleAdvBins[]   = {0, 5, 10, 20};
+  const int8_t  idleAdvValues[] = {0, 3,  6, 10};   // Graus adicionais
+  for (uint8_t i = 0; i < 4; i++) {
+    configPage2.idleAdvBins[i]   = idleAdvBins[i];
+    configPage2.idleAdvValues[i] = idleAdvValues[i];
+  }
 
   // CLT advance correction (4 pontos)
   const int8_t cltBins[] = {-20, 0, 40, 80};

@@ -998,6 +998,9 @@ void buildRealtimePacket(uint8_t* buffer) {
   // Offset 35: ethanolPct
   buffer[35] = 0;  // Sem flex fuel
 
+  // Offset 38: idleLoad (duty da válvula de marcha lenta, %)
+  buffer[38] = currentStatus.idleValveDuty;
+
   // Offset 41: baro
   buffer[41] = 100;  // 100 kPa (atmosférico)
 
@@ -1016,6 +1019,9 @@ void buildRealtimePacket(uint8_t* buffer) {
   // Offset 82-83: PW4 (0 - não temos 4º canal)
   buffer[82] = 0;
   buffer[83] = 0;
+
+  // Offset 92: CLIdleTarget (alvo de marcha lenta, RPM / 10 - escala Speeduino)
+  buffer[92] = (uint8_t)(currentStatus.CLIdleTarget / 10U);
 
   // Offset 102: VE
   buffer[102] = currentStatus.VE;

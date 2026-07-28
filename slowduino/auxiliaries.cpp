@@ -4,11 +4,27 @@
  */
 
 #include "auxiliaries.h"
+#include "tables.h"
 
 // Variáveis estáticas para controle de estado
 static uint32_t lastFuelPumpActivity = 0;
 static uint32_t fuelPumpPrimeStart = 0;
 static bool isPriming = false;
+
+// ----------------------------------------------------------------------------
+// Estado do PWM do IAC (compartilhado com a ISR do Timer2)
+// ----------------------------------------------------------------------------
+// Todos uint8_t: no AVR a leitura/escrita de 8 bits é atômica, então o loop
+// principal pode atualizar o alvo sem desabilitar interrupções.
+static volatile uint8_t idlePwmCount = 0;        // Tick corrente dentro do período
+static volatile uint8_t idlePwmPeriodTicks = 25; // Ticks por período de PWM
+static volatile uint8_t idlePwmTargetTicks = 0;  // Tick em que o pino vai para LOW
+
+// Estado do controlador
+static int32_t idleIntegral = 0;     // Acumulador da integral (escala 1/256)
+static uint16_t idleLastRpm = 0;     // RPM da chamada anterior (termo derivativo)
+static uint8_t idleTaperTotal = 0;   // Duração total do taper, em chamadas
+static uint8_t idleLastFreq = 0;     // idleFreq já aplicado (detecta retune)
 
 // ============================================================================
 // INICIALIZAÇÃO
@@ -23,11 +39,15 @@ void auxiliariesInit() {
   // Estado inicial (tudo desligado)
   FAN_OFF();
   FUEL_PUMP_OFF();
-  analogWrite(PIN_IDLE_VALVE, 0);
 
   currentStatus.fanActive = false;
   currentStatus.fuelPumpActive = false;
   currentStatus.idleValveDuty = 0;
+  currentStatus.CLIdleTarget = 0;
+  currentStatus.idleTaper = 0;
+
+  // PWM do IAC via Timer2 (NUNCA analogWrite - ver board_config.h)
+  idlePwmInit();
 
   // Inicia priming da bomba
   FUEL_PUMP_ON();
@@ -94,41 +114,207 @@ void fuelPumpControl() {
 }
 
 // ============================================================================
-// VÁLVULA DE MARCHA LENTA (IAC)
+// VÁLVULA DE MARCHA LENTA (IAC) - CAMADA DE PWM (Timer2)
 // ============================================================================
 
-void idleControl() {
-  // Só atua em marcha lenta (baixo TPS e motor aquecido)
-  if (currentStatus.TPS > 5 || currentStatus.coolant < 60) {
-    // Não está em idle ou motor frio -> mantém posição
+/**
+ * ISR de PWM por software.
+ *
+ * Roda a ~4kHz e mantém um contador de ticks. O pino sobe no início do
+ * período e desce ao atingir o alvo de duty. Não toca em NENHUM registrador
+ * do Timer1 - é por isso que este PWM existe em vez de um analogWrite().
+ *
+ * Precisa ser curtíssima: usa acesso direto à porta (IDLE_PIN_HIGH/LOW), não
+ * digitalWrite(), para não atrasar a ISR de ignição do Timer1.
+ */
+ISR(TIMER2_COMPA_vect) {
+  uint8_t count = idlePwmCount + 1;
+
+  if (count >= idlePwmPeriodTicks) {
+    count = 0;
+    IDLE_PIN_HIGH();
+  } else if (count >= idlePwmTargetTicks) {
+    IDLE_PIN_LOW();
+  }
+
+  idlePwmCount = count;
+}
+
+void idlePwmInit() {
+  pinMode(PIN_IDLE_VALVE, OUTPUT);
+  IDLE_PIN_LOW();
+
+  // Timer2 em CTC: OCR2A define o período do tick.
+  // Prescaler 64 @16MHz = 4us/tick de contagem; OCR2A=62 -> 63*4us = 252us
+  // (~3968Hz). Timer2 está livre no projeto - Timer0 é do core (millis) e
+  // Timer1 é do scheduler de ignição/injeção.
+  TCCR2A = (1 << WGM21);               // CTC
+  TCCR2B = (1 << CS22);                // Prescaler 64
+  OCR2A  = (IDLE_PWM_TICK_DIVISOR - 1);
+  TCNT2  = 0;
+  TIMSK2 = 0;                          // ISR habilitada só quando necessário
+
+  idlePwmCount = 0;
+  idlePwmTargetTicks = 0;
+  idlePwmSetFrequency(configPage2.idleFreq);
+  idleLastFreq = configPage2.idleFreq;
+  idleSetDuty(0);
+}
+
+void idlePwmSetFrequency(uint8_t freqDiv2) {
+  uint16_t freqHz = (uint16_t)freqDiv2 * 2U;
+
+  // O período em ticks precisa caber num uint8_t (leitura atômica na ISR),
+  // e precisa de alguns ticks para ter resolução de duty utilizável.
+  if (freqHz < IDLE_PWM_FREQ_MIN) freqHz = IDLE_PWM_FREQ_MIN;
+  if (freqHz > IDLE_PWM_FREQ_MAX) freqHz = IDLE_PWM_FREQ_MAX;
+
+  idlePwmPeriodTicks = (uint8_t)(IDLE_PWM_TICK_HZ / freqHz);
+}
+
+/**
+ * Aplica um duty (0-100%) na válvula.
+ *
+ * Nos extremos a ISR é desligada e o pino fica estático - além de economizar
+ * CPU, isso zera o custo do IAC quando o motor está em carga (duty 0).
+ */
+void idleSetDuty(uint8_t duty) {
+  if (duty > 100) duty = 100;
+  currentStatus.idleValveDuty = duty;
+
+  if (duty == 0) {
+    TIMSK2 &= ~(1 << OCIE2A);
+    IDLE_PIN_LOW();
     return;
   }
 
-  // Calcula erro de RPM
-  int16_t rpmError = IAC_IDLE_RPM - (int16_t)currentStatus.RPM;
-
-  // Banda morta (deadband) - evita oscilação
-  if (abs(rpmError) < IAC_RPM_DEADBAND) {
-    return; // RPM dentro da faixa aceitável
+  if (duty >= 100) {
+    TIMSK2 &= ~(1 << OCIE2A);
+    IDLE_PIN_HIGH();
+    return;
   }
 
-  // Ajusta duty cycle baseado no erro
-  if (rpmError > 0) {
-    // RPM abaixo do alvo -> aumenta abertura
-    currentStatus.idleValveDuty += IAC_STEP_SIZE;
-    if (currentStatus.idleValveDuty > IAC_MAX_DUTY) {
-      currentStatus.idleValveDuty = IAC_MAX_DUTY;
-    }
-  } else {
-    // RPM acima do alvo -> diminui abertura
-    if (currentStatus.idleValveDuty >= IAC_STEP_SIZE) {
-      currentStatus.idleValveDuty -= IAC_STEP_SIZE;
-    } else {
-      currentStatus.idleValveDuty = IAC_MIN_DUTY;
-    }
+  uint8_t target = (uint8_t)(((uint16_t)duty * idlePwmPeriodTicks) / 100U);
+  if (target == 0) target = 1;  // Garante um pulso mínimo em duty muito baixo
+  idlePwmTargetTicks = target;
+
+  // Se estávamos num extremo (ISR desligada), o contador está velho: reinicia
+  // o período para o PWM começar limpo em vez de gerar um ciclo torto.
+  if ((TIMSK2 & (1 << OCIE2A)) == 0) {
+    idlePwmCount = 0;
+    IDLE_PIN_HIGH();
+    TIMSK2 |= (1 << OCIE2A);
+  }
+}
+
+// ============================================================================
+// VÁLVULA DE MARCHA LENTA (IAC) - CONTROLE
+// ============================================================================
+
+void idleControl() {
+  if (configPage2.iacAlgorithm == IAC_ALGORITHM_NONE) {
+    if (currentStatus.idleValveDuty != 0) idleSetDuty(0);
+    return;
   }
 
-  // Aplica PWM (0-255 do analogWrite = 0-100% duty)
-  uint8_t pwmValue = map(currentStatus.idleValveDuty, 0, 100, 0, 255);
-  analogWrite(PIN_IDLE_VALVE, pwmValue);
+  // Reaplica a frequência se o usuário mudou idleFreq pelo TunerStudio
+  if (configPage2.idleFreq != idleLastFreq) {
+    idlePwmSetFrequency(configPage2.idleFreq);
+    idleLastFreq = configPage2.idleFreq;
+  }
+
+  int16_t clt = currentStatus.coolant;
+
+  // Alvo de RPM por temperatura. Fica em currentStatus porque o idle advance
+  // (ignition.cpp) usa o mesmo alvo - antes havia dois alvos divergentes.
+  currentStatus.CLIdleTarget = (uint16_t)lookupCurveU8(
+      configPage2.iacBins, configPage2.iacCLValues, 4, clt) * 10U;
+
+  // --------------------------------------------------------------------------
+  // Partida: duty fixo pela curva de cranking, sem malha fechada
+  // --------------------------------------------------------------------------
+  uint8_t crankDuty = lookupCurveU8(
+      configPage2.iacCrankBins, configPage2.iacCrankDuty, 4, clt);
+
+  if (BIT_CHECK(currentStatus.engineStatus, ENGINE_CRANK)) {
+    // Arma o taper para a transição partida -> funcionamento.
+    // idleTaperTime está em décimos de segundo e idleControl roda a 15Hz.
+    uint16_t total = ((uint16_t)configPage2.idleTaperTime * 3U) / 2U;
+    idleTaperTotal = (total > 255U) ? 255U : (uint8_t)total;
+    currentStatus.idleTaper = idleTaperTotal;
+
+    idleIntegral = 0;
+    idleLastRpm = currentStatus.RPM;
+    idleSetDuty(crankDuty);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // Open loop: duty base por temperatura (também serve de feed-forward do PID)
+  // --------------------------------------------------------------------------
+  uint8_t olDuty = lookupCurveU8(
+      configPage2.iacBins, configPage2.iacOLPWMVal, 4, clt);
+
+  // --------------------------------------------------------------------------
+  // Taper: decai suavemente do duty de partida para o de funcionamento
+  // --------------------------------------------------------------------------
+  if (currentStatus.idleTaper > 0 && idleTaperTotal > 0) {
+    uint8_t elapsed = idleTaperTotal - currentStatus.idleTaper;
+    int16_t blended = (int16_t)crankDuty +
+                      (((int16_t)olDuty - (int16_t)crankDuty) * elapsed) / idleTaperTotal;
+
+    currentStatus.idleTaper--;
+    idleIntegral = 0;               // A malha fechada só entra após o taper
+    idleLastRpm = currentStatus.RPM;
+    idleSetDuty((uint8_t)blended);
+    return;
+  }
+
+  // --------------------------------------------------------------------------
+  // Closed loop (PID inteiro sobre o duty open loop)
+  // --------------------------------------------------------------------------
+  if (configPage2.iacAlgorithm != IAC_ALGORITHM_PWM_OLCL) {
+    idleSetDuty(olDuty);
+    return;
+  }
+
+  // Fora das condições de marcha lenta a integral é zerada, senão ela satura
+  // enquanto o motor está em carga e devolve um salto de duty ao voltar.
+  bool inIdle = (currentStatus.TPS <= configPage2.iacTPSlimit) &&
+                (currentStatus.RPM > 0) &&
+                (currentStatus.RPM < (currentStatus.CLIdleTarget + IDLE_CL_RPM_WINDOW));
+
+  if (!inIdle) {
+    idleIntegral = 0;
+    idleLastRpm = currentStatus.RPM;
+    idleSetDuty(olDuty);
+    return;
+  }
+
+  // Erro em unidades de 10 RPM: mantém a aritmética inteira em faixa
+  // confortável e dá uma escala de ganho utilizável (KP=16 -> 100 RPM de erro
+  // resulta em ~10% de duty).
+  int16_t err10 = ((int16_t)currentStatus.CLIdleTarget - (int16_t)currentStatus.RPM) / 10;
+
+  int32_t pTerm = ((int32_t)configPage2.idleKP * err10) / 16;
+
+  // Derivada sobre a medição (não sobre o erro): evita chute quando o alvo
+  // muda com a temperatura.
+  int16_t dRpm10 = ((int16_t)currentStatus.RPM - (int16_t)idleLastRpm) / 10;
+  int32_t dTerm = -((int32_t)configPage2.idleKD * dRpm10) / 16;
+  idleLastRpm = currentStatus.RPM;
+
+  // Integral com clamp: o próprio acumulador é limitado (anti-windup), então
+  // saturar a saída não deixa resíduo preso.
+  idleIntegral += (int32_t)configPage2.idleKI * err10;
+  if (idleIntegral > IDLE_INTEGRAL_LIMIT)  idleIntegral = IDLE_INTEGRAL_LIMIT;
+  if (idleIntegral < -IDLE_INTEGRAL_LIMIT) idleIntegral = -IDLE_INTEGRAL_LIMIT;
+  int32_t iTerm = idleIntegral / 256;
+
+  int32_t output = (int32_t)olDuty + pTerm + iTerm + dTerm;
+
+  if (output < configPage2.iacCLminValue) output = configPage2.iacCLminValue;
+  if (output > configPage2.iacCLmaxValue) output = configPage2.iacCLmaxValue;
+
+  idleSetDuty((uint8_t)output);
 }

@@ -236,6 +236,38 @@ uint8_t getTable2DValue(struct Table2D* table, int8_t value) {
 }
 
 // ============================================================================
+// CURVAS PEQUENAS SEM ESTADO (config pages)
+// ============================================================================
+
+uint8_t lookupCurveU8(const int8_t* bins, const uint8_t* values, uint8_t size, int16_t x) {
+  if (size == 0) return 0;
+  if (x <= bins[0]) return values[0];
+  if (x >= bins[size - 1]) return values[size - 1];
+
+  for (uint8_t i = 0; i < size - 1; i++) {
+    if (x >= bins[i] && x < bins[i + 1]) {
+      return (uint8_t)interpolate(x, bins[i], bins[i + 1], values[i], values[i + 1]);
+    }
+  }
+
+  return values[size - 1];
+}
+
+int8_t lookupCurveI8(const uint8_t* bins, const int8_t* values, uint8_t size, int16_t x) {
+  if (size == 0) return 0;
+  if (x <= (int16_t)bins[0]) return values[0];
+  if (x >= (int16_t)bins[size - 1]) return values[size - 1];
+
+  for (uint8_t i = 0; i < size - 1; i++) {
+    if (x >= (int16_t)bins[i] && x < (int16_t)bins[i + 1]) {
+      return (int8_t)interpolate(x, bins[i], bins[i + 1], values[i], values[i + 1]);
+    }
+  }
+
+  return values[size - 1];
+}
+
+// ============================================================================
 // UTILITÁRIOS
 // ============================================================================
 

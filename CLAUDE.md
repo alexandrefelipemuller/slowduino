@@ -329,26 +329,56 @@ if (coolant <= 90°C) FAN_OFF();
 
 ### Válvula de Marcha Lenta (IAC)
 
-**Implementação:** analogWrite() PWM no pino D9
+> ⚠️ **NUNCA use `analogWrite()` no pino do IAC.**
+> No Uno/Nano o IAC está em **D9, que é OC1A**. O `analogWrite(9, v)` do core
+> Arduino faz `sbi(TCCR1A, COM1A1)` e escreve **`OCR1A = v`** — e `OCR1A` é o
+> registrador de compare que o `scheduler.cpp` usa para agendar a ignição e a
+> injeção do canal 1. Usar `analogWrite()` ali destrói o timing de faísca, e o
+> sintoma só aparece com o motor quente em marcha lenta. Foi exatamente esse o
+> bug corrigido pela implementação atual.
 
-**Controle proporcional simples:**
-```cpp
-int16_t erro = 850 - RPM;  // Alvo 850 RPM
-if (abs(erro) > 50) {      // Deadband ±50 RPM
-  if (erro > 0) duty += 2%; // RPM baixo: abre mais
-  else duty -= 2%;           // RPM alto: fecha
-}
-```
+**Implementação:** PWM por software na ISR do **Timer2** (`auxiliaries.cpp`).
+Timer2 está livre no projeto (Timer0 = core/`millis()`, Timer1 = scheduler).
 
-**Limites:**
-- TPS < 5% (só atua em idle)
-- CLT > 60°C (motor aquecido)
-- Duty 0-100%
+- Timer2 em CTC, prescaler 64, `OCR2A = 62` -> tick de ~252 us (~3968 Hz)
+- A ISR mantém um contador e alterna o pino via acesso direto à porta
+  (`IDLE_PIN_HIGH()`/`IDLE_PIN_LOW()` em `board_config.h`) — `digitalWrite()`
+  custa ~4 us e seria caro demais nessa taxa
+- Em duty 0% e 100% a ISR é **desligada** e o pino fica estático (custo zero
+  com o motor em carga)
+- Custo medido: ISR de 23 instruções, ~2 us, ~0,7% de CPU
+- Resolução de duty = 1/(3968/freq): 160 Hz -> ~4%, 80 Hz -> ~2%
 
-**Por quê não PID?**
-- RAM limitada
-- Resposta lenta ok em idle
-- Simples de entender e ajustar
+**Algoritmo (`configPage2.iacAlgorithm`):** 0 = None, 1 = PWM open loop,
+2 = PWM open loop + closed loop.
+
+Executado a **15 Hz**, na mesma cadência de `calculateRPM()` — antes rodava a
+4 Hz, mais devagar que a própria variável de processo que perseguia.
+
+1. **Partida:** duty da curva `iacCrankDuty` por CLT; arma o taper
+2. **Taper:** transição linear partida -> funcionamento ao longo de
+   `idleTaperTime` (décimos de segundo)
+3. **Open loop:** duty da curva `iacOLPWMVal` por CLT
+4. **Closed loop:** PID inteiro somado ao duty open loop (que serve de
+   feed-forward), perseguindo `currentStatus.CLIdleTarget`
+
+**PID inteiro** (sem float, conforme a regra do projeto): erro em unidades de
+10 RPM, ganhos em escala 1/16. `KP = 16` -> ~10% de duty por 100 RPM de erro.
+`KD` default 0 (a 15 Hz o RPM é ruidoso demais para derivada ser útil).
+
+**Anti-windup:** a integral é zerada quando `TPS > iacTPSlimit`, quando o RPM
+sai da janela de marcha lenta, e durante partida/taper. O acumulador também é
+clampado, então saturar a saída não deixa resíduo preso — o defeito antigo em
+que o duty congelava ao acelerar e dava um salto ao voltar.
+
+**Alvo de RPM:** vem de `iacCLValues` por CLT e fica em
+`currentStatus.CLIdleTarget`. O idle advance usa **o mesmo** alvo. Antes havia
+dois alvos divergentes (850 na válvula, 800 no avanço), e o idle advance nunca
+chegava a atuar.
+
+Todos os parâmetros vivem em `ConfigPage2` (EEPROM, página 4 do TunerStudio).
+O duty é logável no offset 38 (`idleLoad`) e o alvo no offset 92
+(`CLIdleTarget`) do pacote realtime — offsets iguais aos do Speeduino.
 
 ### Sensores de Pressão
 

@@ -141,6 +141,31 @@ inline int16_t interpolate(int16_t x, int16_t x1, int16_t x2, int16_t y1, int16_
 }
 
 /**
+ * @brief Interpola uma curva pequena com bins signed e valores unsigned
+ *
+ * Versão sem cache e sem estado do getTable2DValue(), para as curvas de 4
+ * pontos guardadas direto no ConfigPage2 (idle por CLT, etc). Não gasta RAM
+ * e é chamada a 15Hz, onde o custo da busca linear é irrelevante.
+ *
+ * Fora dos limites da curva, satura no primeiro/último valor.
+ *
+ * @param bins   Eixo X, em ordem crescente (ex: temperatura em °C)
+ * @param values Valores Y
+ * @param size   Número de pontos
+ * @param x      Valor de entrada
+ * @return Valor interpolado
+ */
+uint8_t lookupCurveU8(const int8_t* bins, const uint8_t* values, uint8_t size, int16_t x);
+
+/**
+ * @brief Interpola uma curva pequena com bins unsigned e valores signed
+ *
+ * Igual a lookupCurveU8, mas para curvas cujo eixo X não é negativo e cujo
+ * valor pode ser (ex: idle advance por delta de RPM, que admite retardo).
+ */
+int8_t lookupCurveI8(const uint8_t* bins, const int8_t* values, uint8_t size, int16_t x);
+
+/**
  * @brief Limpa cache de todas as tabelas
  *
  * Útil após modificação de tabelas via TunerStudio

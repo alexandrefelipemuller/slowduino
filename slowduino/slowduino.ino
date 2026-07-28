@@ -200,6 +200,11 @@ void loop() {
 
     // Atualiza estado do motor
     updateEngineStatus();
+
+    // Marcha lenta: roda aqui e não no bloco de 4Hz porque precisa da mesma
+    // cadência do RPM que ele persegue (a 4Hz o controle era mais lento que a
+    // própria atualização da variável de processo).
+    idleControl();
   }
 
   // ------------------------------------------------------------------------
@@ -218,7 +223,6 @@ void loop() {
     // Controles auxiliares
     fanControl();
     fuelPumpControl();
-    idleControl();
   }
 
   // ------------------------------------------------------------------------

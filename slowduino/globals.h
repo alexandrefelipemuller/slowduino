@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 3
+#define EEPROM_DATA_VERSION 4
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -93,6 +93,8 @@ struct Statuses {
   bool     fanActive;          // Ventoinha ativa
   bool     fuelPumpActive;     // Bomba de combustível ativa
   uint8_t  idleValveDuty;      // Duty cycle válvula marcha lenta (0-100%)
+  uint16_t CLIdleTarget;       // Alvo de RPM da marcha lenta (interpolado de iacCLValues)
+  uint8_t  idleTaper;          // Contador da transição partida->run (décimos de s)
 
   // Tempo
   uint32_t secl;               // Segundos desde power-on
@@ -212,9 +214,9 @@ struct ConfigPage2 {
   // Rev Limiter
   uint8_t  revLimitRPM;        // RPM / 100 (ex: 60 = 6000 RPM)
 
-  // Idle
-  uint8_t  idleAdvance;        // Avanço adicional em idle (graus)
-  uint8_t  idleRPM;            // RPM de idle / 10 (ex: 80 = 800 RPM)
+  // Idle (legado - idleRPM mantido como reserva; o alvo real vem de iacCLValues)
+  int8_t   idleAdvance;        // Avanço adicional em idle (graus, pode ser negativo)
+  uint8_t  idleRPM;            // Reservado (era o alvo de idle / 10)
 
   // CLT advance correction (4 pontos)
   int8_t   cltAdvBins[4];      // Temperaturas
@@ -232,10 +234,41 @@ struct ConfigPage2 {
   uint8_t  engineProtectRPMHysteresis;  // RPM / 100
   uint8_t  engineProtectCutType;        // Bitmask: 1=fuel, 2=spark
 
-  // Reserva para compatibilidade com Speeduino (página 2 = 288 bytes)
-  // ConfigPage2 atual: 28 bytes
-  // Padding necessário: 128 - 28 = 100 bytes
-  uint8_t  spare[100];
+  // ==========================================================================
+  // Válvula de marcha lenta (IAC) - PWM open loop + closed loop
+  // ==========================================================================
+  uint8_t  iacAlgorithm;       // 0=None, 1=PWM open loop, 2=PWM OL+CL
+  uint8_t  idleFreq;           // Frequência do PWM / 2 (ex: 80 = 160 Hz)
+
+  int8_t   iacBins[4];         // Bins de CLT (°C) das 3 curvas abaixo
+  uint8_t  iacOLPWMVal[4];     // Duty open loop por CLT (%)
+  uint8_t  iacCLValues[4];     // Alvo de RPM por CLT / 10 (ex: 85 = 850 RPM)
+
+  int8_t   iacCrankBins[4];    // Bins de CLT durante a partida (°C)
+  uint8_t  iacCrankDuty[4];    // Duty durante a partida (%)
+
+  uint8_t  idleKP;             // Ganho proporcional (escala 1/16)
+  uint8_t  idleKI;             // Ganho integral (escala 1/16)
+  uint8_t  idleKD;             // Ganho derivativo (escala 1/16)
+
+  uint8_t  iacCLminValue;      // Duty mínimo da malha fechada (%)
+  uint8_t  iacCLmaxValue;      // Duty máximo da malha fechada (%)
+  uint8_t  idleTaperTime;      // Transição partida->run (décimos de segundo)
+  uint8_t  iacTPSlimit;        // Acima deste TPS (%), reseta a integral do PID
+
+  // ==========================================================================
+  // Idle advance (correção de ignição em marcha lenta)
+  // ==========================================================================
+  uint8_t  idleAdvEnabled;     // 0=Off, 1=Added, 2=Switched
+  uint8_t  idleAdvTPS;         // TPS máximo para atuar (%)
+  uint8_t  idleAdvRPM;         // RPM máximo para atuar / 100
+  uint8_t  idleAdvBins[4];     // Delta de RPM (alvo - atual) / 10
+  int8_t   idleAdvValues[4];   // Avanço adicional (graus, pode ser negativo)
+
+  // Reserva para compatibilidade com Speeduino (página 4 = 128 bytes)
+  // ConfigPage2 atual: 28 (base) + 40 (idle) = 68 bytes
+  // Padding necessário: 128 - 68 = 60 bytes
+  uint8_t  spare[60];
 
 } __attribute__((packed));
 

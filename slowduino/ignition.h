@@ -61,9 +61,22 @@ int8_t applyAdvanceCorrections(int8_t baseAdvance);
 int8_t correctionCLTAdvance();
 
 /**
+ * @brief Verifica se o idle advance deve atuar
+ *
+ * Exige: habilitado, motor girando, TPS abaixo de idleAdvTPS e RPM abaixo de
+ * idleAdvRPM. O gate de TPS é essencial - sem ele o avanço extra era aplicado
+ * com o acelerador aberto em baixo RPM.
+ */
+bool isIdleAdvanceActive();
+
+/**
  * @brief Correção de avanço em idle
  *
- * @return Avanço adicional em graus
+ * Interpola idleAdvValues sobre idleAdvBins usando o quanto o RPM está abaixo
+ * de currentStatus.CLIdleTarget. Substituiu o degrau de valor único, que
+ * saltava de +15° para 0° ao cruzar o alvo.
+ *
+ * @return Avanço em graus (pode ser negativo)
  */
 int8_t correctionIdleAdvance();
 

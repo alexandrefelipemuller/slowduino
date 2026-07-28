@@ -229,6 +229,12 @@ void readAllSensors() {
 // CONVERSÃO NTC -> CELSIUS
 // ============================================================================
 
+static int8_t clampToInt8(int32_t value) {
+  if (value > 127) return 127;
+  if (value < -128) return -128;
+  return (int8_t)value;
+}
+
 int8_t ntcToCelsius(uint16_t adc) {
   // Tabela simplificada de conversão NTC 10K @ 25°C (Beta ~3950)
   // Usa aproximação linear por faixas para economia de memória
@@ -240,7 +246,7 @@ int8_t ntcToCelsius(uint16_t adc) {
   // Tabela aproximada (valores típicos para NTC 10K com pull-up 10K)
   const struct {
     uint16_t adc;
-    int8_t temp;
+    int16_t temp;  // int8_t não cabe 140/160°C (máx 127) - estourava para -116/-96
   } ntcTable[] PROGMEM = {
     {980, -40},   // ADC alto = muito frio
     {960, -20},
@@ -261,18 +267,21 @@ int8_t ntcToCelsius(uint16_t adc) {
   for (uint8_t i = 0; i < tableSize - 1; i++) {
     uint16_t adc1 = pgm_read_word(&ntcTable[i].adc);
     uint16_t adc2 = pgm_read_word(&ntcTable[i + 1].adc);
-    int8_t temp1 = pgm_read_byte(&ntcTable[i].temp);
-    int8_t temp2 = pgm_read_byte(&ntcTable[i + 1].temp);
+    int16_t temp1 = pgm_read_word(&ntcTable[i].temp);
+    int16_t temp2 = pgm_read_word(&ntcTable[i + 1].temp);
 
     if (adc >= adc2 && adc <= adc1) {
       // Interpola (nota: ADC decresce quando temp aumenta)
-      return temp1 + (int32_t)(adc1 - adc) * (temp2 - temp1) / (adc1 - adc2);
+      int32_t result = temp1 + (int32_t)(adc1 - adc) * (temp2 - temp1) / (adc1 - adc2);
+      // currentStatus.coolant/IAT são int8_t: clampa em vez de deixar o
+      // "return" truncar em silêncio (140/160°C viravam -116/-96)
+      return clampToInt8(result);
     }
   }
 
   // Fora da faixa
   if (adc > 980) return -40;  // Muito frio
-  if (adc < 120) return 160;  // Muito quente
+  if (adc < 120) return clampToInt8(160);  // Muito quente
 
   return 25;  // Fallback
 }

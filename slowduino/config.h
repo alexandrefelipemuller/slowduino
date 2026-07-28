@@ -241,11 +241,34 @@ extern volatile uint8_t loopTimerFlags;
 #define FUEL_PUMP_PRIME_MS  2000  // Prime de 2 segundos ao ligar
 
 // Válvula de marcha lenta (IAC)
-#define IAC_IDLE_RPM        850   // RPM alvo de marcha lenta
-#define IAC_RPM_DEADBAND    50    // Banda morta ±50 RPM
-#define IAC_STEP_SIZE       2     // Incremento de duty cycle (%)
-#define IAC_MIN_DUTY        0     // Duty mínimo
-#define IAC_MAX_DUTY        100   // Duty máximo
+// Os parâmetros de tuning agora vivem em ConfigPage2 (EEPROM/TunerStudio).
+// O que sobra aqui é a mecânica do PWM por software.
+
+// Algoritmos (configPage2.iacAlgorithm)
+#define IAC_ALGORITHM_NONE      0   // Sem controle de válvula
+#define IAC_ALGORITHM_PWM_OL    1   // PWM open loop (tabela por CLT)
+#define IAC_ALGORITHM_PWM_OLCL  2   // PWM open loop + PID de malha fechada
+
+// Timer2 em CTC, prescaler 64 @16MHz = 4us por contagem.
+// 63 contagens = 252us por tick -> ~3968Hz de taxa de ISR.
+#define IDLE_PWM_TICK_DIVISOR   63
+#define IDLE_PWM_TICK_HZ        3968UL
+
+// Limites de frequência do PWM. O mínimo garante que o período em ticks caiba
+// num uint8_t (3968/16 = 248); o máximo evita resolução de duty inutilizável.
+#define IDLE_PWM_FREQ_MIN       16    // Hz
+#define IDLE_PWM_FREQ_MAX       500   // Hz
+
+// Anti-windup: acima de (alvo + esta janela) o motor não está em marcha lenta
+#define IDLE_CL_RPM_WINDOW      500   // RPM
+
+// Clamp do acumulador da integral (escala 1/256 -> ±100% de duty)
+#define IDLE_INTEGRAL_LIMIT     25600L
+
+// Idle advance (configPage2.idleAdvEnabled)
+#define IDLE_ADV_OFF            0
+#define IDLE_ADV_ADDED          1   // Soma ao avanço base
+#define IDLE_ADV_SWITCHED       2   // Substitui o avanço base
 
 // Pressão de óleo e combustível (sensores 0-5V = 0-1000 kPa típico)
 #define OIL_PRESS_MIN       50    // Pressão mínima óleo em idle (kPa)
