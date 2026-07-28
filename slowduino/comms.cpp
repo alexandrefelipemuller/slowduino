@@ -48,18 +48,34 @@ static const uint32_t crc32_table[256] PROGMEM = {
 };
 
 // ============================================================================
+// CONSTANTES AUXILIARES PARA PÁGINAS DE TABELA
+// ============================================================================
+// BRANCH ms1: dimensão reduzida para 12x12. Isso quebra compatibilidade com
+// o .ini padrão do Speeduino (que espera páginas de tabela de 288 bytes/16x16)
+// - um .ini próprio, com pageSize=168 para as páginas 2/3, é necessário.
+static constexpr uint8_t SPEEDUINO_TABLE_DIM = 12;
+static constexpr uint16_t SPEEDUINO_TABLE_CELLS = SPEEDUINO_TABLE_DIM * SPEEDUINO_TABLE_DIM;  // 144
+static constexpr uint16_t SPEEDUINO_TABLE_AXIS_LEN = SPEEDUINO_TABLE_DIM;                     // 12
+static constexpr uint16_t SPEEDUINO_TABLE_PAGE_SIZE = SPEEDUINO_TABLE_CELLS + (2 * SPEEDUINO_TABLE_AXIS_LEN);  // 168
+static_assert(SPEEDUINO_TABLE_PAGE_SIZE == 168, "Tabela ms1 deve ter 168 bytes (12x12 + 2x12 eixos)");
+static_assert(TABLE_SIZE_X == SPEEDUINO_TABLE_DIM, "VE/Ign table deve casar com SPEEDUINO_TABLE_DIM");
+static_assert(TABLE_SIZE_Y == SPEEDUINO_TABLE_DIM, "VE/Ign table deve casar com SPEEDUINO_TABLE_DIM");
+
+// ============================================================================
 // VARIÁVEIS GLOBAIS
 // ============================================================================
 
 // Tamanhos das páginas (compatibilidade Speeduino)
 // IMPORTANTE: Tamanhos hardcoded para garantir compatibilidade com TunerStudio
 // sizeof() pode retornar valores incorretos devido a padding do compilador
+// BRANCH ms1: páginas 1 e 4 encolhidas para o tamanho real de ConfigPage1/2
+// (sem o spare[] que só existia para casar com o layout do Speeduino).
 const uint16_t pageSize[PAGE_COUNT] PROGMEM = {
   0,    // Page 0: não usada
-  128,  // Page 1: config VE (veSetPage)
-  288,  // Page 2: VE map
-  288,  // Page 3: Ign map
-  128,  // Page 4: Ign config
+  sizeof(ConfigPage1),        // Page 1: config VE (veSetPage) - branch ms1
+  SPEEDUINO_TABLE_PAGE_SIZE,  // Page 2: VE map (12x12 - branch ms1)
+  SPEEDUINO_TABLE_PAGE_SIZE,  // Page 3: Ign map (12x12 - branch ms1)
+  sizeof(ConfigPage2),        // Page 4: Ign config - branch ms1
   288,  // Page 5: AFR map
   128,  // Page 6: AFR config
   240,  // Page 7: Boost/VVT map
@@ -73,25 +89,14 @@ const uint16_t pageSize[PAGE_COUNT] PROGMEM = {
   256   // Page15: Boost/VVT map 2
 };
 
-static_assert(sizeof(ConfigPage1) >= 128, "ConfigPage1 precisa ter 128 bytes");
-static_assert(sizeof(ConfigPage2) >= 128, "ConfigPage2 precisa ter 128 bytes");
+static_assert(sizeof(ConfigPage1) == 52, "ConfigPage1 mudou - atualize também o static_assert em globals.h");
+static_assert(sizeof(ConfigPage2) == 68, "ConfigPage2 mudou - atualize também o static_assert em globals.h");
 
 // Buffer serial
 static uint8_t serialBuffer[SERIAL_BUFFER_SIZE];
 static uint8_t serialBytesReceived = 0;
 static bool modernProtocol = false;
 static uint16_t expectedLength = 0;
-
-// ============================================================================
-// CONSTANTES AUXILIARES PARA PÁGINAS SPEEDUINO
-// ============================================================================
-static constexpr uint8_t SPEEDUINO_TABLE_DIM = 16;
-static constexpr uint16_t SPEEDUINO_TABLE_CELLS = SPEEDUINO_TABLE_DIM * SPEEDUINO_TABLE_DIM;  // 256
-static constexpr uint16_t SPEEDUINO_TABLE_AXIS_LEN = SPEEDUINO_TABLE_DIM;                     // 16
-static constexpr uint16_t SPEEDUINO_TABLE_PAGE_SIZE = SPEEDUINO_TABLE_CELLS + (2 * SPEEDUINO_TABLE_AXIS_LEN);  // 288
-static_assert(SPEEDUINO_TABLE_PAGE_SIZE == 288, "Tabela Speeduino deve ter 288 bytes");
-static_assert(TABLE_SIZE_X == SPEEDUINO_TABLE_DIM, "VE table deve ser 16x16 para compatibilidade Speeduino");
-static_assert(TABLE_SIZE_Y == SPEEDUINO_TABLE_DIM, "VE table deve ser 16x16 para compatibilidade Speeduino");
 
 enum PageWriteStatus : uint8_t {
   PAGE_WRITE_FAIL = 0,

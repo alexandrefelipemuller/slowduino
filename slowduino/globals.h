@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 4
+#define EEPROM_DATA_VERSION 5  // BRANCH ms1: tabelas 12x12 e config pages sem spare[]
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -186,8 +186,8 @@ struct ConfigPage1 {
   uint8_t  oilPressureProtThreshold;  // Limite (0-250 scale)
   uint8_t  oilPressureProtHysteresis; // Histeresis
   uint8_t  oilPressureProtDelay;      // Delay ticks
-  // Reserva para compatibilidade com Speeduino (página 1 = 128 bytes)
-  uint8_t  spare[76];
+  // BRANCH ms1: spare[76] removido (só existia para casar com a página de
+  // 128 bytes do protocolo Speeduino, que esta branch já não segue).
 
 } __attribute__((packed));
 
@@ -265,17 +265,19 @@ struct ConfigPage2 {
   uint8_t  idleAdvBins[4];     // Delta de RPM (alvo - atual) / 10
   int8_t   idleAdvValues[4];   // Avanço adicional (graus, pode ser negativo)
 
-  // Reserva para compatibilidade com Speeduino (página 4 = 128 bytes)
-  // ConfigPage2 atual: 28 (base) + 40 (idle) = 68 bytes
-  // Padding necessário: 128 - 68 = 60 bytes
-  uint8_t  spare[60];
+  // BRANCH ms1: spare[60] removido (mesmo motivo do ConfigPage1 acima).
 
 } __attribute__((packed));
 
 extern struct ConfigPage2 configPage2;
 
-static_assert(sizeof(ConfigPage1) == 128, "ConfigPage1 deve ocupar 128 bytes");
-static_assert(sizeof(ConfigPage2) == 128, "ConfigPage2 deve ocupar 128 bytes");
+// BRANCH ms1: os tamanhos abaixo NÃO são mais 128/128 (isso era só para
+// compatibilidade com o layout de página do protocolo Speeduino). Ficam como
+// static_assert mesmo assim para travar o tamanho esperado e chamar atenção
+// (erro de compilação) se um campo for adicionado/removido sem atualizar
+// pageSize[] em comms.cpp e os offsets de EEPROM em config.h.
+static_assert(sizeof(ConfigPage1) == 52, "ConfigPage1 mudou de tamanho - atualize pageSize[1] e EEPROM_CONFIG2 em config.h");
+static_assert(sizeof(ConfigPage2) == 68, "ConfigPage2 mudou de tamanho - atualize pageSize[4] e EEPROM_AFR_STORAGE em config.h");
 
 // ============================================================================
 // MACROS ÚTEIS

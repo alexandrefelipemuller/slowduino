@@ -13,8 +13,8 @@
 // ============================================================================
 // TAMANHO DAS TABELAS
 // ============================================================================
-#define TABLE_SIZE_X        16   // Eixo X (RPM) - 16 pontos
-#define TABLE_SIZE_Y        16   // Eixo Y (MAP/TPS) - 16 pontos
+#define TABLE_SIZE_X        12   // Eixo X (RPM) - 12 pontos (era 16 - branch ms1, corte de RAM)
+#define TABLE_SIZE_Y        12   // Eixo Y (MAP/TPS) - 12 pontos (era 16 - branch ms1, corte de RAM)
 
 // ============================================================================
 // CONSTANTES DE TIMING
@@ -167,22 +167,26 @@
 
 #define EEPROM_VERSION_ADDR     0    // 1 byte - versão
 
-// Tabela VE 16x16
-#define EEPROM_VE_TABLE        10    // 256 bytes (values)
-#define EEPROM_VE_AXIS_X      (EEPROM_VE_TABLE + 256)  // 32 bytes (16 × uint16_t RPM)
-#define EEPROM_VE_AXIS_Y      (EEPROM_VE_AXIS_X + 32)  // 16 bytes (16 × uint8_t MAP)
+// BRANCH ms1: tabelas 12x12 (era 16x16) - offsets recalculados para o
+// tamanho real, sem os ~248 bytes de EEPROM que antes ficavam vagos entre
+// o fim dos valores e o início dos eixos.
+// Tabela VE 12x12
+#define EEPROM_VE_TABLE        10    // 144 bytes (values, 12x12)
+#define EEPROM_VE_AXIS_X      (EEPROM_VE_TABLE + (TABLE_SIZE_X * TABLE_SIZE_Y))  // 24 bytes (12 × uint16_t RPM)
+#define EEPROM_VE_AXIS_Y      (EEPROM_VE_AXIS_X + (TABLE_SIZE_X * 2))            // 12 bytes (12 × uint8_t MAP)
 
-// Tabela Ignição 16x16
-#define EEPROM_IGN_TABLE      (EEPROM_VE_AXIS_Y + 16)  // 256 bytes (values)
-#define EEPROM_IGN_AXIS_X     (EEPROM_IGN_TABLE + 256) // 32 bytes
-#define EEPROM_IGN_AXIS_Y     (EEPROM_IGN_AXIS_X + 32) // 16 bytes
+// Tabela Ignição 12x12
+#define EEPROM_IGN_TABLE      (EEPROM_VE_AXIS_Y + TABLE_SIZE_Y)                  // 144 bytes (values)
+#define EEPROM_IGN_AXIS_X     (EEPROM_IGN_TABLE + (TABLE_SIZE_X * TABLE_SIZE_Y)) // 24 bytes
+#define EEPROM_IGN_AXIS_Y     (EEPROM_IGN_AXIS_X + (TABLE_SIZE_X * 2))           // 12 bytes
 
-// Config pages
-#define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + 16) // 128 bytes - fuel config
-#define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 128)   // 128 bytes - ignition config
+// Config pages (52 e 68 bytes - sem o spare[] que só existia para casar com
+// o layout de página do Speeduino, que esta branch não segue mais)
+#define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + TABLE_SIZE_Y) // 52 bytes - fuel config
+#define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 52)              // 68 bytes - ignition config
 
 // Área auxiliar para AFR target (usa espaço antes reservado para CLT/IAT)
-#define EEPROM_AFR_STORAGE    (EEPROM_CONFIG2 + 128)   // 120 bytes usados para AFR
+#define EEPROM_AFR_STORAGE    (EEPROM_CONFIG2 + 68)    // 120 bytes usados para AFR
 #define EEPROM_AFR_STORAGE_LEN 120
 
 // Reserva para expansão futura (restante da EEPROM)
@@ -293,89 +297,60 @@ extern volatile uint8_t loopTimerFlags;
 // VALORES PADRÃO INICIAIS
 // ============================================================================
 
-// Tabela VE padrão (16x16) - valores conservadores para primeiro start
-// 50% VE em idle, 80% em carga média, 100% em alta carga
-// Deve ser ajustado no TunerStudio conforme o motor
+// BRANCH ms1: tabelas encolhidas de 16x16 para 12x12 para reduzir RAM.
+// Valores reamostrados (bilinear) das tabelas 16x16 originais - ainda
+// conservadores/genéricos, precisam ser ajustados no tuning software
+// conforme o motor.
 const uint8_t DEFAULT_VE_TABLE[TABLE_SIZE_Y][TABLE_SIZE_X] PROGMEM = {
-  /*  20*/{ 45, 47, 50, 51, 52, 53, 54, 55, 55, 56, 57, 58, 59, 60, 61, 62 },
-  /*  30*/{ 47, 50, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63, 64, 65, 66 },
-  /*  40*/{ 50, 52, 54, 56, 57, 58, 59, 60, 61, 62, 64, 65, 66, 68, 69, 69 },
-  /*  50*/{ 52, 54, 57, 59, 60, 62, 63, 64, 65, 67, 68, 69, 71, 72, 73, 74 },
-  /*  60*/{ 54, 57, 59, 61, 63, 65, 66, 68, 70, 71, 73, 74, 75, 77, 78, 79 },
-  /*  70*/{ 57, 59, 61, 64, 66, 68, 70, 71, 73, 75, 76, 78, 79, 80, 82, 83 },
-  /*  80*/{ 59, 61, 64, 66, 68, 71, 73, 74, 76, 78, 79, 81, 82, 84, 85, 86 },
-  /*  90*/{ 61, 64, 66, 68, 71, 73, 75, 77, 79, 81, 83, 85, 86, 87, 89, 90 },
-  /* 100*/{ 64, 66, 68, 71, 73, 75, 78, 80, 82, 84, 86, 88, 90, 91, 92, 93 },
-  /* 110*/{ 66, 68, 71, 73, 75, 78, 80, 82, 85, 87, 89, 91, 93, 94, 95, 96 },
-  /* 120*/{ 68, 71, 73, 75, 78, 80, 82, 85, 87, 89, 92, 94, 95, 96, 97, 98 },
-  /* 130*/{ 71, 73, 75, 77, 80, 82, 84, 87, 89, 91, 94, 96, 97, 98, 99,100 },
-  /* 140*/{ 73, 75, 77, 79, 81, 83, 86, 88, 90, 92, 95, 97, 98, 99,100,101 },
-  /* 150*/{ 75, 77, 78, 80, 82, 84, 87, 89, 91, 93, 96, 98, 99,100,101,102 },
-  /* 160*/{ 77, 78, 79, 81, 83, 85, 88, 90, 92, 95, 97, 99,100,101,102,104 },
-  /* 170*/{ 78, 79, 80, 82, 84, 87, 89, 91, 94, 96, 98,100,101,102,104,105 }
+  /*  20*/{ 45, 48, 51, 52, 53, 55, 55, 57, 58, 59, 61, 62},
+  /*  34*/{ 48, 52, 54, 55, 57, 58, 59, 61, 63, 65, 66, 67},
+  /*  47*/{ 51, 54, 58, 59, 61, 63, 64, 66, 68, 70, 71, 72},
+  /*  61*/{ 54, 58, 61, 63, 66, 68, 71, 72, 74, 76, 78, 79},
+  /*  75*/{ 58, 61, 64, 67, 70, 72, 75, 77, 79, 81, 83, 84},
+  /*  88*/{ 61, 64, 67, 71, 74, 76, 79, 81, 84, 86, 88, 89},
+  /* 102*/{ 64, 67, 71, 74, 77, 80, 83, 86, 88, 91, 92, 94},
+  /* 115*/{ 67, 70, 73, 77, 80, 83, 86, 89, 92, 94, 96, 97},
+  /* 129*/{ 71, 74, 76, 80, 83, 86, 89, 92, 96, 97, 98,100},
+  /* 143*/{ 74, 76, 79, 81, 85, 88, 91, 94, 97, 99,100,101},
+  /* 156*/{ 76, 78, 80, 83, 86, 89, 92, 96, 98,100,101,103},
+  /* 170*/{ 78, 79, 81, 84, 88, 91, 94, 97,100,101,103,105}
 };
 
-// Eixos padrão da tabela VE
+// Eixos padrão da tabela VE (12 pontos, mesma faixa de antes: 500-8000 RPM, 20-170 kPa)
 const uint16_t DEFAULT_VE_AXIS_X[TABLE_SIZE_X] PROGMEM = {
-   500, 1000, 1500, 2000, 2500, 3000, 3500, 4000,
-  4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000
+   500, 1182, 1864, 2545, 3227, 3909, 4591, 5273, 5955, 6636, 7318, 8000
 };
 
 const uint8_t DEFAULT_VE_AXIS_Y[TABLE_SIZE_Y] PROGMEM = {
-   20,  30,  40,  50,  60,  70,  80,  90,
-  100, 110, 120, 130, 140, 150, 160, 170
+   20,  34,  47,  61,  75,  88, 102, 115, 129, 143, 156, 170
 };
 
-// Tabela de Ignição padrão (16x16) - graus BTDC
-// Conservador: mais avanço em baixa carga, menos em alta
+// Tabela de Ignição padrão (12x12) - graus BTDC
 const int8_t DEFAULT_IGN_TABLE[TABLE_SIZE_Y][TABLE_SIZE_X] PROGMEM = {
-  /*  20*/{ 15, 16, 18, 20, 21, 23, 25, 27, 29, 30, 31, 32, 33, 34, 35, 36 },
-  /*  30*/{ 14, 15, 16, 18, 20, 21, 23, 25, 27, 29, 29, 30, 31, 32, 33, 34 },
-  /*  40*/{ 12, 14, 15, 16, 18, 20, 21, 23, 25, 27, 28, 29, 29, 30, 31, 32 },
-  /*  50*/{ 11, 12, 14, 15, 16, 18, 20, 21, 23, 25, 26, 27, 28, 29, 29, 30 },
-  /*  60*/{ 10, 11, 12, 14, 15, 16, 18, 20, 21, 23, 24, 25, 26, 27, 28, 29 },
-  /*  70*/{  9, 10, 11, 12, 14, 15, 16, 18, 20, 21, 22, 23, 24, 25, 26, 27 },
-  /*  80*/{  8,  9, 10, 11, 12, 14, 15, 16, 18, 19, 20, 21, 22, 23, 24, 25 },
-  /*  90*/{  7,  8,  9, 10, 11, 12, 14, 15, 16, 18, 19, 19, 20, 21, 22, 23 },
-  /* 100*/{  7,  7,  8,  9, 10, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22 },
-  /* 110*/{  6,  7,  8,  9, 10, 10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21 },
-  /* 120*/{  5,  6,  7,  8,  9, 10, 11, 12, 14, 15, 16, 17, 18, 18, 19, 20 },
-  /* 130*/{  5,  6,  7,  8,  9, 10, 10, 12, 13, 14, 15, 16, 17, 18, 19, 20 },
-  /* 140*/{  4,  5,  6,  7,  8,  9, 10, 11, 13, 14, 15, 16, 17, 18, 18, 19 },
-  /* 150*/{  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 },
-  /* 160*/{  3,  4,  5,  6,  7,  8,  9, 10, 12, 13, 14, 15, 16, 17, 18, 18 },
-  /* 170*/{  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18 }
+  /*  20*/{ 15, 17, 19, 21, 24, 27, 29, 31, 32, 33, 35, 36},
+  /*  34*/{ 13, 15, 17, 19, 21, 24, 27, 28, 30, 30, 32, 33},
+  /*  47*/{ 11, 13, 15, 17, 19, 21, 24, 26, 28, 29, 29, 31},
+  /*  61*/{ 10, 11, 13, 15, 17, 19, 21, 23, 25, 26, 27, 29},
+  /*  75*/{  8, 10, 11, 13, 15, 17, 19, 21, 22, 23, 25, 26},
+  /*  88*/{  7,  9, 10, 11, 13, 15, 17, 19, 19, 21, 22, 23},
+  /* 102*/{  7,  7,  9, 10, 11, 13, 15, 16, 18, 19, 20, 22},
+  /* 115*/{  6,  7,  8, 10, 10, 12, 14, 16, 17, 18, 19, 20},
+  /* 129*/{  5,  6,  8,  9, 10, 12, 13, 15, 16, 17, 19, 20},
+  /* 143*/{  4,  5,  7,  8,  9, 11, 13, 14, 16, 17, 18, 19},
+  /* 156*/{  3,  5,  6,  7,  9, 10, 12, 14, 15, 16, 18, 18},
+  /* 170*/{  3,  4,  6,  7,  8, 10, 11, 13, 14, 15, 17, 18}
 };
 
 // Eixos padrão da tabela Ignição (mesmos da VE)
 const uint16_t DEFAULT_IGN_AXIS_X[TABLE_SIZE_X] PROGMEM = {
-   500, 1000, 1500, 2000, 2500, 3000, 3500, 4000,
-  4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000
+   500, 1182, 1864, 2545, 3227, 3909, 4591, 5273, 5955, 6636, 7318, 8000
 };
 
 const uint8_t DEFAULT_IGN_AXIS_Y[TABLE_SIZE_Y] PROGMEM = {
-   20,  30,  40,  50,  60,  70,  80,  90,
-  100, 110, 120, 130, 140, 150, 160, 170
+   20,  34,  47,  61,  75,  88, 102, 115, 129, 143, 156, 170
 };
 
-// Tabela AFR target padrão (lambda% -> 100 = 14.7:1)
-const uint8_t DEFAULT_AFR_TABLE[TABLE_SIZE_Y][TABLE_SIZE_X] PROGMEM = {
-  /*  20*/{110,108,106,105,104,103,102,101,100,100,100,100,100,100,100,100},
-  /*  30*/{108,106,104,103,102,101,100,100, 98, 98, 98, 98, 98, 98, 98, 98},
-  /*  40*/{106,104,103,102,101,100, 98, 97, 96, 96, 96, 96, 96, 96, 96, 96},
-  /*  50*/{104,103,102,101,100, 99, 97, 96, 95, 95, 95, 95, 95, 95, 95, 95},
-  /*  60*/{103,102,101,100, 99, 97, 96, 95, 94, 94, 94, 94, 94, 94, 94, 94},
-  /*  70*/{102,101,100, 99, 98, 96, 95, 94, 93, 93, 93, 93, 93, 93, 93, 93},
-  /*  80*/{101,100, 99, 98, 97, 95, 94, 93, 92, 92, 92, 92, 92, 92, 92, 92},
-  /*  90*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
-  /* 100*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
-  /* 110*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
-  /* 120*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
-  /* 130*/{100, 99, 98, 97, 96, 94, 93, 92, 91, 91, 91, 91, 91, 91, 91, 91},
-  /* 140*/{101,100, 99, 98, 97, 95, 94, 93, 92, 92, 92, 92, 92, 92, 92, 92},
-  /* 150*/{102,101,100, 99, 98, 96, 95, 94, 93, 93, 93, 93, 93, 93, 93, 93},
-  /* 160*/{103,102,101,100, 99, 97, 96, 95, 94, 94, 94, 94, 94, 94, 94, 94},
-  /* 170*/{104,103,102,101,100, 98, 97, 96, 95, 95, 95, 95, 95, 95, 95, 95}
-};
+// DEFAULT_AFR_TABLE removida (branch ms1): não tinha nenhuma referência no
+// código - currentStatus.afrTarget é um escalar único, não uma tabela.
 
 #endif // CONFIG_H
