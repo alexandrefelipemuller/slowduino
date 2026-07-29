@@ -89,8 +89,8 @@ const uint16_t pageSize[PAGE_COUNT] PROGMEM = {
   256   // Page15: Boost/VVT map 2
 };
 
-static_assert(sizeof(ConfigPage1) == 52, "ConfigPage1 mudou - atualize também o static_assert em globals.h");
-static_assert(sizeof(ConfigPage2) == 68, "ConfigPage2 mudou - atualize também o static_assert em globals.h");
+static_assert(sizeof(ConfigPage1) == 34, "ConfigPage1 mudou - atualize também o static_assert em globals.h");
+static_assert(sizeof(ConfigPage2) == 64, "ConfigPage2 mudou - atualize também o static_assert em globals.h");
 
 // Buffer serial
 static uint8_t serialBuffer[SERIAL_BUFFER_SIZE];

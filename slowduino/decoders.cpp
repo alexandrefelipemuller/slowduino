@@ -346,7 +346,6 @@ void calculateRPM() {
   if (!triggerState.hasSync) {
     triggerState.RPM = 0;
     currentStatus.RPM = 0;
-    currentStatus.RPMdiv100 = 0;
     currentStatus.hasSync = false;
     return;
   }
@@ -367,13 +366,11 @@ void calculateRPM() {
     // Atualiza status global (thread-safe)
     noInterrupts();
     currentStatus.RPM = triggerState.RPM;
-    currentStatus.RPMdiv100 = triggerState.RPM / 100;
     currentStatus.hasSync = true;
     interrupts();
   } else {
     triggerState.RPM = 0;
     currentStatus.RPM = 0;
-    currentStatus.RPMdiv100 = 0;
   }
 }
 
@@ -391,7 +388,6 @@ void checkSyncLoss() {
     triggerState.hasSync = false;
     currentStatus.hasSync = false;
     currentStatus.RPM = 0;
-    currentStatus.RPMdiv100 = 0;
     interrupts();
   }
 }
@@ -494,7 +490,6 @@ void resetTriggerState() {
 
   currentStatus.hasSync = false;
   currentStatus.RPM = 0;
-  currentStatus.RPMdiv100 = 0;
 
   revolutionCounter = 0;
 

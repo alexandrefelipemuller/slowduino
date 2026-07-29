@@ -185,13 +185,14 @@
 #define EEPROM_IGN_AXIS_X     (EEPROM_IGN_TABLE + (TABLE_SIZE_X * TABLE_SIZE_Y)) // 24 bytes
 #define EEPROM_IGN_AXIS_Y     (EEPROM_IGN_AXIS_X + (TABLE_SIZE_X * 2))           // 12 bytes
 
-// Config pages (52 e 68 bytes - sem o spare[] que só existia para casar com
-// o layout de página do Speeduino, que esta branch não segue mais)
-#define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + TABLE_SIZE_Y) // 52 bytes - fuel config
-#define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 52)              // 68 bytes - ignition config
+// Config pages (34 e 64 bytes - sem o spare[] que só existia para casar com
+// o layout de página do Speeduino, e sem os campos mortos removidos na
+// varredura da branch ms1 - ver documents/BRANCH_MS1_REDUCAO_RAM.md)
+#define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + TABLE_SIZE_Y) // 34 bytes - fuel config
+#define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 34)              // 64 bytes - ignition config
 
 // Área auxiliar para AFR target (usa espaço antes reservado para CLT/IAT)
-#define EEPROM_AFR_STORAGE    (EEPROM_CONFIG2 + 68)    // 120 bytes usados para AFR
+#define EEPROM_AFR_STORAGE    (EEPROM_CONFIG2 + 64)    // 120 bytes usados para AFR
 #define EEPROM_AFR_STORAGE_LEN 120
 
 // Reserva para expansão futura (restante da EEPROM)

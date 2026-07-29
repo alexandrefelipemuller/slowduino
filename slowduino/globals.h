@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 5  // BRANCH ms1: tabelas 12x12 e config pages sem spare[]
+#define EEPROM_DATA_VERSION 6  // BRANCH ms1: + campos mortos removidos de ConfigPage1/2
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -41,7 +41,8 @@
 struct Statuses {
   // Motor
   uint16_t RPM;                // Rotações por minuto
-  uint16_t RPMdiv100;          // RPM / 100 (para economia de cálculo)
+  // BRANCH ms1: RPMdiv100 removido - escrito em 5 lugares, nunca lido em
+  // lugar nenhum (achado por varredura de campos mortos)
   bool hasSync;                // Motor sincronizado com trigger
 
   // Sensores analógicos (valores brutos ADC 0-1023)
@@ -77,13 +78,13 @@ struct Statuses {
   uint16_t dwell;              // Tempo de carga da bobina (microsegundos)
 
 
-  // Correções individuais (para debug/tuning)
+  // Correções individuais (para debug/tuning via datalog)
+  // BRANCH ms1: removidos aseCorrection/aeCorrection/cltCorrection/
+  // egoCorrection - escritos (ou nem isso, no caso de egoCorrection) mas
+  // nunca lidos por nada, nem pelo pacote realtime. wueCorrection e
+  // batCorrection ficam porque comms.cpp os manda no datalog.
   uint8_t  wueCorrection;      // Warm-Up Enrichment %
-  uint8_t  aseCorrection;      // After-Start Enrichment %
-  uint8_t  aeCorrection;       // Accel Enrichment %
-  uint8_t  cltCorrection;      // CLT correction %
   uint8_t  batCorrection;      // Battery correction %
-  uint8_t  egoCorrection;      // Closed-loop O2 correction %
 
   // Estado do motor
   uint8_t  engineStatus;       // Flags de estado (bit field)
@@ -104,9 +105,8 @@ struct Statuses {
   int16_t  TPSdot;             // Taxa de mudança TPS (%/s)
   uint8_t  TPSlast;            // TPS anterior
 
-  // Contadores
-  uint32_t loopCount;          // Contador de loops (debug)
-  uint16_t ignitionCount;      // Contador de ignições
+  // BRANCH ms1: loopCount removido (0 usos em todo o projeto) e
+  // ignitionCount removido (só incrementado em scheduler.cpp, nunca lido)
 };
 
 // Flags de engineStatus
@@ -122,14 +122,17 @@ extern struct Statuses currentStatus;
 // ============================================================================
 // CONFIGURAÇÃO DE COMBUSTÍVEL (EEPROM)
 // ============================================================================
+// BRANCH ms1: removidos (varredura de campos mortos - escritos em
+// loadDefaults() mas nunca lidos por nenhum código, nem sequer o closed-loop
+// O2 que os usaria: fuel.cpp não tem NENHUMA lógica de EGO implementada):
+// injectorLayout, divider, mapSample, aeTime, stoich, e o cluster egoType..
+// egoHysteresis (13 campos). -19 bytes.
 struct ConfigPage1 {
   // Configuração do motor
   uint8_t  nCylinders;         // Número de cilindros (1-4, 2 canais wasted)
-  uint8_t  injectorLayout;     // 0=Wasted Paired (fixo, sem sensor de fase)
 
   // Required fuel
   uint16_t reqFuel;            // Required fuel em microsegundos (base para cálculo de PW)
-  uint8_t  divider;            // Número de squirts por ciclo (1 ou 2)
   uint16_t injOpen;            // Tempo de abertura do injetor (microsegundos)
 
   // Calibração TPS
@@ -140,7 +143,6 @@ struct ConfigPage1 {
   // Calibração MAP
   uint8_t  mapMin;             // kPa em ADC mínimo
   uint8_t  mapMax;             // kPa em ADC máximo
-  uint8_t  mapSample;          // 0=Instantâneo, 1=Média ciclo
   uint8_t  mapFilter;          // Constante de filtro
 
   // Warm-Up Enrichment (6 pontos)
@@ -155,31 +157,12 @@ struct ConfigPage1 {
   uint8_t  aeMode;             // 0=TPS, 1=MAP
   uint8_t  aeThresh;           // Threshold para ativar (%/s ou kPa/s)
   uint8_t  aePct;              // % de enriquecimento
-  uint8_t  aeTime;             // Duração (ms * 10)
 
   // Priming pulse
   uint8_t  primePulse;         // Pulso de prime (ms * 10)
 
   // Cranking
   uint8_t  crankRPM;           // RPM máximo para considerar cranking
-
-  // Misc
-  uint8_t  stoich;             // Razão estequiométrica * 10 (ex: 147 = 14.7:1)
-
-  // Closed-loop O2 (EGO)
-  uint8_t  egoType;            // 0=Off, 1=Narrowband, 2=Wide
-  uint8_t  egoAlgorithm;       // 0=Disabled, 1=Simple
-  uint8_t  egoDelay;           // Delay pós-partida (segundos)
-  uint8_t  egoTemp;            // CLT mínimo (°C)
-  uint8_t  egoRPM;             // RPM mínimo / 100
-  uint8_t  egoTPSMax;          // TPS máximo %
-  uint8_t  egoMin;             // Leitura mínima válida
-  uint8_t  egoMax;             // Leitura máxima válida
-  uint8_t  egoLimit;           // Limite de correção (+/- %)
-  uint8_t  egoStep;            // Passo de correção (% por ciclo)
-  uint8_t  egoIgnEvents;       // Nº de ignições entre ajustes
-  uint8_t  egoTarget;          // Leitura alvo (mesma escala de O2)
-  uint8_t  egoHysteresis;      // Banda morta ao redor do alvo
 
   // Proteção de pressão de óleo
   uint8_t  oilPressureProtEnable;     // 0=Off, 1=On
@@ -201,7 +184,7 @@ struct ConfigPage2 {
   uint8_t  triggerPattern;     // 0=Missing Tooth, 1=Basic Distributor
   uint8_t  triggerTeeth;       // Dentes totais (ex: 36 para 36-1)
   uint8_t  triggerMissing;     // Dentes faltantes (ex: 1 para 36-1)
-  uint8_t  triggerAngle;       // Ângulo do dente #1 ATDC
+  // BRANCH ms1: triggerAngle removido (escrito, nunca lido)
 
   // Dwell
   uint16_t dwellRun;           // Dwell em funcionamento (microsegundos)
@@ -214,9 +197,9 @@ struct ConfigPage2 {
   // Rev Limiter
   uint8_t  revLimitRPM;        // RPM / 100 (ex: 60 = 6000 RPM)
 
-  // Idle (legado - idleRPM mantido como reserva; o alvo real vem de iacCLValues)
-  int8_t   idleAdvance;        // Avanço adicional em idle (graus, pode ser negativo)
-  uint8_t  idleRPM;            // Reservado (era o alvo de idle / 10)
+  // BRANCH ms1: idleAdvance e idleRPM removidos - eram legado desde a
+  // reescrita do idle advance (o alvo real vem de iacCLValues), escritos
+  // em loadDefaults() mas nunca lidos por nada.
 
   // CLT advance correction (4 pontos)
   int8_t   cltAdvBins[4];      // Temperaturas
@@ -232,7 +215,10 @@ struct ConfigPage2 {
   uint8_t  engineProtectEnable;         // 0=Off, 1=On
   uint8_t  engineProtectRPM;            // RPM / 100
   uint8_t  engineProtectRPMHysteresis;  // RPM / 100
-  uint8_t  engineProtectCutType;        // Bitmask: 1=fuel, 2=spark
+  // BRANCH ms1: engineProtectCutType removido - protectionProcess() só
+  // calcula um bitmask (protectionStatus); protectionRPMActive()/
+  // protectionOilActive() nunca são chamadas por ninguém, então nada nunca
+  // consultou este campo para decidir fuel-cut vs spark-cut de fato.
 
   // ==========================================================================
   // Válvula de marcha lenta (IAC) - PWM open loop + closed loop
@@ -276,8 +262,8 @@ extern struct ConfigPage2 configPage2;
 // static_assert mesmo assim para travar o tamanho esperado e chamar atenção
 // (erro de compilação) se um campo for adicionado/removido sem atualizar
 // pageSize[] em comms.cpp e os offsets de EEPROM em config.h.
-static_assert(sizeof(ConfigPage1) == 52, "ConfigPage1 mudou de tamanho - atualize pageSize[1] e EEPROM_CONFIG2 em config.h");
-static_assert(sizeof(ConfigPage2) == 68, "ConfigPage2 mudou de tamanho - atualize pageSize[4] e EEPROM_AFR_STORAGE em config.h");
+static_assert(sizeof(ConfigPage1) == 34, "ConfigPage1 mudou de tamanho - atualize EEPROM_CONFIG2 em config.h");
+static_assert(sizeof(ConfigPage2) == 64, "ConfigPage2 mudou de tamanho - atualize EEPROM_AFR_STORAGE em config.h");
 
 // ============================================================================
 // MACROS ÚTEIS

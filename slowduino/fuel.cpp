@@ -76,12 +76,10 @@ uint16_t calculateCorrections() {
 
   // 2. After-Start Enrichment (multiplicativo)
   uint8_t ase = correctionASE();
-  currentStatus.aseCorrection = ase;
   total = PERCENT(total, ase);
 
   // 3. CLT correction (multiplicativo)
   uint8_t clt = correctionCLT();
-  currentStatus.cltCorrection = clt;
   total = PERCENT(total, clt);
 
   // 4. Battery correction (multiplicativo)
@@ -91,7 +89,6 @@ uint16_t calculateCorrections() {
 
   // 5. Acceleration Enrichment (aditivo)
   uint8_t ae = correctionAE();
-  currentStatus.aeCorrection = ae;
   total += ae;
 
   // Limita resultado
