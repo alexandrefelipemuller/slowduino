@@ -21,7 +21,12 @@ static volatile uint8_t idlePwmPeriodTicks = 25; // Ticks por período de PWM
 static volatile uint8_t idlePwmTargetTicks = 0;  // Tick em que o pino vai para LOW
 
 // Estado do controlador
-static int32_t idleIntegral = 0;     // Acumulador da integral (escala 1/256)
+// BRANCH ms1: int32_t -> int16_t. O valor JÁ CLAMPADO cabe à vontade em
+// int16_t (IDLE_INTEGRAL_LIMIT=25600, dentro de +-32767) - mas a soma
+// idleKI*err10 antes do clamp pode passar de 200000 num único passo, então
+// a conta em si continua em int32_t (variável local em idleControl()) e só
+// o resultado já clampado é gravado aqui. Ver idleControl().
+static int16_t idleIntegral = 0;     // Acumulador da integral (escala 1/256)
 static uint16_t idleLastRpm = 0;     // RPM da chamada anterior (termo derivativo)
 static uint8_t idleTaperTotal = 0;   // Duração total do taper, em chamadas
 static uint8_t idleLastFreq = 0;     // idleFreq já aplicado (detecta retune)
@@ -306,9 +311,14 @@ void idleControl() {
 
   // Integral com clamp: o próprio acumulador é limitado (anti-windup), então
   // saturar a saída não deixa resíduo preso.
-  idleIntegral += (int32_t)configPage2.idleKI * err10;
-  if (idleIntegral > IDLE_INTEGRAL_LIMIT)  idleIntegral = IDLE_INTEGRAL_LIMIT;
-  if (idleIntegral < -IDLE_INTEGRAL_LIMIT) idleIntegral = -IDLE_INTEGRAL_LIMIT;
+  // A soma é feita num int32_t local: idleKI*err10 sozinho pode passar de
+  // 200000 num único passo, o que estouraria o int16_t de idleIntegral
+  // antes mesmo do clamp abaixo rodar. Só o resultado já dentro do limite
+  // (+-25600) é gravado de volta no acumulador de 16 bits.
+  int32_t idleIntegralWide = (int32_t)idleIntegral + (int32_t)configPage2.idleKI * err10;
+  if (idleIntegralWide > IDLE_INTEGRAL_LIMIT)  idleIntegralWide = IDLE_INTEGRAL_LIMIT;
+  if (idleIntegralWide < -IDLE_INTEGRAL_LIMIT) idleIntegralWide = -IDLE_INTEGRAL_LIMIT;
+  idleIntegral = (int16_t)idleIntegralWide;
   int32_t iTerm = idleIntegral / 256;
 
   int32_t output = (int32_t)olDuty + pTerm + iTerm + dTerm;

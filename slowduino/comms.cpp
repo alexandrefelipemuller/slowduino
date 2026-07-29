@@ -96,7 +96,13 @@ static_assert(sizeof(ConfigPage2) == 64, "ConfigPage2 mudou - atualize também o
 static uint8_t serialBuffer[SERIAL_BUFFER_SIZE];
 static uint8_t serialBytesReceived = 0;
 static bool modernProtocol = false;
-static uint16_t expectedLength = 0;
+// BRANCH ms1: uint16_t -> uint8_t. Nunca precisa guardar mais que
+// SERIAL_BUFFER_SIZE-6 (24-6=18 hoje), que cabe à vontade em 8 bits - mas
+// o valor CRU de 16 bits lido do header (que pode chegar a 65535 se
+// alguém mandar lixo) precisa ser validado ANTES de gravar aqui, senão
+// trunca e passa pela checagem de tamanho por engano (ver comentário no
+// parse do header em commsProcess()).
+static uint8_t expectedLength = 0;
 
 enum PageWriteStatus : uint8_t {
   PAGE_WRITE_FAIL = 0,
@@ -225,17 +231,21 @@ void commsProcess() {
 
       // Leu o length header completo? (2 bytes)
       if (serialBytesReceived == 2 && expectedLength == 0) {
-        // Length é big-endian
-        expectedLength = ((uint16_t)serialBuffer[0] << 8) | serialBuffer[1];
+        // Length é big-endian. Faz o parse num uint16_t local ANTES de
+        // validar - gravar direto em expectedLength (uint8_t) truncaria um
+        // valor grande demais e deixaria passar pela checagem de tamanho.
+        uint16_t parsedLength = ((uint16_t)serialBuffer[0] << 8) | serialBuffer[1];
 
         // Valida tamanho
-        if (expectedLength > (SERIAL_BUFFER_SIZE - 6)) {
+        if (parsedLength > (SERIAL_BUFFER_SIZE - 6)) {
           // Muito grande! Reset
           serialBytesReceived = 0;
           expectedLength = 0;
           modernProtocol = false;
           return;
         }
+
+        expectedLength = (uint8_t)parsedLength;
       }
 
       // Recebeu mensagem completa? [2-byte length] [payload] [4-byte CRC]

@@ -6,8 +6,12 @@
 #include "fuel.h"
 
 // Variáveis estáticas para ASE
-static uint16_t aseCounter = 0;      // Contador de ignições restantes com ASE
-static uint16_t aseValue = 100;      // Valor atual de ASE (%)
+// BRANCH ms1: uint16_t -> uint8_t. Guardam valores 0-255 (espelham
+// configPage1.aseCount/asePct, ambos uint8_t) - o tipo largo era só
+// desperdício, achado numa comparação com o firmware do MS1 (que usa
+// ASEcount de 8 bits pro mesmo propósito).
+static uint8_t aseCounter = 0;       // Contador de ignições restantes com ASE
+static uint8_t aseValue = 100;       // Valor atual de ASE (%)
 
 // ============================================================================
 // CÁLCULO PRINCIPAL DE INJEÇÃO
