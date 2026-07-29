@@ -103,9 +103,6 @@ void setup() {
   // 8. Inicializa status
   currentStatus.secl = 0;
   currentStatus.runSecs = 0;
-  currentStatus.loopCount = 0;
-  currentStatus.ignitionCount = 0;
-  currentStatus.egoCorrection = 100;
   currentStatus.afrTarget = 100;
 
   // 9. Estado inicial do motor
@@ -143,7 +140,6 @@ void setup() {
 
 void loop() {
   uint32_t now = millis();
-  currentStatus.loopCount++;
 
   // ------------------------------------------------------------------------
   // POLLING DE INJETORES - MÁXIMA PRIORIDADE (DEVE SER PRIMEIRO!)

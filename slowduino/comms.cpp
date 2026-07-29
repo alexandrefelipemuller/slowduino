@@ -80,7 +80,12 @@ static_assert(sizeof(ConfigPage2) >= 128, "ConfigPage2 precisa ter 128 bytes");
 static uint8_t serialBuffer[SERIAL_BUFFER_SIZE];
 static uint8_t serialBytesReceived = 0;
 static bool modernProtocol = false;
-static uint16_t expectedLength = 0;
+// uint16_t -> uint8_t: nunca precisa guardar mais que SERIAL_BUFFER_SIZE-6
+// (58 hoje), que cabe à vontade em 8 bits. O valor CRU de 16 bits lido do
+// header (que pode chegar a 65535 se alguém mandar lixo) é validado ANTES
+// de gravar aqui - ver o parse do header em commsProcess(), que usa uma
+// variável local mais larga só para a validação.
+static uint8_t expectedLength = 0;
 
 // ============================================================================
 // CONSTANTES AUXILIARES PARA PÁGINAS SPEEDUINO
@@ -220,17 +225,21 @@ void commsProcess() {
 
       // Leu o length header completo? (2 bytes)
       if (serialBytesReceived == 2 && expectedLength == 0) {
-        // Length é big-endian
-        expectedLength = ((uint16_t)serialBuffer[0] << 8) | serialBuffer[1];
+        // Length é big-endian. Parse num uint16_t local ANTES de validar -
+        // gravar direto em expectedLength (uint8_t) truncaria um valor
+        // grande demais e deixaria passar pela checagem de tamanho.
+        uint16_t parsedLength = ((uint16_t)serialBuffer[0] << 8) | serialBuffer[1];
 
         // Valida tamanho
-        if (expectedLength > (SERIAL_BUFFER_SIZE - 6)) {
+        if (parsedLength > (SERIAL_BUFFER_SIZE - 6)) {
           // Muito grande! Reset
           serialBytesReceived = 0;
           expectedLength = 0;
           modernProtocol = false;
           return;
         }
+
+        expectedLength = (uint8_t)parsedLength;
       }
 
       // Recebeu mensagem completa? [2-byte length] [payload] [4-byte CRC]

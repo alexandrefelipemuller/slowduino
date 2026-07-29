@@ -213,9 +213,7 @@ void loadDefaults() {
 
   // ---- ConfigPage1 (Fuel) ----
   configPage1.nCylinders = 4;
-  configPage1.injectorLayout = INJ_LAYOUT_PAIRED;
   configPage1.reqFuel = 10000;            // 10ms base
-  configPage1.divider = 1;                // 1 squirt por ciclo
   configPage1.injOpen = 1000;             // 1ms deadtime
 
   // TPS
@@ -226,7 +224,6 @@ void loadDefaults() {
   // MAP
   configPage1.mapMin = 20;                // 20 kPa
   configPage1.mapMax = 105;               // 105 kPa (atmosférico)
-  configPage1.mapSample = MAP_SAMPLE_INSTANT;
   configPage1.mapFilter = FILTER_MAP;
 
   // WUE (Warm-Up Enrichment)
@@ -245,7 +242,6 @@ void loadDefaults() {
   configPage1.aeMode = AE_MODE_TPS;
   configPage1.aeThresh = AE_THRESH_DEFAULT;
   configPage1.aePct = AE_PCT_DEFAULT;
-  configPage1.aeTime = 10;                // 100ms
 
   // Priming
   configPage1.primePulse = 50;            // 5.0ms
@@ -253,44 +249,12 @@ void loadDefaults() {
   // Cranking
   configPage1.crankRPM = CRANK_RPM / 10;  // Dividido por 10 para economizar espaço
 
-  // Stoich
-  configPage1.stoich = 147;               // 14.7:1 (gasolina)
-
-  // Closed-loop O2 defaults
-  configPage1.egoType = EGO_TYPE_OFF;
-  configPage1.egoAlgorithm = EGO_ALGO_SIMPLE;
-  configPage1.egoDelay = EGO_DELAY_DEFAULT;
-  configPage1.egoTemp = EGO_TEMP_DEFAULT;
-  configPage1.egoRPM = EGO_RPM_DEFAULT;
-  configPage1.egoTPSMax = EGO_TPS_MAX_DEFAULT;
-  configPage1.egoMin = EGO_MIN_DEFAULT;
-  configPage1.egoMax = EGO_MAX_DEFAULT;
-  configPage1.egoLimit = EGO_LIMIT_DEFAULT;
-  configPage1.egoStep = EGO_STEP_DEFAULT;
-  configPage1.egoIgnEvents = EGO_IGN_EVENTS_DEFAULT;
-  configPage1.egoTarget = EGO_TARGET_DEFAULT;
-  configPage1.egoHysteresis = EGO_HYST_DEFAULT;
-
-  // Oil pressure protection defaults (off)
-  configPage1.oilPressureProtEnable = 0;
-  configPage1.oilPressureProtThreshold = 40;
-  configPage1.oilPressureProtHysteresis = 4;
-  configPage1.oilPressureProtDelay = 2;
-
-  // Closed-loop O2 defaults
-  configPage1.egoType = EGO_TYPE_OFF;
-  configPage1.egoAlgorithm = EGO_ALGO_SIMPLE;
-  configPage1.egoDelay = EGO_DELAY_DEFAULT;
-  configPage1.egoTemp = EGO_TEMP_DEFAULT;
-  configPage1.egoRPM = EGO_RPM_DEFAULT;
-  configPage1.egoTPSMax = EGO_TPS_MAX_DEFAULT;
-  configPage1.egoMin = EGO_MIN_DEFAULT;
-  configPage1.egoMax = EGO_MAX_DEFAULT;
-  configPage1.egoLimit = EGO_LIMIT_DEFAULT;
-  configPage1.egoStep = EGO_STEP_DEFAULT;
-  configPage1.egoIgnEvents = EGO_IGN_EVENTS_DEFAULT;
-  configPage1.egoTarget = EGO_TARGET_DEFAULT;
-  configPage1.egoHysteresis = EGO_HYST_DEFAULT;
+  // stoich e todo o cluster de defaults do closed-loop O2 (EGO) removidos -
+  // eram escritos aqui mas fuel.cpp não tem nenhuma lógica de EGO
+  // implementada (grep por "ego" no projeto não acha nada em fuel.cpp nem
+  // sensors.cpp), então esses campos nunca eram lidos por nada. Este bloco
+  // também estava duplicado (defaults de EGO e de proteção de óleo
+  // apareciam duas vezes seguidas) - removida a duplicata junto.
 
   // Oil pressure protection defaults (disabled)
   configPage1.oilPressureProtEnable = 0;
@@ -302,7 +266,6 @@ void loadDefaults() {
   configPage2.triggerPattern = TRIGGER_MISSING_TOOTH;
   configPage2.triggerTeeth = 36;
   configPage2.triggerMissing = 1;
-  configPage2.triggerAngle = 0;           // Calibrar depois
   configPage2.triggerEdge = TRIGGER_EDGE_BOTH;  // Mesmo comportamento anterior (CHANGE)
 
   // Dwell
@@ -315,10 +278,6 @@ void loadDefaults() {
 
   // Rev limiter
   configPage2.revLimitRPM = 60;           // 6000 RPM
-
-  // Idle (legado)
-  configPage2.idleAdvance = 15;           // Mantido; não é mais usado no cálculo
-  configPage2.idleRPM = 80;               // Reservado (alvo real vem de iacCLValues)
 
   // ---- Válvula de marcha lenta (IAC) ----
   configPage2.iacAlgorithm = IAC_ALGORITHM_PWM_OLCL;
@@ -374,16 +333,11 @@ void loadDefaults() {
   // Ignition output
   configPage2.ignInvert = 0;              // Normal (active low)
 
+  // Engine protection defaults (bloco duplicado removido; engineProtectCutType
+  // também removido, nunca era lido por nada)
   configPage2.engineProtectEnable = 0;
   configPage2.engineProtectRPM = 70;
   configPage2.engineProtectRPMHysteresis = 3;
-  configPage2.engineProtectCutType = ENGINE_PROTECT_CUT_FUEL | ENGINE_PROTECT_CUT_SPARK;
-
-  // Engine protection defaults
-  configPage2.engineProtectEnable = 0;
-  configPage2.engineProtectRPM = 70;
-  configPage2.engineProtectRPMHysteresis = 3;
-  configPage2.engineProtectCutType = ENGINE_PROTECT_CUT_FUEL | ENGINE_PROTECT_CUT_SPARK;
 
   // ---- Tabelas VE e Ignição ----
   loadDefaultTables();

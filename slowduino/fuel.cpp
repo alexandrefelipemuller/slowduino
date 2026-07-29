@@ -6,8 +6,11 @@
 #include "fuel.h"
 
 // Variáveis estáticas para ASE
-static uint16_t aseCounter = 0;      // Contador de ignições restantes com ASE
-static uint16_t aseValue = 100;      // Valor atual de ASE (%)
+// uint16_t -> uint8_t: guardam valores 0-255 (espelham
+// configPage1.aseCount/asePct, ambos uint8_t) - o tipo largo era só
+// desperdício de RAM.
+static uint8_t aseCounter = 0;       // Contador de ignições restantes com ASE
+static uint8_t aseValue = 100;       // Valor atual de ASE (%)
 
 // ============================================================================
 // CÁLCULO PRINCIPAL DE INJEÇÃO
@@ -76,12 +79,10 @@ uint16_t calculateCorrections() {
 
   // 2. After-Start Enrichment (multiplicativo)
   uint8_t ase = correctionASE();
-  currentStatus.aseCorrection = ase;
   total = PERCENT(total, ase);
 
   // 3. CLT correction (multiplicativo)
   uint8_t clt = correctionCLT();
-  currentStatus.cltCorrection = clt;
   total = PERCENT(total, clt);
 
   // 4. Battery correction (multiplicativo)
@@ -91,7 +92,6 @@ uint16_t calculateCorrections() {
 
   // 5. Acceleration Enrichment (aditivo)
   uint8_t ae = correctionAE();
-  currentStatus.aeCorrection = ae;
   total += ae;
 
   // Limita resultado

@@ -125,7 +125,6 @@ static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
   if (schedule->status == SCHED_RUNNING) {
     schedule->status = SCHED_OFF;
     endCharge();
-    currentStatus.ignitionCount++;
   }
 }
 

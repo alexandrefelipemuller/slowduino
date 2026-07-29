@@ -16,9 +16,14 @@
 // SELEÇÃO DE HARDWARE
 // ============================================================================
 //
-// Descomente UMA das opções abaixo:
+// Descomente UMA das opções abaixo, OU defina via build flag do compilador
+// (ex: "-DBOARD_SPEEDUINO_V04") sem tocar neste arquivo.
 //
+// Guardado com #ifndef para um -DBOARD_SPEEDUINO_V04 externo funcionar sem
+// também deixar BOARD_SLOWDUINO definido ao mesmo tempo.
+#ifndef BOARD_SPEEDUINO_V04
 #define BOARD_SLOWDUINO      // Arduino Uno/Nano (padrão, 2 canais, 1-4 cilindros)
+#endif
 //#define BOARD_SPEEDUINO_V04  // Speeduino v0.4 (Arduino Mega, 4 canais, 1-8 cilindros)
 
 // ============================================================================
