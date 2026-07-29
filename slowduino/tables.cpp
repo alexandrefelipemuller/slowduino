@@ -4,6 +4,7 @@
  */
 
 #include "tables.h"
+#include "storage.h"  // eepromReadByte/eepromReadI8 - valores da tabela vêm da EEPROM (branch ms1)
 
 // ============================================================================
 // INSTANCIAÇÃO DAS TABELAS GLOBAIS
@@ -21,8 +22,21 @@ void initTables() {
   veTable.isSigned = false;   // VE usa valores unsigned
   ignTable.isSigned = true;   // Ignição usa valores signed (pode ser negativo)
 
+  // Endereço EEPROM onde os valores de cada tabela residem (fixo, nunca muda)
+  veTable.eepromValuesBase = EEPROM_VE_TABLE;
+  ignTable.eepromValuesBase = EEPROM_IGN_TABLE;
+
   // Limpa cache
   clearTableCaches();
+}
+
+// ============================================================================
+// LEITURA DE CÉLULA (EEPROM) - branch ms1
+// ============================================================================
+
+static int16_t readTableCell(const struct Table3D* table, uint8_t y, uint8_t x) {
+  uint16_t addr = table->eepromValuesBase + ((uint16_t)y * TABLE_SIZE_X) + x;
+  return table->isSigned ? (int16_t)eepromReadI8(addr) : (int16_t)eepromReadByte(addr);
 }
 
 // ============================================================================
@@ -40,20 +54,11 @@ int16_t getTableValue(struct Table3D* table, uint8_t valueY, uint16_t valueX) {
   findTableXIndices(table, valueX, &xLow, &xHigh);
   findTableYIndices(table, valueY, &yLow, &yHigh);
 
-  // Valores nos 4 cantos do retângulo
-  int16_t q11, q21, q12, q22;
-
-  if (table->isSigned) {
-    q11 = table->valuesI[yLow][xLow];
-    q21 = table->valuesI[yLow][xHigh];
-    q12 = table->valuesI[yHigh][xLow];
-    q22 = table->valuesI[yHigh][xHigh];
-  } else {
-    q11 = table->valuesU[yLow][xLow];
-    q21 = table->valuesU[yLow][xHigh];
-    q12 = table->valuesU[yHigh][xLow];
-    q22 = table->valuesU[yHigh][xHigh];
-  }
+  // Valores nos 4 cantos do retângulo (lidos da EEPROM - branch ms1)
+  int16_t q11 = readTableCell(table, yLow, xLow);
+  int16_t q21 = readTableCell(table, yLow, xHigh);
+  int16_t q12 = readTableCell(table, yHigh, xLow);
+  int16_t q22 = readTableCell(table, yHigh, xHigh);
 
   // Caso especial: se índices são iguais, não precisa interpolar
   if (xLow == xHigh && yLow == yHigh) {

@@ -27,7 +27,9 @@
 // ============================================================================
 #define LOG_ENTRY_SIZE      127   // Tamanho TOTAL do pacote (offset byte + 126 log entries)
 #define LOG_ENTRIES_COUNT   126   // Quantidade de log entries (getTSLogEntry)
-#define SERIAL_BUFFER_SIZE  64    // Buffer de recepção
+// SERIAL_BUFFER_SIZE vem de config.h (já incluído acima) - havia uma
+// segunda definição idêntica aqui que foi removida (branch ms1) para não
+// arriscar as duas ficarem dessincronizadas.
 #define PAGE_COUNT          16    // Speeduino usa páginas 0-15
 
 // ============================================================================

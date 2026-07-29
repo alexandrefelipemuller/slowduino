@@ -623,10 +623,9 @@ static bool readStubPageByte(uint8_t page, uint16_t offset, uint8_t& value) {
 static bool readVeTablePageByte(uint16_t offset, uint8_t& value) {
   if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return false;
 
+  // BRANCH ms1: valores da tabela vêm direto da EEPROM (não há RAM copy)
   if (offset < SPEEDUINO_TABLE_CELLS) {
-    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
-    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
-    value = veTable.values[y][x];
+    value = eepromReadByte(veTable.eepromValuesBase + offset);
     return true;
   }
 
@@ -644,10 +643,11 @@ static bool readVeTablePageByte(uint16_t offset, uint8_t& value) {
 static PageWriteStatus writeVeTablePageByte(uint16_t offset, uint8_t value) {
   if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return PAGE_WRITE_FAIL;
 
+  // BRANCH ms1: escreve direto na EEPROM - não há RAM copy para atualizar.
+  // Custo: ~3.3ms por byte editado (bem mais lento que RAM, mas só acontece
+  // durante tuning ao vivo, não no loop do motor).
   if (offset < SPEEDUINO_TABLE_CELLS) {
-    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
-    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
-    veTable.values[y][x] = value;
+    eepromWriteByte(veTable.eepromValuesBase + offset, value);
     return PAGE_WRITE_TABLE_CHANGED;
   }
 
@@ -666,9 +666,8 @@ static bool readIgnTablePageByte(uint16_t offset, uint8_t& value) {
   if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return false;
 
   if (offset < SPEEDUINO_TABLE_CELLS) {
-    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
-    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
-    value = encodeIgnitionValue(ignTable.valuesI[y][x]);
+    int8_t cellValue = eepromReadI8(ignTable.eepromValuesBase + offset);
+    value = encodeIgnitionValue(cellValue);
     return true;
   }
 
@@ -687,9 +686,7 @@ static PageWriteStatus writeIgnTablePageByte(uint16_t offset, uint8_t value) {
   if (offset >= SPEEDUINO_TABLE_PAGE_SIZE) return PAGE_WRITE_FAIL;
 
   if (offset < SPEEDUINO_TABLE_CELLS) {
-    uint8_t x = offset % SPEEDUINO_TABLE_DIM;
-    uint8_t y = offset / SPEEDUINO_TABLE_DIM;
-    ignTable.valuesI[y][x] = decodeIgnitionValue(value);
+    eepromWriteI8(ignTable.eepromValuesBase + offset, decodeIgnitionValue(value));
     return PAGE_WRITE_TABLE_CHANGED;
   }
 

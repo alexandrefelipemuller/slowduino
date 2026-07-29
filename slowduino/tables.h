@@ -15,18 +15,25 @@
 // ESTRUTURA DE TABELA 3D (8x8)
 // ============================================================================
 
+// BRANCH ms1: os valores da tabela (values[Y][X]) NÃO ficam em RAM. Só os
+// eixos (36 bytes) e o cache ficam residentes; cada lookup lê as 4 células
+// vizinhas direto da EEPROM (eepromValuesBase + y*TABLE_SIZE_X + x). Mesma
+// técnica do firmware original do MS1 (68HC908, 512B de RAM): ele mantém as
+// tabelas na memória persistente e só copia para RAM quando uma página está
+// sendo editada ao vivo pelo tuning software - aqui não há RAM disponível
+// nem para isso, cada lookup vai direto para EEPROM.
+//
+// Custo: cada lookup faz até 4 leituras de EEPROM (~3.3us cada no AVR) em
+// vez de acesso a RAM. Ver documents/BRANCH_MS1_REDUCAO_RAM.md para a
+// análise de timing.
 struct Table3D {
-  // Valores da tabela [Y][X]
-  // Para VE: uint8_t (0-255%)
-  // Para Ign: int8_t (-128 a +127 graus)
-  union {
-    uint8_t valuesU[TABLE_SIZE_Y][TABLE_SIZE_X];  // Unsigned (VE)
-    int8_t  valuesI[TABLE_SIZE_Y][TABLE_SIZE_X];  // Signed (Ignição)
-  };
-
   // Eixos
-  uint16_t axisX[TABLE_SIZE_X];  // RPM (0-8000)
-  uint8_t  axisY[TABLE_SIZE_Y];  // MAP ou TPS (0-255)
+  uint16_t axisX[TABLE_SIZE_X];  // RPM
+  uint8_t  axisY[TABLE_SIZE_Y];  // MAP ou TPS
+
+  // Endereço EEPROM dos TABLE_SIZE_Y*TABLE_SIZE_X valores da tabela.
+  // Para VE: uint8_t (0-255%). Para Ign: int8_t (-128 a +127 graus).
+  uint16_t eepromValuesBase;
 
   // Cache para otimização
   uint8_t lastX;         // Último índice X
@@ -38,9 +45,6 @@ struct Table3D {
   // Flag indicando se valores são signed
   bool isSigned;
 };
-
-// Alias para clareza
-#define values valuesU  // Padrão: usa unsigned
 
 // ============================================================================
 // ESTRUTURA DE TABELA 2D (para correções)

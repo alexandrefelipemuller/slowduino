@@ -1,91 +1,148 @@
-# Branch `ms1` — corte de RAM (tabelas 12×12 + config pages sem padding)
+# Branch `ms1` — corte de RAM (rumo aos 512B do MS1 original)
 
-> Experimento isolado. Não deve ser mesclado na `main` sem decidir também
-> a estratégia de `.ini`/protocolo (ver "Compatibilidade quebrada" abaixo).
+> Experimento isolado, agressivo de propósito. Não deve ser mesclado na
+> `main` sem decidir a estratégia de `.ini`/protocolo (ver "Compatibilidade
+> quebrada") e sem testar em hardware real (ver "Riscos assumidos").
 
 ## Motivação
 
-Surgiu de uma pergunta sobre adaptar o Slowduino ao protocolo MS1/Extra
-(que usa tabelas 12×12, contra as 16×16 do Speeduino/Slowduino). Analisando
-o `.ini` do MS1, ficou claro que ir atrás do protocolo completo do MS1
-*aumentaria* o uso de RAM (9 páginas de 189 bytes = 1701 B só de páginas).
-Só a redução das tabelas para 12×12 é que trazia ganho real — daí este
-branch: reaproveita a ideia (tabelas menores) sem adotar o protocolo MS1
-inteiro.
+Surgiu de uma pergunta sobre adaptar o Slowduino ao protocolo MS1/Extra, que
+rodava no 68HC908 GP32 (Motorola) com **512 bytes de RAM**. Análise do
+`.ini` mostrou que copiar o protocolo MS1 inteiro (9 páginas de 189 bytes)
+*aumentaria* a RAM. Só valia a pena reaproveitar duas ideias do MS1, sem
+adotar o protocolo dele:
 
-## O que foi medido (build real, `atmega328p @16MHz`, mesmas flags do resto do projeto)
+1. Tabelas menores (12×12 em vez de 16×16).
+2. **A técnica principal, achada lendo o `.asm` real do MS1**
+   (`msns-extra.asm`): o firmware original **não mantém as tabelas em RAM**.
+   Cada lookup lê direto da flash (persistente), com um buffer de RAM de
+   189 bytes compartilhado entre todas as 7 tabelas, usado só durante tuning
+   ao vivo. Ver a macro `ve1x` em `msns-extra.asm:744` e o comentário em
+   `msns-extra.asm:990-996`.
 
-| Mudança | RAM (Data) | Δ |
+## Resultado final (build real, `atmega328p @16MHz`)
+
+| Etapa | RAM (Data) | Δ acumulado |
 |---|---:|---:|
-| Baseline (`main`, tabelas 16×16) | 1464 B (71,5%) | — |
-| + tabelas VE/Ignição 16×16 → 12×12 | 1216 B (59,4%) | −248 B |
-| + remove `spare[]` das config pages | **1080 B (52,7%)** | **−384 B (−26,2%) no total** |
+| Baseline (`main`, tabelas 16×16, tudo em RAM) | 1464 B (71,5%) | — |
+| + tabelas 16×16 → 12×12 | 1216 B (59,4%) | −248 B |
+| + remove `spare[]` das config pages | 1080 B (52,7%) | −384 B |
+| + valores de tabela só em EEPROM (streaming por lookup) | 796 B (38,9%) | −668 B |
+| + `Serial` do core com buffers 16/16 (via PlatformIO) | ~700 B | −764 B |
+| + `serialBuffer` próprio 64→24 | **660 B (32,2%)** | **−804 B (−54,9%)** |
 
-Breakdown final (`avr-nm --size-sort`):
+Breakdown final (`avr-nm --size-sort`), maiores itens:
 
-| Item | Antes | Depois |
-|---|---:|---:|
-| `veTable` | 312 B | 188 B |
-| `ignTable` | 312 B | 188 B |
-| `configPage1` | 128 B | 52 B |
-| `configPage2` | 128 B | 68 B |
-| resto (status, buffers, scheduler, `Serial`, core) | 460 B | 460 B (inalterado) |
+| Item | Tamanho |
+|---|---:|
+| `currentStatus` | 73 B |
+| `configPage2` | 68 B |
+| `Serial` (core, buffers 16/16) | 61 B |
+| `configPage1` | 52 B |
+| `veTable` / `ignTable` (só eixos+cache, sem valores) | 46 B cada |
+| `triggerState` | 44 B |
+| `serialBuffer` | 24 B |
+| `injector1/2/3Polling` | 10 B cada |
+| `ignitionSchedule1/2` | 9 B cada |
+| resto (contadores, flags, timers) | ~198 B |
 
-Flash caiu junto (21990 → 21768 B), sem custo extra — tabela menor é
-código/dado menor dos dois lados.
+Flash caiu junto: 21990 → 21174 B.
 
-## O que foi mudado
+## A mudança principal: tabelas VE/Ignição não moram mais em RAM
 
-- `config.h`: `TABLE_SIZE_X`/`TABLE_SIZE_Y` de 16 para 12. `DEFAULT_VE_TABLE`,
-  `DEFAULT_IGN_TABLE` e seus eixos reamostrados (interpolação bilinear) das
-  tabelas 16×16 originais, mesma faixa de RPM/MAP (500-8000 / 20-170).
-  `DEFAULT_AFR_TABLE` removida (não tinha nenhuma referência no código).
-- `globals.h`: `spare[76]` de `ConfigPage1` e `spare[60]` de `ConfigPage2`
-  removidos — só existiam para as structs baterem 128 bytes (tamanho de
-  página do protocolo Speeduino). `EEPROM_DATA_VERSION` 4→5 para forçar
-  reseed.
-- `comms.cpp`: `SPEEDUINO_TABLE_DIM` 16→12 (e todo o resto derivado dele,
-  já era parametrizado — só essa constante precisou mudar). `pageSize[]`
-  das páginas 1 e 4 passou a usar `sizeof(ConfigPage1/2)` em vez de `128`
-  hardcoded.
-- `config.h`: offsets de EEPROM (`EEPROM_VE_TABLE`, `EEPROM_CONFIG1`, etc.)
-  recalculados para os novos tamanhos — também libera ~248 bytes de EEPROM
-  que antes ficavam vagos entre valores e eixos das tabelas.
+Inspirado direto no `ve1x`/`ve2x`/.../`AFR2X` do MS1. Implementado em:
 
-## Compatibilidade quebrada (de propósito, mas registrando)
+- **`tables.h`**: `Table3D` perde o array `values[Y][X]` (144 B). Fica só
+  com os eixos (36 B), um `uint16_t eepromValuesBase` (endereço na EEPROM) e
+  o cache de última consulta (~8 B). ~46 B por tabela em vez de ~188 B.
+- **`tables.cpp`**: `getTableValue()` (bilinear) lê os 4 cantos vizinhos via
+  `eepromReadByte()`/`eepromReadI8()` em vez de indexar o array em RAM.
+- **`storage.cpp`**: `loadVETable()`/`saveVETable()` (e Ign) não copiam mais
+  valores entre RAM e EEPROM — só os eixos. `loadDefaultTables()` escreve os
+  defaults direto do PROGMEM para a EEPROM, sem passar por RAM.
+- **`comms.cpp`**: os handlers de página do TunerStudio (`readVeTablePageByte`,
+  `writeVeTablePageByte`, etc.) leem/escrevem a célula direto na EEPROM.
 
-- **Páginas 2 e 3 do protocolo TunerStudio** (mapas VE/Ignição) agora têm
-  168 bytes, não 288. Qualquer `.ini` que espere o layout padrão do
-  Speeduino vai ler/escrever essas tabelas errado. Precisa de `.ini`
-  próprio.
-- **Páginas 1 e 4** (config) agora têm 52 e 68 bytes, não 128. Mesmo
-  problema.
-- Isso é aceitável *neste branch* porque o objetivo era medir o piso de RAM,
-  não manter compatibilidade de protocolo. Se um dia isso for usado de
-  verdade, o `.ini` de referência do projeto precisa ser reescrito com os
-  novos `pageSize`.
+### Custo: leitura é grátis, escrita não
 
-## O que foi medido mas NÃO aplicado no código
+Corrigindo uma imprecisão que passei antes: **leitura de EEPROM no AVR é
+rápida** (`EEPROM.read()`, poucos ciclos de clock - nada como o "~3.3µs por
+byte" que citei numa resposta anterior, que na verdade nem é a métrica
+certa). O que É lento é a **escrita**: **~3.3ms por byte alterado**
+(`EEPROM.write()`, ciclo de programação físico da célula). Por isso:
 
-Os buffers internos do `Serial` (RX/TX do core Arduino, 64+64 bytes,
-componente do objeto `Serial` de 157 B) renderiam mais **96 bytes** se
-reduzidos para 16/16 (`Data` cairia para 984 B, −33% do baseline original).
-Medição real: recompilei o core AVR com
-`-DSERIAL_TX_BUFFER_SIZE=16 -DSERIAL_RX_BUFFER_SIZE=16` e linkei contra ele.
+- **Lookups em runtime** (cálculo de combustível/ignição a cada ciclo) são
+  seguros - só leem, custo desprezível perto do orçamento de tempo do
+  projeto.
+- **Editar uma célula pelo TunerStudio** agora custa ~3.3ms (só acontece
+  durante tuning ao vivo, não no loop do motor - sem impacto no motor
+  rodando).
+- **Primeiro boot com EEPROM virgem**: `loadDefaultTables()` grava até
+  12×12×2 = 288 bytes (VE+Ign). No pior caso (EEPROM apagada, tudo `0xFF`,
+  todo valor precisa mesmo ser escrito): **~0,95s de atraso no primeiro
+  boot**. Único, não repete em boots seguintes (a versão salva na EEPROM
+  passa a bater com `EEPROM_DATA_VERSION`).
 
-**Por que não entrou no branch:** o Slowduino compila via Arduino IDE puro
-(sem `platformio.ini`), e a IDE injeta `#include <Arduino.h>` como a
-primeira linha do `.ino` automaticamente, antes de qualquer código do
-projeto — não há como um `#define` dentro do repositório vencer essa
-corrida e sobrescrever o tamanho do buffer antes do `HardwareSerial.h` ser
-processado. Só funciona com um sistema de build que recompile o core por
-projeto (ex: PlatformIO com `build_flags`), que o Slowduino não tem hoje.
-Migrar para PlatformIO é uma decisão maior, fora do escopo deste corte de
-RAM.
+## Buffers de comunicação
 
-## Risco de reduzir o buffer serial (caso alguém migre para PlatformIO depois)
+- **`Serial` do core Arduino**: buffers de RX/TX internos (64+64 B por
+  padrão) reduzidos para 16/16 via `-DSERIAL_TX_BUFFER_SIZE=16
+  -DSERIAL_RX_BUFFER_SIZE=16`. **Isso exigiu adicionar `platformio.ini`
+  ao projeto** (novo, só nesta branch) - a Arduino IDE injeta
+  `#include <Arduino.h>` como primeira linha do `.ino` antes de qualquer
+  `#define` do projeto, então não tem como isso funcionar num build só-Arduino-IDE.
+  PlatformIO recompila o core por projeto, então os `build_flags` chegam a
+  tempo. `pio` está instalado nesta máquina mas quebrado (incompatibilidade
+  de versão do Click) - validei recompilando o core manualmente com as
+  mesmas flags e linkando contra ele, não rodei `pio run` de verdade.
+- **`serialBuffer`** (buffer de montagem do protocolo, em `comms.cpp`): 64→24
+  bytes. Também removida uma segunda definição duplicada e idêntica de
+  `SERIAL_BUFFER_SIZE` que existia em `comms.h` (risco de ficarem
+  dessincronizadas).
 
-Buffer de RX menor (16 em vez de 64) tolera menos rajada de dados antes do
-`commsProcess()` drenar no próximo `loop()`. Como `commsProcess()` roda a
-cada iteração do loop (alta frequência), o risco é baixo na prática, mas
-não foi validado com tráfego real do TunerStudio.
+### Risco assumido
+
+- RX do core em 16 bytes tolera menos rajada antes do próximo
+  `commsProcess()` (chamado a cada `loop()`, alta frequência - risco baixo
+  na prática, não testado com tráfego real do TunerStudio).
+- `serialBuffer` em 24 bytes derruba o payload máximo do protocolo moderno
+  de 58 para 18 bytes (`SERIAL_BUFFER_SIZE - 6`). Mensagens maiores que isso
+  são **rejeitadas de forma segura** (há um check explícito em
+  `commsProcess()`, sem risco de overflow de buffer) - mas a ferramenta de
+  tuning precisa enviar chunk-writes de tabela em pedaços de até 18 bytes.
+  Mais um motivo pelo qual esta branch já não é compatível com nenhum `.ini`
+  padrão.
+
+## Compatibilidade quebrada (de propósito)
+
+- Páginas 2/3 (tabelas): 168 B, não 288.
+- Páginas 1/4 (config): 52/68 B, não 128.
+- Chunk-writes de tabela: até 18 B por vez, não os ~256 B que o TunerStudio
+  costuma usar por padrão.
+- Precisa de `.ini` próprio e de configurar o tamanho de chunk na ferramenta
+  de tuning. Nada disso importa para o objetivo (medir o piso de RAM), mas
+  quem for usar isso de verdade precisa saber.
+
+## O que NÃO foi tocado (e por quê)
+
+O maior item que sobrou é `configPage1`+`configPage2` (120 B). Dava pra
+aplicar a mesma técnica de streaming por EEPROM - e como leitura é barata,
+seria tecnicamente viável. Não fiz porque o raio de ação é muito maior: os
+campos de tabela eram acessados só por ~5 pontos centralizados
+(`getTableValue`, os 4 handlers de página). Os campos de config
+(`configPage1.reqFuel`, `configPage2.idleKP`, etc.) são acessados **por
+nome, em dezenas de lugares** espalhados por `fuel.cpp`, `ignition.cpp`,
+`sensors.cpp`, `auxiliaries.cpp`, `protections.cpp` - e o mecanismo genérico
+de leitura/escrita de página do `comms.cpp`
+(`readStructPageByte`/`writeStructPageByte`) depende de `configPage1`/`2`
+serem structs reais em RAM (usa `sizeof()` e aritmética de ponteiro
+diretamente sobre elas). Trocar isso por leitura sob demanda seria reescrever
+esse mecanismo inteiro e revisar cada acesso nomeado nesses 5 arquivos - risco
+real de errar um offset e não ter como validar sem bancada. Ficou de fora
+desta passada; é o próximo lugar óbvio para continuar se alguém quiser
+chegar mais perto ainda dos 512 B.
+
+`triggerState`, `injector*Polling`, `ignitionSchedule*` (estado do
+scheduler/decoder em tempo real) também não foram tocados - são o núcleo do
+timing de ignição/injeção, e qualquer corte ali exige revisão cuidadosa do
+código de agendamento, fora do orçamento desta passada.

@@ -145,7 +145,12 @@
 #define SERIAL_TIMEOUT      100   // Timeout de comando (ms)
 
 // Buffer de comunicação
-#define SERIAL_BUFFER_SIZE   64   // Bytes
+// BRANCH ms1: 64->24. Payload máximo do protocolo moderno cai de 58 para
+// 18 bytes (SERIAL_BUFFER_SIZE-6); comandos simples (W/single value) cabem
+// à vontade, mas chunk-writes de tabela precisam ser feitos em pedaços
+// pequenos pela ferramenta de tuning - outra razão para este branch exigir
+// um .ini/configuração de chunk size próprios.
+#define SERIAL_BUFFER_SIZE   24   // Bytes
 
 // Comandos do protocolo TunerStudio simplificado
 #define CMD_READ_REALTIME   'A'   // Lê dados em tempo real

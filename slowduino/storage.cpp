@@ -68,13 +68,8 @@ void loadConfigPages() {
 }
 
 void loadVETable() {
-  // Carrega valores da tabela
-  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
-    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
-      uint16_t addr = EEPROM_VE_TABLE + (y * TABLE_SIZE_X) + x;
-      veTable.values[y][x] = eepromReadByte(addr);
-    }
-  }
+  // BRANCH ms1: os valores ficam só na EEPROM (lidos por lookup, ver
+  // tables.cpp) - nada para copiar para RAM aqui. Só os eixos residem em RAM.
 
   // Carrega eixo X (RPM)
   for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
@@ -88,13 +83,7 @@ void loadVETable() {
 }
 
 void loadIgnTable() {
-  // Carrega valores da tabela
-  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
-    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
-      uint16_t addr = EEPROM_IGN_TABLE + (y * TABLE_SIZE_X) + x;
-      ignTable.values[y][x] = eepromReadI8(addr);
-    }
-  }
+  // BRANCH ms1: idem loadVETable() - valores só na EEPROM.
 
   // Carrega eixo X (RPM)
   for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
@@ -161,13 +150,8 @@ void saveConfigPages() {
 }
 
 void saveVETable() {
-  // Salva valores
-  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
-    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
-      uint16_t addr = EEPROM_VE_TABLE + (y * TABLE_SIZE_X) + x;
-      eepromWriteByte(addr, veTable.values[y][x]);
-    }
-  }
+  // BRANCH ms1: valores já estão na EEPROM (não há cópia em RAM para
+  // salvar) - só os eixos precisam ser persistidos aqui.
 
   // Salva eixo X
   for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
@@ -181,13 +165,7 @@ void saveVETable() {
 }
 
 void saveIgnTable() {
-  // Salva valores
-  for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
-    for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
-      uint16_t addr = EEPROM_IGN_TABLE + (y * TABLE_SIZE_X) + x;
-      eepromWriteI8(addr, ignTable.values[y][x]);
-    }
-  }
+  // BRANCH ms1: idem saveVETable() - valores já estão na EEPROM.
 
   // Salva eixo X
   for (uint8_t i = 0; i < TABLE_SIZE_X; i++) {
@@ -390,10 +368,13 @@ void loadDefaults() {
 }
 
 void loadDefaultTables() {
-  // Carrega tabela VE padrão do PROGMEM
+  // BRANCH ms1: valores de tabela vão direto do PROGMEM para a EEPROM
+  // (nunca passam por RAM - não há veTable.values/ignTable.values).
+  // Os eixos continuam residentes em RAM (precisam para a busca de índices).
   for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
     for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
-      veTable.values[y][x] = pgm_read_byte(&DEFAULT_VE_TABLE[y][x]);
+      uint8_t v = pgm_read_byte(&DEFAULT_VE_TABLE[y][x]);
+      eepromWriteByte(EEPROM_VE_TABLE + ((uint16_t)y * TABLE_SIZE_X) + x, v);
     }
   }
 
@@ -405,11 +386,11 @@ void loadDefaultTables() {
     veTable.axisY[i] = pgm_read_byte(&DEFAULT_VE_AXIS_Y[i]);
   }
 
-  // Carrega tabela Ignição padrão do PROGMEM
+  // Carrega tabela Ignição padrão do PROGMEM direto para a EEPROM
   for (uint8_t y = 0; y < TABLE_SIZE_Y; y++) {
     for (uint8_t x = 0; x < TABLE_SIZE_X; x++) {
-      // Nota: DEFAULT_IGN_TABLE tem int8_t, mas lemos como byte
-      ignTable.values[y][x] = (int8_t)pgm_read_byte(&DEFAULT_IGN_TABLE[y][x]);
+      int8_t v = (int8_t)pgm_read_byte(&DEFAULT_IGN_TABLE[y][x]);
+      eepromWriteI8(EEPROM_IGN_TABLE + ((uint16_t)y * TABLE_SIZE_X) + x, v);
     }
   }
 
