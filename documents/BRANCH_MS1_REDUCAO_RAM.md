@@ -97,9 +97,8 @@ certa). O que É lento é a **escrita**: **~3.3ms por byte alterado**
   `#include <Arduino.h>` como primeira linha do `.ino` antes de qualquer
   `#define` do projeto, então não tem como isso funcionar num build só-Arduino-IDE.
   PlatformIO recompila o core por projeto, então os `build_flags` chegam a
-  tempo. `pio` está instalado nesta máquina mas quebrado (incompatibilidade
-  de versão do Click) - validei recompilando o core manualmente com as
-  mesmas flags e linkando contra ele, não rodei `pio run` de verdade.
+  tempo. Validado com `pio run -e uno` e `-e nanoatmega328`: build limpo,
+  646 B de RAM (31,5%) em ambos os alvos - confere com a tabela acima.
 - **`serialBuffer`** (buffer de montagem do protocolo, em `comms.cpp`): 64→24
   bytes. Também removida uma segunda definição duplicada e idêntica de
   `SERIAL_BUFFER_SIZE` que existia em `comms.h` (risco de ficarem
