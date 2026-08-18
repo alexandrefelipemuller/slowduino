@@ -123,7 +123,7 @@ void sendSerialCapability();
 /**
  * @brief Envia interface version (compatibilidade Speeduino)
  *
- * Comando 'I' - retorna "speeduino 202402" para TunerStudio aceitar
+ * Comando 'I' - retorna "slowduino 202402" (assinatura própria do Slowduino)
  */
 void sendInterfaceVersion();
 

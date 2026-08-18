@@ -267,8 +267,8 @@ void processLegacyCommand(uint8_t command) {
       sendRealtimeData();
       break;
 
-    case 'I':  // Interface version (compatibilidade Speeduino)
-      Serial.print(F("speeduino 202402"));
+    case 'I':  // Interface version (assinatura própria do Slowduino)
+      Serial.print(F("slowduino 202402"));
       break;
 
     case 'Q':  // Firmware version
@@ -324,15 +324,11 @@ void sendRealtimeData() {
 }
 
 void sendFirmwareVersion() {
-  //Serial.print(F("slowduino "));
-  //Serial.print(F(SLOWDUINO_VERSION));
-  Serial.print(F("Speeduino 202402"));
+  Serial.print(F("Slowduino 202402"));
 }
 
 void sendProductString() {
-  //Serial.print(F("Slowduino "));
-  //Serial.print(F(SLOWDUINO_VERSION));
-  Serial.print(F("Speeduino 202402"));
+  Serial.print(F("Slowduino 202402"));
 }
 
 void sendProtocolVersion() {
@@ -427,8 +423,8 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        // SEMPRE retorna "speeduino 202402" para compatibilidade
-        const char* iface = "speeduino 202402";
+        // Assinatura própria do Slowduino (não colide com o Speeduino real)
+        const char* iface = "slowduino 202402";
         uint8_t ilen = strlen(iface);
         memcpy(&tempBuf[len], iface, ilen);
         len += ilen;
@@ -446,8 +442,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        //const char* ver = "slowduino " SLOWDUINO_VERSION;
-        const char* ver = "speeduino 202207";
+        const char* ver = "Slowduino 202402";
         uint8_t vlen = strlen(ver);
         memcpy(&tempBuf[len], ver, vlen);
         len += vlen;
@@ -465,8 +460,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        //const char* prod = "Slowduino " SLOWDUINO_VERSION;
-        const char* prod = "Speeduino 2024.02.4";  // Capital S for compatibility
+        const char* prod = "Slowduino 202402";
         uint8_t plen = strlen(prod);
         memcpy(&tempBuf[len], prod, plen);
         len += plen;
