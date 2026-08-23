@@ -36,9 +36,9 @@ void sensorsInit() {
   // Converte valores iniciais
   currentStatus.MAP = fastMap(currentStatus.mapADC, 0, 1023, configPage1.mapMin, configPage1.mapMax);
   currentStatus.TPS = fastMap(currentStatus.tpsADC, adc8to10(configPage1.tpsMin), adc8to10(configPage1.tpsMax), 0, 100);
-  currentStatus.coolant = ntcToCelsius(currentStatus.cltADC);
-  currentStatus.IAT = ntcToCelsius(currentStatus.iatADC);
-  currentStatus.O2 = adc10to8(currentStatus.o2ADC);
+  currentStatus.coolant = calibrateTemperature(currentStatus.cltADC, calibrationConfig.cltAdcBins, calibrationConfig.cltTempValues);
+  currentStatus.IAT = calibrateTemperature(currentStatus.iatADC, calibrationConfig.iatAdcBins, calibrationConfig.iatTempValues);
+  currentStatus.O2 = calibrateO2(currentStatus.o2ADC);
   currentStatus.battery10 = (uint8_t)(((uint32_t)currentStatus.batADC * ADC_VREF * BAT_MULTIPLIER) / (1024UL * 1000UL));
   currentStatus.oilPressure = (uint8_t)fastMap(currentStatus.oilPressADC, 0, 1023, 0, 250);  // 0-1000 kPa em escala 0-250
   currentStatus.fuelPressure = (uint8_t)fastMap(currentStatus.fuelPressADC, 0, 1023, 0, 250);
@@ -115,8 +115,8 @@ void readCLT() {
   // Aplica filtro forte (temperatura muda lentamente)
   currentStatus.cltADC = applyFilter(rawADC, currentStatus.cltADC, FILTER_CLT);
 
-  // Converte para temperatura
-  currentStatus.coolant = ntcToCelsius(currentStatus.cltADC);
+  // Converte para temperatura usando calibração do usuário (TunerStudio)
+  currentStatus.coolant = calibrateTemperature(currentStatus.cltADC, calibrationConfig.cltAdcBins, calibrationConfig.cltTempValues);
 }
 
 // ============================================================================
@@ -130,8 +130,8 @@ void readIAT() {
   // Aplica filtro
   currentStatus.iatADC = applyFilter(rawADC, currentStatus.iatADC, FILTER_IAT);
 
-  // Converte para temperatura
-  currentStatus.IAT = ntcToCelsius(currentStatus.iatADC);
+  // Converte para temperatura usando calibração do usuário (TunerStudio)
+  currentStatus.IAT = calibrateTemperature(currentStatus.iatADC, calibrationConfig.iatAdcBins, calibrationConfig.iatTempValues);
 }
 
 // ============================================================================
@@ -145,10 +145,9 @@ void readO2() {
   // Aplica filtro
   currentStatus.o2ADC = applyFilter(rawADC, currentStatus.o2ADC, FILTER_O2);
 
-  // Converte para percentual (0-255, 100 = lambda 1.0)
-  // Sonda narrowband: 0.1V = lean (0%), 0.9V = rich (200%)
-  // Simplificado: ADC direto / 4 = ~0-255
-  currentStatus.O2 = adc10to8(currentStatus.o2ADC);
+  // Converte para percentual (0-255, 100 = lambda 1.0) usando calibração
+  // linear min/max do usuário (mesma escala de tpsMin/tpsMax)
+  currentStatus.O2 = calibrateO2(currentStatus.o2ADC);
 }
 
 // ============================================================================
@@ -226,7 +225,7 @@ void readAllSensors() {
 }
 
 // ============================================================================
-// CONVERSÃO NTC -> CELSIUS
+// CALIBRAÇÃO DE SENSORES (CLT/IAT/O2, curvas editáveis via TunerStudio)
 // ============================================================================
 
 static int8_t clampToInt8(int32_t value) {
@@ -235,55 +234,38 @@ static int8_t clampToInt8(int32_t value) {
   return (int8_t)value;
 }
 
-int8_t ntcToCelsius(uint16_t adc) {
-  // Tabela simplificada de conversão NTC 10K @ 25°C (Beta ~3950)
-  // Usa aproximação linear por faixas para economia de memória
+int8_t calibrateTemperature(uint16_t adc, const uint16_t* adcBins, const int8_t* tempValues) {
+  // adcBins é decrescente (ADC alto = frio, resistência alta do NTC)
+  if (adc >= adcBins[0]) return tempValues[0];
+  if (adc <= adcBins[CALIB_POINTS - 1]) return tempValues[CALIB_POINTS - 1];
 
-  // Pontos de referência (ADC, Temperatura)
-  // ADC alto = temperatura baixa (resistência alta)
-  // ADC baixo = temperatura alta (resistência baixa)
+  for (uint8_t i = 0; i < CALIB_POINTS - 1; i++) {
+    uint16_t adc1 = adcBins[i];
+    uint16_t adc2 = adcBins[i + 1];
 
-  // Tabela aproximada (valores típicos para NTC 10K com pull-up 10K)
-  const struct {
-    uint16_t adc;
-    int16_t temp;  // int8_t não cabe 140/160°C (máx 127) - estourava para -116/-96
-  } ntcTable[] PROGMEM = {
-    {980, -40},   // ADC alto = muito frio
-    {960, -20},
-    {920, 0},
-    {850, 20},
-    {750, 40},
-    {620, 60},
-    {480, 80},
-    {360, 100},
-    {260, 120},
-    {180, 140},
-    {120, 160}    // ADC baixo = muito quente
-  };
+    if (adc <= adc1 && adc >= adc2) {
+      // Pontos iguais/corrompidos (ex: EEPROM zerada ou escrita inválida
+      // do TunerStudio) - evita divisão por zero
+      if (adc1 == adc2) return tempValues[i];
 
-  const uint8_t tableSize = sizeof(ntcTable) / sizeof(ntcTable[0]);
-
-  // Busca na tabela e interpola
-  for (uint8_t i = 0; i < tableSize - 1; i++) {
-    uint16_t adc1 = pgm_read_word(&ntcTable[i].adc);
-    uint16_t adc2 = pgm_read_word(&ntcTable[i + 1].adc);
-    int16_t temp1 = pgm_read_word(&ntcTable[i].temp);
-    int16_t temp2 = pgm_read_word(&ntcTable[i + 1].temp);
-
-    if (adc >= adc2 && adc <= adc1) {
-      // Interpola (nota: ADC decresce quando temp aumenta)
+      int32_t temp1 = tempValues[i];
+      int32_t temp2 = tempValues[i + 1];
       int32_t result = temp1 + (int32_t)(adc1 - adc) * (temp2 - temp1) / (adc1 - adc2);
-      // currentStatus.coolant/IAT são int8_t: clampa em vez de deixar o
-      // "return" truncar em silêncio (140/160°C viravam -116/-96)
       return clampToInt8(result);
     }
   }
 
-  // Fora da faixa
-  if (adc > 980) return -40;  // Muito frio
-  if (adc < 120) return clampToInt8(160);  // Muito quente
+  return tempValues[CALIB_POINTS - 1];
+}
 
-  return 25;  // Fallback
+uint8_t calibrateO2(uint16_t adc) {
+  uint8_t adc8 = adc10to8(adc);
+
+  if (adc8 <= calibrationConfig.o2Min) return 0;
+  if (adc8 >= calibrationConfig.o2Max) return 255;
+
+  // calibrationConfig.o2Max > o2Min é garantido por sanitizeConfigValues()
+  return (uint8_t)fastMap(adc8, calibrationConfig.o2Min, calibrationConfig.o2Max, 0, 255);
 }
 
 // ============================================================================

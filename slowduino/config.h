@@ -9,6 +9,7 @@
 #define CONFIG_H
 
 #include <Arduino.h>
+#include "globals.h"  // CALIB_POINTS (usado pelas tabelas de calibração padrão abaixo)
 
 // ============================================================================
 // TAMANHO DAS TABELAS
@@ -57,6 +58,30 @@
 // Bateria = (ADC * VREF / 1024) * (R1+R2) / R2
 // Com R1=10K, R2=1K5: multiplicador = 7.67
 #define BAT_MULTIPLIER    767    // * 100 para evitar float
+
+// ============================================================================
+// CALIBRAÇÃO PADRÃO DE CLT/IAT (NTC 10K @ 25°C, Beta ~3950, pull-up 10K)
+// ============================================================================
+// Mesma curva usada como fallback fixo antes desta feature (sensors.cpp,
+// ntcToCelsius); agora é o valor inicial carregado em CalibrationConfig,
+// editável via TunerStudio e persistido em EEPROM_CALIBRATION.
+const uint16_t DEFAULT_CLT_CALIB_ADC[CALIB_POINTS] PROGMEM = {
+  980, 920, 850, 750, 620, 480, 360, 120
+};
+const int8_t DEFAULT_CLT_CALIB_TEMP[CALIB_POINTS] PROGMEM = {
+  -40,   0,  20,  40,  60,  80, 100, 127
+};
+const uint16_t DEFAULT_IAT_CALIB_ADC[CALIB_POINTS] PROGMEM = {
+  980, 920, 850, 750, 620, 480, 360, 120
+};
+const int8_t DEFAULT_IAT_CALIB_TEMP[CALIB_POINTS] PROGMEM = {
+  -40,   0,  20,  40,  60,  80, 100, 127
+};
+
+// O2: default = passthrough linear (ADC 8-bit direto, igual ao comportamento
+// anterior a esta feature)
+#define DEFAULT_O2_MIN   0
+#define DEFAULT_O2_MAX   255
 
 // ============================================================================
 // CONSTANTES DE MOTOR
@@ -181,12 +206,12 @@
 #define EEPROM_CONFIG1        (EEPROM_IGN_AXIS_Y + 16) // 128 bytes - fuel config
 #define EEPROM_CONFIG2        (EEPROM_CONFIG1 + 128)   // 128 bytes - ignition config
 
-// Área auxiliar para AFR target (usa espaço antes reservado para CLT/IAT)
-#define EEPROM_AFR_STORAGE    (EEPROM_CONFIG2 + 128)   // 120 bytes usados para AFR
-#define EEPROM_AFR_STORAGE_LEN 120
+// Calibração de sensores CLT/IAT/O2 (página 6, ver CalibrationConfig em
+// globals.h). Ocupa o espaço antes reservado (e nunca usado) para AFR.
+#define EEPROM_CALIBRATION     (EEPROM_CONFIG2 + 128)  // 128 bytes
 
 // Reserva para expansão futura (restante da EEPROM)
-#define EEPROM_SPARE          (EEPROM_AFR_STORAGE + EEPROM_AFR_STORAGE_LEN)
+#define EEPROM_SPARE          (EEPROM_CALIBRATION + 128)
 #if EEPROM_SPARE > 1024
 #error "Layout EEPROM ultrapassa 1024 bytes"
 #endif

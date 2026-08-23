@@ -712,6 +712,8 @@ static bool readPageByte(uint8_t page, uint16_t offset, uint8_t& value) {
       return readIgnTablePageByte(offset, value);
     case 4:
       return readStructPageByte((uint8_t*)&configPage2, sizeof(ConfigPage2), offset, value);
+    case 6:
+      return readStructPageByte((uint8_t*)&calibrationConfig, sizeof(CalibrationConfig), offset, value);
     default:
       return readStubPageByte(page, offset, value);
   }
@@ -727,6 +729,8 @@ static PageWriteStatus writePageByte(uint8_t page, uint16_t offset, uint8_t valu
       return writeIgnTablePageByte(offset, value);
     case 4:
       return writeStructPageByte((uint8_t*)&configPage2, sizeof(ConfigPage2), offset, value);
+    case 6:
+      return writeStructPageByte((uint8_t*)&calibrationConfig, sizeof(CalibrationConfig), offset, value);
     default:
       {
         uint16_t pageSz = getPageSize(page);

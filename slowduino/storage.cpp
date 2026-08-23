@@ -15,6 +15,7 @@ void saveVETable();
 void saveIgnTable();
 void saveCalibrationTables();
 void loadDefaultTables();
+void loadDefaultCalibration();
 static void enforceBoardLimits();
 static void sanitizeConfigValues();
 
@@ -108,8 +109,10 @@ void loadIgnTable() {
 }
 
 void loadCalibrationTables() {
-  // TODO: implementar quando tivermos tabelas de calibração CLT/IAT
-  // Por enquanto usaremos valores calculados direto
+  uint8_t* p = (uint8_t*)&calibrationConfig;
+  for (uint16_t i = 0; i < sizeof(CalibrationConfig); i++) {
+    p[i] = eepromReadByte(EEPROM_CALIBRATION + i);
+  }
 }
 
 static void enforceBoardLimits() {
@@ -127,6 +130,13 @@ static void enforceBoardLimits() {
 static void sanitizeConfigValues() {
   if (configPage2.triggerEdge > TRIGGER_EDGE_BOTH) {
     configPage2.triggerEdge = TRIGGER_EDGE_BOTH;
+  }
+
+  // Evita divisão por zero em readO2() se a calibração vier zerada/corrompida
+  // (ex: EEPROM nunca gravada antes desta feature, ou escrita inválida)
+  if (calibrationConfig.o2Max <= calibrationConfig.o2Min) {
+    calibrationConfig.o2Min = DEFAULT_O2_MIN;
+    calibrationConfig.o2Max = DEFAULT_O2_MAX;
   }
 }
 
@@ -201,7 +211,10 @@ void saveIgnTable() {
 }
 
 void saveCalibrationTables() {
-  // TODO: implementar quando necessário
+  const uint8_t* p = (const uint8_t*)&calibrationConfig;
+  for (uint16_t i = 0; i < sizeof(CalibrationConfig); i++) {
+    eepromWriteByte(EEPROM_CALIBRATION + i, p[i]);
+  }
 }
 
 // ============================================================================
@@ -341,6 +354,20 @@ void loadDefaults() {
 
   // ---- Tabelas VE e Ignição ----
   loadDefaultTables();
+
+  // ---- Calibração CLT/IAT/O2 ----
+  loadDefaultCalibration();
+}
+
+void loadDefaultCalibration() {
+  for (uint8_t i = 0; i < CALIB_POINTS; i++) {
+    calibrationConfig.cltAdcBins[i] = pgm_read_word(&DEFAULT_CLT_CALIB_ADC[i]);
+    calibrationConfig.cltTempValues[i] = (int8_t)pgm_read_byte(&DEFAULT_CLT_CALIB_TEMP[i]);
+    calibrationConfig.iatAdcBins[i] = pgm_read_word(&DEFAULT_IAT_CALIB_ADC[i]);
+    calibrationConfig.iatTempValues[i] = (int8_t)pgm_read_byte(&DEFAULT_IAT_CALIB_TEMP[i]);
+  }
+  calibrationConfig.o2Min = DEFAULT_O2_MIN;
+  calibrationConfig.o2Max = DEFAULT_O2_MAX;
 }
 
 void loadDefaultTables() {

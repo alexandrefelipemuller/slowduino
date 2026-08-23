@@ -11,6 +11,7 @@ struct Statuses currentStatus;
 // Instancia config pages (RAM, carregadas da EEPROM no boot)
 struct ConfigPage1 configPage1;
 struct ConfigPage2 configPage2;
+struct CalibrationConfig calibrationConfig;
 
 // Flag de timer para controle de frequência do loop
 volatile uint8_t loopTimerFlags = 0;

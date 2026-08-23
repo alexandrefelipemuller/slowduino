@@ -146,15 +146,29 @@ inline uint16_t adcToMillivolts(uint16_t adc) {
 }
 
 /**
- * @brief Converte temperatura NTC para °C (simplificado)
+ * @brief Converte ADC para °C usando curva de calibração do usuário
  *
- * Usa aproximação linear por faixas ao invés de Steinhart-Hart completo.
- * Economiza processamento e memória.
+ * Interpolação linear por faixas sobre CALIB_POINTS pontos (ADC decrescente
+ * -> temperatura crescente), editável via TunerStudio (CalibrationConfig,
+ * página 6) e persistido em EEPROM_CALIBRATION.
  *
- * @param adc Valor ADC do termistor
- * @return Temperatura em °C (-40 a +150)
+ * @param adc Valor ADC do termistor (10-bit)
+ * @param adcBins Pontos ADC da curva (calibrationConfig.cltAdcBins/iatAdcBins)
+ * @param tempValues Temperaturas correspondentes (°C)
+ * @return Temperatura em °C
  */
-int8_t ntcToCelsius(uint16_t adc);
+int8_t calibrateTemperature(uint16_t adc, const uint16_t* adcBins, const int8_t* tempValues);
+
+/**
+ * @brief Converte ADC do sensor O2 para 0-255 usando calibração linear min/max
+ *
+ * Mesmo padrão de tpsMin/tpsMax: calibrationConfig.o2Min/o2Max em escala
+ * ADC 8-bit (0-255), editável via TunerStudio.
+ *
+ * @param adc Valor ADC do sensor O2 (10-bit)
+ * @return Valor calibrado (0-255, 100 = lambda 1.0)
+ */
+uint8_t calibrateO2(uint16_t adc);
 
 /**
  * @brief Calcula TPSdot (taxa de mudança do TPS)

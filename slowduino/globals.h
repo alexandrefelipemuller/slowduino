@@ -264,8 +264,39 @@ struct ConfigPage2 {
 
 extern struct ConfigPage2 configPage2;
 
+// ============================================================================
+// CALIBRAÇÃO DE SENSORES CLT/IAT/O2 (EEPROM, página 6)
+// ============================================================================
+// Curvas editáveis pelo TunerStudio (Settings > Calibration). Substituem a
+// tabela NTC fixa em sensors.cpp (ntcToCelsius) por pontos ADC->°C
+// configuráveis por sensor. O2 usa calibração linear min/max, no mesmo
+// padrão de tpsMin/tpsMax em ConfigPage1.
+#define CALIB_POINTS 8
+
+struct CalibrationConfig {
+  // CLT: pontos ADC (10-bit, decrescente) -> temperatura °C
+  uint16_t cltAdcBins[CALIB_POINTS];
+  int8_t   cltTempValues[CALIB_POINTS];
+
+  // IAT: mesma estrutura, curva independente
+  uint16_t iatAdcBins[CALIB_POINTS];
+  int8_t   iatTempValues[CALIB_POINTS];
+
+  // O2: calibração linear (ADC 8-bit, mesma escala de tpsMin/tpsMax)
+  uint8_t  o2Min;              // ADC (0-255) correspondente a O2=0
+  uint8_t  o2Max;              // ADC (0-255) correspondente a O2=255
+
+  // Reserva para manter a página em 128 bytes (compatibilidade wire protocol)
+  // Fixo = 2 curvas * (uint16_t + int8_t) * CALIB_POINTS + o2Min + o2Max
+  uint8_t  spare[128 - (6 * CALIB_POINTS + 2)];
+
+} __attribute__((packed));
+
+extern struct CalibrationConfig calibrationConfig;
+
 static_assert(sizeof(ConfigPage1) == 128, "ConfigPage1 deve ocupar 128 bytes");
 static_assert(sizeof(ConfigPage2) == 128, "ConfigPage2 deve ocupar 128 bytes");
+static_assert(sizeof(CalibrationConfig) == 128, "CalibrationConfig deve ocupar 128 bytes");
 
 // ============================================================================
 // MACROS ÚTEIS
