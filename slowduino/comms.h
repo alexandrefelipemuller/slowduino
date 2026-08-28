@@ -25,16 +25,27 @@
 // ============================================================================
 // TAMANHOS
 // ============================================================================
-#define LOG_ENTRY_SIZE      127   // Tamanho TOTAL do pacote (offset byte + 126 log entries)
 #define LOG_ENTRIES_COUNT   126   // Quantidade de log entries (getTSLogEntry)
-#define SERIAL_BUFFER_SIZE  64    // Buffer de recepção
+// Buffer de recepção. Precisa caber [2B length][payload][4B CRC] do MAIOR
+// comando modern protocol que recebemos: escrita de página ('M' + CAN_ID +
+// page + offset(2) + length(2) + DATA). Com BLOCKING_FACTOR=128, DATA pode
+// chegar a 128B, então payload = 7+128 = 135B -> total = 2+135+4 = 141B.
+// 150B dá margem. Antes disso o buffer era de só 64B (com BLOCKING_FACTOR
+// anunciado em 121B via 'f') - TunerStudio mandava chunks de escrita que
+// estouravam o buffer, a mensagem nunca completava e a página nunca era
+// escrita de verdade, e por isso a verificação de CRC ('d') falhava em
+// TODA escrita, não só em Engine Constants.
+#define SERIAL_BUFFER_SIZE  150
 #define PAGE_COUNT          16    // Speeduino usa páginas 0-15
 
 // ============================================================================
 // SERIAL CAPABILITY (compatibilidade Speeduino)
 // ============================================================================
-#define BLOCKING_FACTOR       121   // Para AVR (ATmega328p)
-#define TABLE_BLOCKING_FACTOR 64    // Para AVR
+// Precisam ser <= SERIAL_BUFFER_SIZE - 13 (overhead do comando 'M') para
+// garantir que um chunk de escrita no tamanho máximo anunciado sempre caiba
+// no buffer de recepção.
+#define BLOCKING_FACTOR       128   // Para AVR (ATmega328p)
+#define TABLE_BLOCKING_FACTOR 128   // Para AVR
 
 // ============================================================================
 // ESTRUTURA DE PÁGINAS
@@ -123,7 +134,9 @@ void sendSerialCapability();
 /**
  * @brief Envia interface version (compatibilidade Speeduino)
  *
- * Comando 'I' - retorna "slowduino 202402" (assinatura própria do Slowduino)
+ * Comando 'I' - retorna "speeduino 202402(s)" (prefixo "speeduino" exigido
+ * pela whitelist de firmwares suportados do TunerStudio; "(s)" identifica
+ * Slowduino sem colidir com a assinatura do Speeduino real)
  */
 void sendInterfaceVersion();
 
@@ -228,7 +241,6 @@ uint16_t getPageSize(uint8_t page);
  * @brief Monta pacote de realtime data (126 bytes de log entries)
  *
  * Preenche buffer com dados do currentStatus.
- * NÃO inclui o offset byte inicial (0x00) - isso é adicionado pela camada de protocolo.
  *
  * @param buffer Buffer de saída (mínimo 126 bytes)
  */

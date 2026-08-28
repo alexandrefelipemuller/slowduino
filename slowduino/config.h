@@ -169,8 +169,7 @@ const int8_t DEFAULT_IAT_CALIB_TEMP[CALIB_POINTS] PROGMEM = {
 #define SERIAL_BAUD      115200   // Velocidade padrão TunerStudio
 #define SERIAL_TIMEOUT      100   // Timeout de comando (ms)
 
-// Buffer de comunicação
-#define SERIAL_BUFFER_SIZE   64   // Bytes
+// SERIAL_BUFFER_SIZE é definido em comms.h (usado pelo protocolo real).
 
 // Comandos do protocolo TunerStudio simplificado
 #define CMD_READ_REALTIME   'A'   // Lê dados em tempo real

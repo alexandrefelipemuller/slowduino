@@ -268,7 +268,7 @@ void processLegacyCommand(uint8_t command) {
       break;
 
     case 'I':  // Interface version (assinatura própria do Slowduino)
-      Serial.print(F("slowduino 202402"));
+      Serial.print(F("speeduino 202402(s)"));
       break;
 
     case 'Q':  // Firmware version
@@ -316,19 +316,21 @@ void processLegacyCommand(uint8_t command) {
 }
 
 void sendRealtimeData() {
-  // Legacy protocol: envia offset byte + 126 log entries = 127 bytes total
-  uint8_t buffer[LOG_ENTRY_SIZE];  // 127 bytes
-  buffer[0] = 0x00;  // Offset byte
-  buildRealtimePacket(&buffer[1]);  // Log entries após offset
-  sendBytes(buffer, LOG_ENTRY_SIZE);  // Envia 127 bytes
+  // Legacy protocol: envia SÓ os 126 log entries, sem offset byte (esse é
+  // exclusivo do modern protocol). Mandar 127 bytes aqui faz o TunerStudio
+  // detectar "unexpected runtime response size: 127, expected: 126" e ficar
+  // reconectando em loop.
+  uint8_t buffer[LOG_ENTRIES_COUNT];  // 126 bytes
+  buildRealtimePacket(buffer);
+  sendBytes(buffer, LOG_ENTRIES_COUNT);
 }
 
 void sendFirmwareVersion() {
-  Serial.print(F("Slowduino 202402"));
+  Serial.print(F("speeduino 202402(s)"));
 }
 
 void sendProductString() {
-  Serial.print(F("Slowduino 202402"));
+  Serial.print(F("speeduino 202402(s)"));
 }
 
 void sendProtocolVersion() {
@@ -375,13 +377,16 @@ void processModernCommand() {
   switch (command) {
     case 'A':  // Realtime data (modern protocol)
       {
-        // Estrutura: [RC_OK] [offset_byte] [126 log entries]
-        uint8_t buffer[1 + 1 + LOG_ENTRIES_COUNT];
+        // Estrutura real da Speeduino (generateLiveValues em comms.cpp):
+        // [RC_OK] [126 log entries] - SEM offset byte. O offset byte só
+        // existia numa leitura equivocada do protocolo; mandar esse byte
+        // extra faz o TunerStudio logar "unexpected runtime response
+        // size: 127, expected: 126" e reconectar em loop.
+        uint8_t buffer[1 + LOG_ENTRIES_COUNT];
         buffer[0] = SERIAL_RC_OK;
-        buffer[1] = 0x00;  // Offset byte (compatibilidade Speeduino)
-        buildRealtimePacket(&buffer[2]);  // 126 log entries começam no byte 2
+        buildRealtimePacket(&buffer[1]);
 
-        uint16_t responseLength = 1 + 1 + LOG_ENTRIES_COUNT;  // RC_OK + offset + 126 entries = 128
+        uint16_t responseLength = 1 + LOG_ENTRIES_COUNT;  // RC_OK + 126 entries = 127
         sendU16BE(responseLength);
         sendBytes(buffer, responseLength);
         sendU32BE(calculateCRC32(buffer, responseLength));
@@ -424,7 +429,7 @@ void processModernCommand() {
         tempBuf[len++] = SERIAL_RC_OK;
 
         // Assinatura própria do Slowduino (não colide com o Speeduino real)
-        const char* iface = "slowduino 202402";
+        const char* iface = "speeduino 202402(s)";
         uint8_t ilen = strlen(iface);
         memcpy(&tempBuf[len], iface, ilen);
         len += ilen;
@@ -442,7 +447,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        const char* ver = "Slowduino 202402";
+        const char* ver = "speeduino 202402(s)";
         uint8_t vlen = strlen(ver);
         memcpy(&tempBuf[len], ver, vlen);
         len += vlen;
@@ -460,7 +465,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        const char* prod = "Slowduino 202402";
+        const char* prod = "speeduino 202402(s)";
         uint8_t plen = strlen(prod);
         memcpy(&tempBuf[len], prod, plen);
         len += plen;
@@ -859,30 +864,21 @@ void sendPageCRC32(uint8_t page) {
 
 void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
   if (subcmd == 0x30) {  // Output channels
-    // *** CRÍTICO: Speeduino envia offset byte 0x00 ANTES dos dados do log! ***
-    // Estrutura: [RC_OK] [offset_byte=0x00] [log_entry_0] [log_entry_1] ... [log_entry_125]
-    // Total: 128 bytes (1 RC_OK + 1 offset + 126 log entries)
-    //
-    // Quando TunerStudio remove o RC_OK, sobram 127 bytes:
-    //   data[0] = offset byte (0x00)
-    //   data[1] = getTSLogEntry(0) = secl
-    //   data[15] = getTSLogEntry(14) = RPM low
-    //   data[16] = getTSLogEntry(15) = RPM high
+    // Estrutura real (generateLiveValues() na Speeduino real): [RC_OK] +
+    // `length` bytes dos log entries, começando no índice `offset` do
+    // array de 126 bytes - SEM byte de offset extra no meio do payload.
+    // `offset`/`length` aqui são só os parâmetros que o TunerStudio pediu
+    // no comando 'r', servem pra fatiar fullBuffer, não pra virar dado.
 
-    uint8_t fullBuffer[1 + LOG_ENTRIES_COUNT];  // offset byte + 126 log entries
-    fullBuffer[0] = 0x00;  // Offset byte (compatibilidade Speeduino)
-    buildRealtimePacket(&fullBuffer[1]);  // 126 log entries começam no índice 1
+    uint8_t fullBuffer[LOG_ENTRIES_COUNT];
+    buildRealtimePacket(fullBuffer);
 
-    // Ajusta offset e length para incluir o offset byte
-    // TunerStudio pede offset=0, length=127
-    // Devemos retornar: [RC_OK] + fullBuffer[0:127]
-    uint16_t fullBufferSize = 1 + LOG_ENTRIES_COUNT;  // 127 bytes total
-    if (offset >= fullBufferSize) {
+    if (offset >= LOG_ENTRIES_COUNT) {
       offset = 0;
       length = 0;
     }
-    if (offset + length > fullBufferSize) {
-      length = fullBufferSize - offset;
+    if (offset + length > LOG_ENTRIES_COUNT) {
+      length = LOG_ENTRIES_COUNT - offset;
     }
 
     // Monta resposta: [length] [RC_OK] [dados] [CRC]
@@ -892,7 +888,7 @@ void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
     // Envia RC_OK
     sendByte(SERIAL_RC_OK);
 
-    // Envia dados (offset byte + log entries)
+    // Envia dados (fatia dos log entries pedida)
     sendBytes(fullBuffer + offset, length);
 
     // Calcula CRC (RC_OK + dados)
@@ -929,7 +925,6 @@ void burnEEPROM() {
 // ============================================================================
 //
 // Speeduino usa getTSLogEntry(n) onde n = 0..125 (126 entries)
-// Não inclui o offset byte 0x00 - isso é adicionado pela camada de protocolo
 //
 void buildRealtimePacket(uint8_t* buffer) {
   // Zera buffer (126 bytes)

@@ -56,49 +56,49 @@ static bool primedFuel = false;
 void setup() {
   // Inicializa serial
   Serial.begin(SERIAL_BAUD);
-  Serial.println(F(""));
-  Serial.println(F("========================================"));
-  Serial.println(F("  SLOWDUINO - Super Lowcost Speeduino"));
-  Serial.println(F("  Version: " SLOWDUINO_VERSION));
-  Serial.println(F("========================================"));
+  DEBUG_PRINTLN(F(""));
+  DEBUG_PRINTLN(F("========================================"));
+  DEBUG_PRINTLN(F("  SLOWDUINO - Super Lowcost Speeduino"));
+  DEBUG_PRINTLN(F("  Version: " SLOWDUINO_VERSION));
+  DEBUG_PRINTLN(F("========================================"));
 
   // Inicializa subsistemas
-  Serial.println(F("Inicializando subsistemas..."));
+  DEBUG_PRINTLN(F("Inicializando subsistemas..."));
 
   // 1. Tabelas (inicializa flags)
-  Serial.print(F("- Tabelas... "));
+  DEBUG_PRINT(F("- Tabelas... "));
   initTables();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 2. Storage (carrega config da EEPROM)
-  Serial.print(F("- Storage... "));
+  DEBUG_PRINT(F("- Storage... "));
   storageInit();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 3. Sensores
-  Serial.print(F("- Sensores... "));
+  DEBUG_PRINT(F("- Sensores... "));
   sensorsInit();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 4. Scheduler (Timer1 + pinos de saída)
-  Serial.print(F("- Scheduler... "));
+  DEBUG_PRINT(F("- Scheduler... "));
   schedulerInit();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 5. Trigger (decoder + ISR)
-  Serial.print(F("- Trigger... "));
+  DEBUG_PRINT(F("- Trigger... "));
   triggerInit();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 6. Comunicação (já inicializado Serial no início)
-  Serial.print(F("- Comunicação... "));
+  DEBUG_PRINT(F("- Comunicação... "));
   commsInit();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 7. Auxiliares (ventoinha, IAC, bomba)
-  Serial.print(F("- Auxiliares... "));
+  DEBUG_PRINT(F("- Auxiliares... "));
   auxiliariesInit();
-  Serial.println(F("OK"));
+  DEBUG_PRINTLN(F("OK"));
 
   // 8. Inicializa status
   currentStatus.secl = 0;
@@ -111,21 +111,21 @@ void setup() {
   BIT_CLEAR(currentStatus.engineStatus, ENGINE_RUN);
   BIT_SET(currentStatus.engineStatus, ENGINE_WARMUP);  // Assume frio no boot
 
-  Serial.println(F(""));
-  Serial.println(F("Sistema pronto!"));
-  Serial.print(F("Cilindros: "));
-  Serial.println(configPage1.nCylinders);
-  Serial.print(F("Trigger: "));
+  DEBUG_PRINTLN(F(""));
+  DEBUG_PRINTLN(F("Sistema pronto!"));
+  DEBUG_PRINT(F("Cilindros: "));
+  DEBUG_PRINTLN(configPage1.nCylinders);
+  DEBUG_PRINT(F("Trigger: "));
   if (configPage2.triggerPattern == TRIGGER_MISSING_TOOTH) {
-    Serial.print(configPage2.triggerTeeth);
-    Serial.print(F("-"));
-    Serial.println(configPage2.triggerMissing);
+    DEBUG_PRINT(configPage2.triggerTeeth);
+    DEBUG_PRINT(F("-"));
+    DEBUG_PRINTLN(configPage2.triggerMissing);
   } else {
-    Serial.println(F("Basic Distributor"));
+    DEBUG_PRINTLN(F("Basic Distributor"));
   }
-  Serial.println(F(""));
-  Serial.println(F("Aguardando sincronismo..."));
-  Serial.println(F("========================================"));
+  DEBUG_PRINTLN(F(""));
+  DEBUG_PRINTLN(F("Aguardando sincronismo..."));
+  DEBUG_PRINTLN(F("========================================"));
 
   // Marca tempo inicial
   lastLoop1ms = millis();

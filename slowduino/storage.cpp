@@ -28,12 +28,17 @@ void storageInit() {
   uint8_t storedVersion = eepromReadByte(EEPROM_VERSION_ADDR);
 
   if (storedVersion != EEPROM_DATA_VERSION) {
-    // Primeira inicialização ou versão incompatível
+    // Primeira inicialização ou versão incompatível: só popula a RAM com os
+    // defaults, sem gravar nada na EEPROM ainda (igual ao resetConfigPages()
+    // da Speeduino real). saveAllConfig() grava ~1000 bytes byte-a-byte -
+    // ~3.3ms cada no AVR real - o que bloqueia o boot por 3+ segundos e
+    // deixa a serial muda bem na hora em que o TunerStudio faz o handshake
+    // inicial. A EEPROM só é gravada quando o usuário realmente manda
+    // "Burn" pelo TunerStudio (burnEEPROM() -> saveAllConfig()).
     DEBUG_PRINTLN(F("EEPROM: Versão inválida ou primeira inicialização"));
     loadDefaults();
     sanitizeConfigValues();
     enforceBoardLimits();
-    saveAllConfig();
   } else {
     // Versão OK, carrega configuração
     DEBUG_PRINTLN(F("EEPROM: Carregando configuração"));
