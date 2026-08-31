@@ -119,6 +119,15 @@ static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
     schedule->status = SCHED_RUNNING;
     beginCharge();
     *compareReg = schedule->endCompare;
+
+    // Mesma corrida do wraparound documentada em armIgnitionCompare(), mas
+    // no fim do dwell: se TCNT1 já passou de endCompare quando escrevemos o
+    // registrador, o compare match só dispararia ~1s depois (volta do
+    // contador de 16 bits), deixando a bobina carregando esse tempo todo.
+    if ((int16_t)(TCNT1 - schedule->endCompare) >= 0) {
+      schedule->status = SCHED_OFF;
+      endCharge();
+    }
     return;
   }
 
@@ -161,10 +170,11 @@ void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint32_t startTime
     clearIgnitionSchedule(schedule);
   }
 
-  if (startTime < IGNITION_MIN_DELAY_US) {
-    schedule->status = SCHED_OFF;
-    return;
-  }
+  // NOTA: startTime pequeno demais (ex: 0, quando o dwell não cabe antes do
+  // ângulo de faísca) NÃO deve descartar o evento - o clamp abaixo
+  // (startTicks < minTicks) já resolve isso disparando o dwell no menor
+  // atraso seguro, com duração proporcionalmente reduzida se preciso.
+  // Descartar aqui apagava a faísca inteira nesses casos.
 
   uint32_t startTicks = US_TO_TIMER1(startTime);
   uint32_t durationTicks = US_TO_TIMER1(duration);
