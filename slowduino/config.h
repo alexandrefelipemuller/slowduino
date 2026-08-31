@@ -240,6 +240,10 @@ extern volatile uint8_t loopTimerFlags;
 #define AE_MODE_TPS               0   // Baseado em TPSdot
 #define AE_MODE_MAP               1   // Baseado em MAPdot
 
+// Load algorithm (carga primária usada na VE table e ignition table)
+#define LOAD_ALGORITHM_SPEED_DENSITY 0   // Carga = MAP (padrão)
+#define LOAD_ALGORITHM_ALPHA_N       1   // Carga = TPS (sem sensor MAP confiável/vácuo)
+
 // Trigger patterns
 #define TRIGGER_MISSING_TOOTH     0   // Missing tooth (36-1, 60-2)
 #define TRIGGER_BASIC_DIST        1   // Distribuidor básico (1 dente/rev)

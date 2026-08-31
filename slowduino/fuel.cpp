@@ -26,13 +26,16 @@ uint16_t calculateInjection() {
   currentStatus.corrections = corrections;
 
   // 3. Calcula PW base
-  // PW = (reqFuel * VE / 100) * (MAP / 100) * (corrections / 100)
-  // Simplificando para evitar overflow:
-  // PW = (reqFuel * VE * MAP * corrections) / (100 * 100 * 100)
+  // Speed-Density: PW = (reqFuel * VE * MAP * corrections) / (100*100*100)
+  // Alpha-N:       PW = (reqFuel * VE * corrections) / (100*100)
+  //   (a carga já está embutida na VE table indexada por TPS; multiplicar
+  //   pelo MAP de novo contaria a carga em dobro)
 
   uint32_t pw = (uint32_t)configPage1.reqFuel;
   pw = (pw * ve) / 100;
-  pw = (pw * currentStatus.MAP) / 100;
+  if (configPage1.loadAlgorithm == LOAD_ALGORITHM_SPEED_DENSITY) {
+    pw = (pw * currentStatus.MAP) / 100;
+  }
   pw = (pw * corrections) / 100;
 
   // 4. Adiciona tempo de abertura do injetor (deadtime)
@@ -55,8 +58,12 @@ uint16_t calculateInjection() {
 // ============================================================================
 
 uint8_t getVE() {
-  // Usa MAP e RPM para buscar na tabela
-  int16_t ve = getTableValue(&veTable, currentStatus.MAP, currentStatus.RPM);
+  // Speed-Density usa MAP como carga; Alpha-N usa TPS (0-100%, mesmo
+  // range 0-255 do eixo Y da tabela, sem necessidade de reescalar)
+  uint8_t load = (configPage1.loadAlgorithm == LOAD_ALGORITHM_ALPHA_N)
+                   ? currentStatus.TPS
+                   : currentStatus.MAP;
+  int16_t ve = getTableValue(&veTable, load, currentStatus.RPM);
 
   // Garante range válido
   if (ve < 0) ve = 0;

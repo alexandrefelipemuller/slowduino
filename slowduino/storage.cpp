@@ -244,6 +244,9 @@ void loadDefaults() {
   configPage1.mapMax = 105;               // 105 kPa (atmosférico)
   configPage1.mapFilter = FILTER_MAP;
 
+  // Algoritmo de carga (default: Speed-Density, comportamento original)
+  configPage1.loadAlgorithm = LOAD_ALGORITHM_SPEED_DENSITY;
+
   // WUE (Warm-Up Enrichment)
   const int8_t wueBins[] = {-40, -20, 0, 20, 40, 60};        // Temperaturas
   const uint8_t wueVals[] = {180, 160, 140, 120, 110, 100};  // % enriquecimento

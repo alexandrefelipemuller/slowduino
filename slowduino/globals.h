@@ -16,7 +16,7 @@
 // VERSÃO DO FIRMWARE
 // ============================================================================
 #define SLOWDUINO_VERSION "0.2.1-multi"
-#define EEPROM_DATA_VERSION 5  // Bump: campos mortos removidos de ConfigPage1/2 (offsets internos mudaram)
+#define EEPROM_DATA_VERSION 6  // Bump: adicionado loadAlgorithm em ConfigPage1 (Speed-Density/Alpha-N)
 
 // ============================================================================
 // MAPEAMENTO DE PINOS
@@ -140,6 +140,9 @@ struct ConfigPage1 {
   uint8_t  mapMax;             // kPa em ADC máximo
   uint8_t  mapFilter;          // Constante de filtro
 
+  // Algoritmo de carga: 0=Speed-Density (MAP), 1=Alpha-N (TPS)
+  uint8_t  loadAlgorithm;
+
   // Warm-Up Enrichment (6 pontos)
   uint8_t  wueBins[6];         // Temperaturas (-40 a +100°C)
   uint8_t  wueValues[6];       // Enriquecimento % (100-200)
@@ -173,7 +176,8 @@ struct ConfigPage1 {
   // nenhuma linha de código implementada em fuel.cpp/sensors.cpp, apesar
   // do que docs/specifications.md descreve). Ficam reservados aqui em vez
   // de reaproveitados por outro campo, preservando os 128 bytes da página.
-  uint8_t  spare[94];
+  // Reduzido para 93 bytes: 1 byte cedido ao novo campo loadAlgorithm.
+  uint8_t  spare[93];
 
 } __attribute__((packed));
 

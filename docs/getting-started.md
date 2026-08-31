@@ -47,7 +47,7 @@ Before compiling, set the board type in `slowduino/board_config.h`:
 1. **TPS**: Set `tpsMin` with the throttle closed and `tpsMax` with wide-open throttle. Use TunerStudio or the calibration routine.
 2. **MAP**: Validate the atmospheric reading (~100 kPa) with the engine off.
 3. **Trigger**: Define `triggerPattern`, `triggerTeeth`, `triggerMissing`, `triggerAngle`, and `triggerEdge` according to your wheel.
-4. **Required Fuel**: Estimate using displacement and injector flow: `reqFuel = (displacement / cylinders) / injector_flow * 1000` (ms).
+4. **Required Fuel**: Estimate using displacement and injector flow: `reqFuel_ms = (displacement / cylinders) / injector_flow * 1000`. The `reqFuel` field itself is stored in **microseconds** (same unit as `injOpen`), so multiply the ms result by 1000 before entering it in TunerStudio (e.g. 5 ms → 5000).
 
 ## 6. Trigger Configuration Tips
 - Use Missing Tooth for wheels with gaps or Basic Distributor for a single pulse per revolution.

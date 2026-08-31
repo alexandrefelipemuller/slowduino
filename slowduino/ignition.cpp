@@ -36,8 +36,11 @@ int8_t calculateAdvance() {
 // ============================================================================
 
 int8_t getBaseAdvance() {
-  // Busca na tabela de ignição (MAP vs RPM)
-  int16_t advance = getTableValue(&ignTable, currentStatus.MAP, currentStatus.RPM);
+  // Busca na tabela de ignição (carga vs RPM) - mesma carga usada na VE table
+  uint8_t load = (configPage1.loadAlgorithm == LOAD_ALGORITHM_ALPHA_N)
+                   ? currentStatus.TPS
+                   : currentStatus.MAP;
+  int16_t advance = getTableValue(&ignTable, load, currentStatus.RPM);
 
   // Tabela de ignição usa int8_t (graus, pode ser negativo)
   return (int8_t)advance;
