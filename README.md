@@ -16,7 +16,7 @@ That's the point of Slowduino as a project: not "Speeduino on an ATmega328p," bu
 *Slowduino board layout rendered for reference.*
 
 ## Circuit Diagram
-![Slowduino schematic](resources/Schematic_Slowduino-injection_2025-11-14.png)
+![Slowduino schematic](resources/Schematic_Slowduino-injection_2026-08-31.png)
 *Injection and ignition wiring overview for the Slowduino board.*
 
 ### Highlights
