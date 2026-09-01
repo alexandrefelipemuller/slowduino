@@ -138,13 +138,19 @@ void setFuelSchedule(volatile FuelSchedule* schedule, uint16_t startTime, uint16
   schedule->status = SCHED_PENDING;
 
   // Configura compare register apropriado
+#if defined(__AVR__)
   if (channel == 1 || channel == 3) {
-    // Canais 1 e 3 compartilham o compare A
+    OCR1A = schedule->startCompare;  // Canais 1 e 3 compartilham OCR1A
+  } else {
+    OCR1B = schedule->startCompare;  // Canal 2 usa OCR1B
+  }
+#else
+  if (channel == 1 || channel == 3) {
     setTimer1CompareA(schedule->startCompare);
   } else {
-    // Canal 2 usa o compare B
     setTimer1CompareB(schedule->startCompare);
   }
+#endif
 }
 
 void clearFuelSchedule(volatile FuelSchedule* schedule) {
@@ -164,10 +170,50 @@ void clearFuelSchedule(volatile FuelSchedule* schedule) {
 // HELPERS PARA ISRs DE IGNIÇÃO
 // ============================================================================
 
-// NOTA: setCompare é um ponteiro de função (setTimer1CompareA/B) em vez de
-// um ponteiro cru para o registrador (OCR1A/OCR1B) - isso é o que permite
-// esta lógica ser idêntica no AVR e no porte STM32 (scheduler.h expõe as
-// mesmas duas funções nos dois casos).
+// Duas versões por sobrecarga (overload), escolhidas em tempo de compilação
+// pelo tipo do último argumento - SEM #ifdef duplicando a lógica:
+//
+//   - compareReg (volatile uint16_t*): escreve direto no registrador
+//     (&OCR1A/&OCR1B no AVR). É o que os call sites usam no AVR, e o
+//     compilador inlina isso inteiro dentro da ISR - zero overhead, igual
+//     ao código original.
+//   - setCompare (void(*)(uint16_t)): ponteiro de função, usado pelo porte
+//     STM32 (setTimer1CompareA/B), onde não existe um registrador único e
+//     endereçável do jeito que o AVR tem.
+//
+// A versão de ponteiro de função NUNCA é chamada no AVR (os call sites do
+// AVR usam &OCR1A/&OCR1B), então a ISR do AVR não paga o preço da chamada
+// indireta. Isso importa de verdade: um `icall` na ISR de ignição custa
+// alguns ciclos extras e IMPEDE o compilador de inlinar - insignificante em
+// RPM baixo, mas a margem de tempo do compare match aperta com o RPM, e
+// adicionar latência bem ali fazia a ignição começar a falhar de forma
+// consistente a partir de uma certa faixa de RPM (visto no simulador).
+static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
+                                         void (*beginCharge)(),
+                                         void (*endCharge)(),
+                                         volatile uint16_t* compareReg) {
+  if (schedule->status == SCHED_PENDING) {
+    schedule->status = SCHED_RUNNING;
+    beginCharge();
+    *compareReg = schedule->endCompare;
+
+    // Mesma corrida do wraparound documentada em armIgnitionCompare(), mas
+    // no fim do dwell: se o contador já passou de endCompare quando
+    // escrevemos o compare, o match só dispararia ~1s depois (volta do
+    // contador de 16 bits), deixando a bobina carregando esse tempo todo.
+    if ((int16_t)(getTimer1Count() - schedule->endCompare) >= 0) {
+      schedule->status = SCHED_OFF;
+      endCharge();
+    }
+    return;
+  }
+
+  if (schedule->status == SCHED_RUNNING) {
+    schedule->status = SCHED_OFF;
+    endCharge();
+  }
+}
+
 static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
                                          void (*beginCharge)(),
                                          void (*endCharge)(),
@@ -177,10 +223,6 @@ static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
     beginCharge();
     setCompare(schedule->endCompare);
 
-    // Mesma corrida do wraparound documentada em armIgnitionCompare(), mas
-    // no fim do dwell: se o contador já passou de endCompare quando
-    // escrevemos o compare, o match só dispararia ~1s depois (volta do
-    // contador de 16 bits), deixando a bobina carregando esse tempo todo.
     if ((int16_t)(getTimer1Count() - schedule->endCompare) >= 0) {
       schedule->status = SCHED_OFF;
       endCharge();
@@ -203,10 +245,21 @@ static inline void handleIgnitionChannel(volatile IgnitionSchedule* schedule,
 static inline void armIgnitionCompare(volatile IgnitionSchedule* schedule,
                                       void (*beginCharge)(),
                                       void (*endCharge)(),
+                                      volatile uint16_t* compareReg) {
+  *compareReg = schedule->startCompare;
+
+  // Cast para int16_t faz a subtração respeitar o wraparound do contador
+  if ((int16_t)(getTimer1Count() - schedule->startCompare) >= 0) {
+    handleIgnitionChannel(schedule, beginCharge, endCharge, compareReg);
+  }
+}
+
+static inline void armIgnitionCompare(volatile IgnitionSchedule* schedule,
+                                      void (*beginCharge)(),
+                                      void (*endCharge)(),
                                       void (*setCompare)(uint16_t)) {
   setCompare(schedule->startCompare);
 
-  // Cast para int16_t faz a subtração respeitar o wraparound do contador
   if ((int16_t)(getTimer1Count() - schedule->startCompare) >= 0) {
     handleIgnitionChannel(schedule, beginCharge, endCharge, setCompare);
   }
@@ -263,13 +316,19 @@ void setIgnitionSchedule(volatile IgnitionSchedule* schedule, uint32_t startTime
 
   schedule->status = SCHED_PENDING;
 
+#if defined(__AVR__)
   if (channel == 1) {
-    // Canal 1 usa o compare A
+    armIgnitionCompare(schedule, beginCoil1Charge, endCoil1Charge, &OCR1A);  // Canal 1 usa OCR1A
+  } else {
+    armIgnitionCompare(schedule, beginCoil2Charge, endCoil2Charge, &OCR1B);  // Canal 2 usa OCR1B
+  }
+#else
+  if (channel == 1) {
     armIgnitionCompare(schedule, beginCoil1Charge, endCoil1Charge, setTimer1CompareA);
   } else {
-    // Canal 2 usa o compare B
     armIgnitionCompare(schedule, beginCoil2Charge, endCoil2Charge, setTimer1CompareB);
   }
+#endif
 }
 
 void clearIgnitionSchedule(volatile IgnitionSchedule* schedule) {
@@ -352,12 +411,12 @@ void processInjectorPolling() {
 
 // ISR para Compare Match A (Ignition Channel 1)
 ISR(TIMER1_COMPA_vect) {
-  handleIgnitionChannel(&ignitionSchedule1, beginCoil1Charge, endCoil1Charge, setTimer1CompareA);
+  handleIgnitionChannel(&ignitionSchedule1, beginCoil1Charge, endCoil1Charge, &OCR1A);
 }
 
 // ISR para Compare Match B (Ignition Channel 2)
 ISR(TIMER1_COMPB_vect) {
-  handleIgnitionChannel(&ignitionSchedule2, beginCoil2Charge, endCoil2Charge, setTimer1CompareB);
+  handleIgnitionChannel(&ignitionSchedule2, beginCoil2Charge, endCoil2Charge, &OCR1B);
 }
 
 #else
