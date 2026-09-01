@@ -23,12 +23,23 @@ TARGET="${1:-uno}"
 
 if [ "$TARGET" = "sim" ]; then
   cd "$ROOT/simulator"
-  rm -f ".pio/build/uno/firmware.hex" ".pio/build/uno/firmware.elf"
+  # Remove o diretorio de build inteiro (nao so hex/elf) - garante que nao
+  # sobra .o intermediario de uma build anterior mascarando o resultado.
+  rm -rf ".pio/build/uno"
   "$PIO" run -e uno
-  echo "-> simulator/.pio/build/uno/firmware.hex"
+  HEX=".pio/build/uno/firmware.hex"
+  echo "-> simulator/$HEX"
 else
   cd "$ROOT"
-  rm -f ".pio/build/$TARGET/firmware.hex" ".pio/build/$TARGET/firmware.elf"
+  rm -rf ".pio/build/$TARGET"
   "$PIO" run -e "$TARGET"
-  echo "-> .pio/build/$TARGET/firmware.hex"
+  HEX=".pio/build/$TARGET/firmware.hex"
+  echo "-> $HEX"
+fi
+
+# Hash do .hex gerado - compara com o build anterior pra confirmar que o
+# binario realmente mudou (util quando o simulador/gravador tem cache de
+# firmware e nao recarrega sozinho, ex: Auto_Load="false" no SimulIDE).
+if command -v sha256sum >/dev/null 2>&1; then
+  echo "sha256: $(sha256sum "$HEX" | cut -d' ' -f1)"
 fi
