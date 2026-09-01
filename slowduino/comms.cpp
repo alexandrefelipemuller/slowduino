@@ -7,6 +7,21 @@
 #include "storage.h"
 #include "tables.h"
 
+// RAM livre (heap topo até o stack pointer). __brkval/__heap_start só
+// existem no runtime AVR-libc; no STM32 (newlib) o equivalente é o símbolo
+// de linker `end` (fim do BSS/início do heap).
+static uint16_t getFreeRam() {
+#if defined(__AVR__)
+  extern int __heap_start, *__brkval;
+  int v;
+  return (uint16_t)((int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval));
+#else
+  extern char end;
+  char v;
+  return (uint16_t)((uint32_t)&v - (uint32_t)&end);
+#endif
+}
+
 // ============================================================================
 // TABELA CRC32
 // ============================================================================
@@ -297,12 +312,7 @@ void processLegacyCommand(uint8_t command) {
       break;
 
     case 'm':  // Free RAM
-      {
-        extern int __heap_start, *__brkval;
-        int v;
-        uint16_t freeRam = (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
-        sendU16(freeRam);
-      }
+      sendU16(getFreeRam());
       break;
 
     case 'N':  // New line
@@ -988,9 +998,7 @@ void buildRealtimePacket(uint8_t* buffer) {
   buffer[27] = (loops >> 8) & 0xFF;
 
   // Offset 28-29: freeRAM
-  extern int __heap_start, *__brkval;
-  int v;
-  uint16_t freeRam = (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+  uint16_t freeRam = getFreeRam();
   buffer[28] = freeRam & 0xFF;
   buffer[29] = (freeRam >> 8) & 0xFF;
 

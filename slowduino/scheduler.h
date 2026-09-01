@@ -235,6 +235,8 @@ void processInjectorPolling();
 // UTILITÁRIOS
 // ============================================================================
 
+#if defined(__AVR__)
+
 /**
  * @brief Retorna contador atual do Timer1
  */
@@ -255,5 +257,17 @@ inline void setTimer1CompareA(uint16_t value) {
 inline void setTimer1CompareB(uint16_t value) {
   OCR1B = value;
 }
+
+#else
+
+// Porte não-AVR (STM32 etc.): Timer1 "lógico" é implementado em cima de um
+// HardwareTimer de 16 bits (ver scheduler.cpp), mas exposto com a mesma
+// interface usada pelo resto do código (fuel.cpp/decoders.cpp não sabem
+// nem precisam saber que a plataforma mudou).
+uint16_t getTimer1Count();
+void setTimer1CompareA(uint16_t value);
+void setTimer1CompareB(uint16_t value);
+
+#endif
 
 #endif // SCHEDULER_H

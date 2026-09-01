@@ -13,6 +13,13 @@ static uint32_t lastTPSReadTime = 0;
 // ============================================================================
 
 void sensorsInit() {
+#if !defined(__AVR__)
+  // O código inteiro assume ADC de 10 bits (0-1023), igual ao AVR. Núcleos
+  // não-AVR (ex: STM32) tipicamente têm ADC de 12 bits por padrão - força
+  // 10 bits aqui para não ter que tocar em nenhuma conta de sensores.cpp.
+  analogReadResolution(10);
+#endif
+
   // Configura pinos como entrada
   pinMode(PIN_MAP, INPUT);
   pinMode(PIN_TPS, INPUT);

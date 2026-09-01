@@ -44,3 +44,4 @@
 # PlatformIO build cache / compiled artifacts
 .pio/
 build_output/
+.pio_venv/

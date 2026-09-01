@@ -432,12 +432,28 @@ uint16_t getCrankAngle() {
 // GERENCIAMENTO DE INTERRUPÇÕES
 // ============================================================================
 
+// Trampolim para o ISR atual (permite trocar decoder em runtime). Função
+// normal em vez de lambda: no core STM32 a lambda sem captura ainda converte
+// para dois overloads de attachInterrupt ao mesmo tempo (voidFuncPtr e
+// callback_function_t), o que dá ambiguidade de overload na chamada.
+static void triggerISRTrampoline() {
+  if (currentTriggerISR != nullptr) {
+    currentTriggerISR();
+  }
+}
+
 void attachTriggerInterrupt() {
   // Configura pino como entrada com pullup
   pinMode(PIN_TRIGGER_PRIMARY, INPUT_PULLUP);
 
   uint8_t edgeConfig = configPage2.triggerEdge;
+#if defined(__AVR__)
   uint8_t interruptMode;
+#else
+  // No core STM32 (Arduino_Core_STM32), attachInterrupt() espera um
+  // PinStatus (enum), não um int cru como no AVR.
+  PinStatus interruptMode;
+#endif
   switch (edgeConfig) {
     case TRIGGER_EDGE_RISING:
       interruptMode = RISING;
@@ -456,12 +472,7 @@ void attachTriggerInterrupt() {
   // Anexa interrupção INT0 (pino D2 no Uno/Nano - PIN_TRIGGER_PRIMARY)
   // Pode ser RISING, FALLING ou CHANGE (ambas as bordas)
   // NOTA: Com CHANGE, cada dente físico gera 2 pulsos!
-  // Lambda chama ISR atual dinamicamente (permite trocar decoder em runtime)
-  attachInterrupt(digitalPinToInterrupt(PIN_TRIGGER_PRIMARY), []() {
-    if (currentTriggerISR != nullptr) {
-      currentTriggerISR();
-    }
-  }, interruptMode);
+  attachInterrupt(digitalPinToInterrupt(PIN_TRIGGER_PRIMARY), triggerISRTrampoline, interruptMode);
 }
 
 void detachTriggerInterrupt() {

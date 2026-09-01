@@ -6,6 +6,10 @@
 #include "auxiliaries.h"
 #include "tables.h"
 
+#if !defined(__AVR__)
+#include <HardwareTimer.h>
+#endif
+
 // Variáveis estáticas para controle de estado
 static uint32_t lastFuelPumpActivity = 0;
 static uint32_t fuelPumpPrimeStart = 0;
@@ -132,7 +136,10 @@ void fuelPumpControl() {
  * Precisa ser curtíssima: usa acesso direto à porta (IDLE_PIN_HIGH/LOW), não
  * digitalWrite(), para não atrasar a ISR de ignição do Timer1.
  */
-ISR(TIMER2_COMPA_vect) {
+// Corpo da ISR, compartilhado entre AVR (ISR de Timer2 real) e o porte
+// STM32 (callback de HardwareTimer) - a lógica de PWM em si não depende de
+// plataforma, só o "encanamento" que a dispara a cada tick.
+static inline void idlePwmTick() {
   uint8_t count = idlePwmCount + 1;
 
   if (count >= idlePwmPeriodTicks) {
@@ -145,10 +152,17 @@ ISR(TIMER2_COMPA_vect) {
   idlePwmCount = count;
 }
 
-void idlePwmInit() {
-  pinMode(PIN_IDLE_VALVE, OUTPUT);
-  IDLE_PIN_LOW();
+#if defined(__AVR__)
 
+ISR(TIMER2_COMPA_vect) {
+  idlePwmTick();
+}
+
+static inline void iacTimerStart() { TIMSK2 |= (1 << OCIE2A); }
+static inline void iacTimerStop()  { TIMSK2 &= ~(1 << OCIE2A); }
+static inline bool iacTimerIsRunning() { return (TIMSK2 & (1 << OCIE2A)) != 0; }
+
+static inline void iacTimerSetup() {
   // Timer2 em CTC: OCR2A define o período do tick.
   // Prescaler 64 @16MHz = 4us/tick de contagem; OCR2A=62 -> 63*4us = 252us
   // (~3968Hz). Timer2 está livre no projeto - Timer0 é do core (millis) e
@@ -158,6 +172,41 @@ void idlePwmInit() {
   OCR2A  = (IDLE_PWM_TICK_DIVISOR - 1);
   TCNT2  = 0;
   TIMSK2 = 0;                          // ISR habilitada só quando necessário
+}
+
+#else
+
+// Porte STM32: TIM3 gera um "tick" periódico (interrupção de overflow) na
+// mesma cadência do Timer2/CTC do AVR (~3968Hz / 252us). Ligar/desligar o
+// PWM vira pause()/resume() do timer - HardwareTimer não expõe um jeito
+// direto de checar se está rodando, então guardamos isso à parte.
+static HardwareTimer iacTimer(TIM3);
+static volatile bool iacTimerRunning = false;
+
+static inline void iacTimerStart() { if (!iacTimerRunning) { iacTimer.resume(); iacTimerRunning = true; } }
+static inline void iacTimerStop()  { if (iacTimerRunning) { iacTimer.pause(); iacTimerRunning = false; } }
+static inline bool iacTimerIsRunning() { return iacTimerRunning; }
+
+static void iacTimer_ISR() {
+  idlePwmTick();
+}
+
+static inline void iacTimerSetup() {
+  iacTimer.pause();
+  // IDLE_PWM_TICK_HZ (~3968Hz) -> período de ~252us, igual ao tick do AVR
+  iacTimer.setOverflow((uint32_t)(1000000UL / IDLE_PWM_TICK_HZ), MICROSEC_FORMAT);
+  iacTimer.attachInterrupt(iacTimer_ISR);
+  iacTimer.refresh();
+  iacTimerRunning = false;
+}
+
+#endif
+
+void idlePwmInit() {
+  pinMode(PIN_IDLE_VALVE, OUTPUT);
+  IDLE_PIN_LOW();
+
+  iacTimerSetup();
 
   idlePwmCount = 0;
   idlePwmTargetTicks = 0;
@@ -188,13 +237,13 @@ void idleSetDuty(uint8_t duty) {
   currentStatus.idleValveDuty = duty;
 
   if (duty == 0) {
-    TIMSK2 &= ~(1 << OCIE2A);
+    iacTimerStop();
     IDLE_PIN_LOW();
     return;
   }
 
   if (duty >= 100) {
-    TIMSK2 &= ~(1 << OCIE2A);
+    iacTimerStop();
     IDLE_PIN_HIGH();
     return;
   }
@@ -205,10 +254,10 @@ void idleSetDuty(uint8_t duty) {
 
   // Se estávamos num extremo (ISR desligada), o contador está velho: reinicia
   // o período para o PWM começar limpo em vez de gerar um ciclo torto.
-  if ((TIMSK2 & (1 << OCIE2A)) == 0) {
+  if (!iacTimerIsRunning()) {
     idlePwmCount = 0;
     IDLE_PIN_HIGH();
-    TIMSK2 |= (1 << OCIE2A);
+    iacTimerStart();
   }
 }
 
