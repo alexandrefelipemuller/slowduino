@@ -14,3 +14,18 @@ int8_t eepromReadI8(uint16_t address) {
   (void)address;
   return 0;  /* placeholder neutro */
 }
+
+bool eepromWriteByte(uint16_t address, uint8_t value) {
+  (void)address;
+  (void)value;
+  return false;  /* placeholder - nao escreve nada de verdade ainda */
+}
+
+void eepromWriteI8(uint16_t address, int8_t value) {
+  (void)address;
+  (void)value;
+}
+
+void saveAllConfig(void) {
+  /* placeholder - ver storage.h */
+}

@@ -13,6 +13,8 @@
 #define TABLE_SIZE_X 12
 #define TABLE_SIZE_Y 12
 
+#define SERIAL_BUFFER_SIZE 24
+
 #define SYNC_TIMEOUT  1000UL
 #define INJ_MIN_PW    500
 #define INJ_MAX_PW    20000
@@ -29,5 +31,12 @@
 #define TRIGGER_EDGE_RISING    0
 #define TRIGGER_EDGE_FALLING   1
 #define TRIGGER_EDGE_BOTH      2
+
+#define IGN_MIN_ADVANCE  (-10)
+#define IGN_MAX_ADVANCE  45
+
+#define IDLE_ADV_OFF       0
+#define IDLE_ADV_ADDED     1
+#define IDLE_ADV_SWITCHED  2
 
 #endif /* CONFIG_H */

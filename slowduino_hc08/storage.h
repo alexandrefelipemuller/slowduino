@@ -20,8 +20,17 @@
 #define STORAGE_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 uint8_t eepromReadByte(uint16_t address);
 int8_t  eepromReadI8(uint16_t address);
+bool    eepromWriteByte(uint16_t address, uint8_t value);
+void    eepromWriteI8(uint16_t address, int8_t value);
+
+/* PLACEHOLDER - ver aviso grande acima. No AVR, salva ConfigPage1/2 na
+ * EEPROM. Aqui, sem design de Flash ainda, e um no-op documentado -
+ * comms.c chama isto via burnEEPROM() (comando 'b'/'B' do TunerStudio),
+ * entao precisa existir, mas nao persiste nada de verdade ainda. */
+void saveAllConfig(void);
 
 #endif /* STORAGE_H */
