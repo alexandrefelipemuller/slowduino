@@ -43,11 +43,29 @@ Esqueleto compila e linka de ponta a ponta (`sdcc -mhc08` + `sdas6808` +
   **descida** - não existe RISING nem CHANGE (ambas as bordas) nesse pino,
   ao contrário do `attachInterrupt` do AVR. Ver ressalva grande no topo do
   arquivo.
-- `main.c` - boot com decoder de trigger real conectado.
+- `config.h` - constantes compartilhadas (cresce junto com o port).
+- `storage.h`/`storage.c` - **PLACEHOLDER, não é storage real**. O GP32
+  não tem EEPROM (só Flash, apagada em páginas de 128 bytes com bomba de
+  carga via `FLCR` - ver cap. 2.6 do datasheet). Isso exige um redesign
+  de verdade (provável shadow em RAM sincronizado com Flash), ainda não
+  decidido. Por ora `eepromReadByte()`/`eepromReadI8()` retornam valor
+  fixo, só para não travar `tables.c`/`fuel.c`.
+- `tables.h`/`tables.c` - port 1:1 de `getTableValue()`/interpolação
+  bilinear (branch tiny, sem cache). Lê célula via `storage.h` (hoje
+  placeholder).
+- `fuel.h`/`fuel.c` - port 1:1 de `calculateInjection()`/`calculateCorrections()`/
+  WUE/ASE/AE/CLT/battery. 2 avisos do compilador (`fuel.c:84,93`) sobre
+  comparação signed/unsigned entre `coolant` (`int8_t`) e `wueBins[]`
+  (`uint8_t`) - **pré-existente no AVR original**, não introduzido pelo
+  port; o SDCC só é mais rigoroso que o avr-gcc nesse aviso. Não corrigido
+  aqui - precisa decisão de quem entende a intenção original.
+- `main.c` - boot com trigger + fuel + tables conectados (falta `ignition.c`:
+  `currentStatus.advance`/`dwell` ainda ficam zerados de boot).
 
-**RAM: 303 bytes** com `--stack-auto` (501 sem - ver seção acima),
-para `globals+timebase+scheduler+decoders+main`. Ainda faltam fuel/tables/
-comms/storage - não é o número final.
+**RAM: 412 bytes** (`globals+timebase+scheduler+decoders+storage+tables+
+fuel+main`). Ainda dentro dos 512B mesmo com a cadeia trigger→ISR→
+scheduler→fuel→tabela completa. Faltam `ignition.c`, `comms` (protocolo
+Speeduino via SCI) e o storage real.
 
 ## Numeração de interrupção do SDCC (`__interrupt(N)`)
 
@@ -72,8 +90,13 @@ Tabela completa em `mc68hc908gp32_sfr.h`.
    que o SDCC não precisa de `__reentrant` explícito adicional nelas).
 5. **RISING/CHANGE no pino IRQ** - não suportado pelo hardware dedicado
    (só FALLING). Alternativa seria o módulo KBI (Port A) - não investigado.
-6. **Ainda faltam**: fuel, tables (sem EEPROM - GP32 só tem Flash, ver
-   ressalva de storage), comms (protocolo Speeduino via SCI).
+6. **Storage real** - o placeholder de `storage.c` precisa virar um design
+   de verdade em Flash antes de qualquer teste com dados de tabela reais.
+7. **Ainda faltam**: `ignition.c` (avanço/dwell - hoje zerados), `comms`
+   (protocolo Speeduino via SCI).
+8. **Avisos de sign-compare em `fuel.c`** (linhas 84/93) - pré-existentes
+   no AVR original, não corrigidos aqui (precisa decisão de quem entende
+   a intenção do `wueBins[]` ser `uint8_t` vs `coolant` ser `int8_t`).
 
 ## Build
 

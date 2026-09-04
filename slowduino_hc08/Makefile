@@ -17,7 +17,7 @@ CC      = sdcc
 AS      = sdas6808
 MCU     = -mhc08
 CFLAGS  = $(MCU) --std-c99 --stack-auto -Wall
-SRCS    = globals timebase scheduler decoders main
+SRCS    = globals timebase scheduler decoders storage tables fuel main
 TARGET  = slowduino_hc08
 
 .PHONY: all clean

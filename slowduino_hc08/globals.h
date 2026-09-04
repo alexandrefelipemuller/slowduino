@@ -86,6 +86,7 @@ extern struct ConfigPage2 configPage2;
 #define BIT_SET(var, bit)    ((var) |= (1 << (bit)))
 #define BIT_CLEAR(var, bit)  ((var) &= ~(1 << (bit)))
 #define BIT_CHECK(var, bit)  ((var) & (1 << (bit)))
+#define PERCENT(val, pct)    (((uint32_t)(val) * (pct)) / 100)
 
 /* Equivalente a noInterrupts()/interrupts() do Arduino core. ATENCAO: os
  * mnemonicos do HC08 tem o sentido "invertido" do nome AVR - SEI (Set

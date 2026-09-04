@@ -1,21 +1,24 @@
 /**
  * @file main.c
- * @brief Boot do port Slowduino-HC08 - decoder de trigger real conectado
+ * @brief Boot do port Slowduino-HC08 - trigger + fuel + tables conectados
  *
- * Ainda faltam fuel/comms/storage - configPage1/configPage2 ficam com os
- * valores zerados de boot (sem loadDefaults() nem protocolo Speeduino
- * ainda), entao RPM/PW/advance nao vao refletir um motor de verdade, mas
- * a cadeia trigger -> ISR -> scheduler ja fica completa e testavel.
+ * Ainda faltam comms (protocolo Speeduino) e storage real (GP32 nao tem
+ * EEPROM - ver storage.h) e ignition.c (avanco/dwell, hoje currentStatus.
+ * advance/dwell ficam zerados de boot). getVE()/calculateInjection() ja
+ * rodam de ponta a ponta, so que sobre dados de tabela placeholder.
  */
 
 #include "globals.h"
 #include "scheduler.h"
 #include "decoders.h"
 #include "timebase.h"
+#include "tables.h"
+#include "fuel.h"
 
 int main(void) {
   timebaseInit();
   schedulerInit();
+  initTables();
   triggerInit();
 
   interrupts();
@@ -24,13 +27,18 @@ int main(void) {
     static uint32_t lastLoop67Hz = 0;
     uint32_t now = micros();
 
-    /* Mesma cadencia de calculateRPM()/checkSyncLoss() do loop() no AVR
-     * (~67ms, ver CLAUDE.md) - aqui feito por tempo decorrido em vez de
-     * time-slicing por millis() (ainda nao portado). */
+    /* Alta prioridade - mesma posicao que tem no loop() do AVR */
+    processInjectorPolling();
+
     if ((uint32_t)(now - lastLoop67Hz) >= 67000UL) {
       lastLoop67Hz = now;
       calculateRPM();
       checkSyncLoss();
+      updateEngineStatus();
+
+      if (currentStatus.hasSync && currentStatus.RPM > 0) {
+        calculateInjection();
+      }
     }
   }
 

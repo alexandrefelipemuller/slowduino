@@ -24,6 +24,7 @@
 #define SCHEDULER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "mc68hc908gp32_sfr.h"
 
 typedef enum { SCHED_OFF, SCHED_PENDING, SCHED_RUNNING } ScheduleStatus;
@@ -54,5 +55,22 @@ void clearIgnitionSchedule(volatile IgnitionSchedule *schedule);
 static inline uint16_t getTimer1Count(void) {
   return (uint16_t)((T1CNTH << 8) | T1CNTL);
 }
+
+/* ==========================================================================
+ * INJECAO VIA POLLING - identico ao scheduler.h/.c do AVR (branch tiny)
+ * ========================================================================== */
+typedef struct {
+  bool isScheduled;
+  bool isOpen;
+  uint32_t openTime;
+  uint32_t closeTime;
+} InjectorPollingState;
+
+extern InjectorPollingState injector1Polling;
+extern InjectorPollingState injector2Polling;
+extern InjectorPollingState injector3Polling;
+
+void scheduleInjectorPolling(InjectorPollingState *injState, uint32_t startDelay, uint16_t pulseWidth);
+void processInjectorPolling(void);
 
 #endif /* SCHEDULER_H */

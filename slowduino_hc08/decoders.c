@@ -19,21 +19,10 @@
 
 #include "decoders.h"
 #include "globals.h"
+#include "config.h"
 #include "scheduler.h"
 #include "timebase.h"
 #include "mc68hc908gp32_sfr.h"
-
-#define TRIGGER_MISSING_TOOTH  0
-#define TRIGGER_BASIC_DIST     1
-#define TRIGGER_EDGE_RISING    0
-#define TRIGGER_EDGE_FALLING   1
-#define TRIGGER_EDGE_BOTH      2
-
-#define SYNC_TIMEOUT  1000UL
-#define INJ_MIN_PW    500
-#define INJ_MAX_PW    20000
-#define DWELL_MIN     1000
-#define DWELL_MAX     8000
 
 #define INJECTION_ANGLE 270  /* 90 graus BTDC - mesma razao doc no AVR */
 
@@ -46,25 +35,6 @@ static uint8_t triggerEdgesPerTooth = 1;
 
 typedef void (*TriggerISR)(void);
 static volatile TriggerISR currentTriggerISR;
-
-/* Precisa das mesmas structs de injector polling que scheduler.h/.c do AVR
- * definiam (InjectorPollingState) - ainda nao portadas para este arquivo;
- * placeholder minimo so para nao travar a compilacao do decoder agora. Ver
- * TODO no README: portar scheduler de injecao (polling) junto com fuel.c. */
-typedef struct {
-  bool isScheduled, isOpen;
-  uint32_t openTime, closeTime;
-} InjectorPollingState;
-static InjectorPollingState injector1Polling;
-static InjectorPollingState injector2Polling;
-
-static void scheduleInjectorPolling(InjectorPollingState *injState, uint32_t startDelay, uint16_t pulseWidth) {
-  uint32_t now = micros();
-  injState->openTime = now + startDelay;
-  injState->closeTime = injState->openTime + pulseWidth;
-  injState->isScheduled = true;
-  injState->isOpen = false;
-}
 
 /* ==========================================================================
  * AGENDAMENTO DIRETO NA ISR (identico ao AVR - scheduleInjectionISR/

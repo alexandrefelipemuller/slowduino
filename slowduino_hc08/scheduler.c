@@ -13,6 +13,7 @@
  */
 
 #include "scheduler.h"
+#include "timebase.h"
 
 static const uint16_t IGNITION_MIN_DELAY_US = 25;
 
@@ -29,10 +30,76 @@ static void endCoil1Charge(void)   { PTA &= (uint8_t)~COIL1_BIT; }
 static void beginCoil2Charge(void) { PTA |= COIL2_BIT; }
 static void endCoil2Charge(void)   { PTA &= (uint8_t)~COIL2_BIT; }
 
+/* PLACEHOLDER: pinos reais dos injetores na placa Slowduino-HC08 ainda
+ * nao definidos - PTB0/PTB1/PTB2 so para ter algo observavel/testavel. */
+#define INJ1_BIT 0x01
+#define INJ2_BIT 0x02
+#define INJ3_BIT 0x04
+
+static void openInjector1(void)  { PTB |= INJ1_BIT; }
+static void closeInjector1(void) { PTB &= (uint8_t)~INJ1_BIT; }
+static void openInjector2(void)  { PTB |= INJ2_BIT; }
+static void closeInjector2(void) { PTB &= (uint8_t)~INJ2_BIT; }
+static void openInjector3(void)  { PTB |= INJ3_BIT; }
+static void closeInjector3(void) { PTB &= (uint8_t)~INJ3_BIT; }
+
+InjectorPollingState injector1Polling;
+InjectorPollingState injector2Polling;
+InjectorPollingState injector3Polling;
+
+void scheduleInjectorPolling(InjectorPollingState *injState, uint32_t startDelay, uint16_t pulseWidth) {
+  uint32_t now = micros();
+  injState->openTime = now + startDelay;
+  injState->closeTime = injState->openTime + pulseWidth;
+  injState->isScheduled = true;
+  injState->isOpen = false;
+}
+
+void processInjectorPolling(void) {
+  uint32_t now = micros();
+
+  if (injector1Polling.isScheduled) {
+    if (!injector1Polling.isOpen && now >= injector1Polling.openTime) {
+      openInjector1();
+      injector1Polling.isOpen = true;
+    } else if (injector1Polling.isOpen && now >= injector1Polling.closeTime) {
+      closeInjector1();
+      injector1Polling.isOpen = false;
+      injector1Polling.isScheduled = false;
+    }
+  }
+
+  if (injector2Polling.isScheduled) {
+    if (!injector2Polling.isOpen && now >= injector2Polling.openTime) {
+      openInjector2();
+      injector2Polling.isOpen = true;
+    } else if (injector2Polling.isOpen && now >= injector2Polling.closeTime) {
+      closeInjector2();
+      injector2Polling.isOpen = false;
+      injector2Polling.isScheduled = false;
+    }
+  }
+
+  if (injector3Polling.isScheduled) {
+    if (!injector3Polling.isOpen && now >= injector3Polling.openTime) {
+      openInjector3();
+      injector3Polling.isOpen = true;
+    } else if (injector3Polling.isOpen && now >= injector3Polling.closeTime) {
+      closeInjector3();
+      injector3Polling.isOpen = false;
+      injector3Polling.isScheduled = false;
+    }
+  }
+}
+
 void schedulerInit(void) {
   DDRA |= (COIL1_BIT | COIL2_BIT);  /* bobinas como saida */
+  DDRB |= (INJ1_BIT | INJ2_BIT | INJ3_BIT);  /* injetores como saida */
   endCoil1Charge();
   endCoil2Charge();
+  closeInjector1();
+  closeInjector2();
+  closeInjector3();
 
   /* Reset do contador + prescaler, depois arma canais 0 e 1 em modo
    * "software compare only" (MSxA=1, ELSxB:ELSxA=00 - ver ressalva de
