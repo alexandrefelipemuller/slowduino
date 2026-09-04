@@ -87,4 +87,13 @@ extern struct ConfigPage2 configPage2;
 #define BIT_CLEAR(var, bit)  ((var) &= ~(1 << (bit)))
 #define BIT_CHECK(var, bit)  ((var) & (1 << (bit)))
 
+/* Equivalente a noInterrupts()/interrupts() do Arduino core. ATENCAO: os
+ * mnemonicos do HC08 tem o sentido "invertido" do nome AVR - SEI (Set
+ * Interrupt mask) DESLIGA interrupcoes, CLI (Clear Interrupt mask) LIGA.
+ * Estes wrappers existem exatamente para nao ter que lembrar disso em
+ * cada call site (o codigo portado chama noInterrupts()/interrupts() com
+ * o mesmo nome e semantica que tinha no AVR). */
+static inline void noInterrupts(void) { __asm sei __endasm; }
+static inline void interrupts(void)   { __asm cli __endasm; }
+
 #endif /* GLOBALS_H */

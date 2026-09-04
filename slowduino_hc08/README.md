@@ -4,6 +4,18 @@ Port experimental do Slowduino para o núcleo original da MegaSquirt MS1
 (Freescale/Motorola MC68HC908GP32), compilado com SDCC (`-mhc08`), em C puro
 (SDCC não compila C++).
 
+## ACHADO CRITICO: `--stack-auto` e obrigatorio
+
+Sem essa flag, o SDCC aloca parametros e variaveis locais de CADA funcao
+como armazenamento fixo permanente (nao pilha real) por padrao no backend
+hc08 - so 11 bytes conseguem ser reaproveitados via overlay (`OSEG`).
+Medido nesta sessao, mesmo codigo (globals+timebase+scheduler+decoders+
+main): **501 bytes de RAM sem `--stack-auto` vs 303 bytes com**. Custo:
+~793 bytes a mais de Flash (frame de pilha real por chamada). Essa e
+exatamente a "desvantagem do compilador no meio do caminho" antecipada no
+inicio desta investigacao - agora com numero real. O `Makefile` deste
+diretorio ja usa `--stack-auto` como padrao.
+
 ## Estado atual
 
 Esqueleto compila e linka de ponta a ponta (`sdcc -mhc08` + `sdas6808` +
@@ -24,10 +36,18 @@ Esqueleto compila e linka de ponta a ponta (`sdcc -mhc08` + `sdas6808` +
   propósito, para reversibilidade entre as duas arquiteturas) - usa TIM1
   canal 0/1 (equivalente a OCR1A/OCR1B), deixando TIM2 livre (igual ao
   Timer2 do AVR, reservado pra IAC).
-- `main.c` - boot mínimo, agenda pulsos de ignição de teste a cada ~20ms.
+- `decoders.h`/`decoders.c` - port 1:1 de `triggerPri_MissingTooth`/
+  `triggerPri_BasicDistributor`/`calculateRPM`/`checkSyncLoss` (com
+  agendamento direto de injeção/ignição na ISR, igual ao AVR). Diferença
+  real de hardware: o pino dedicado `IRQ` do GP32 só detecta borda de
+  **descida** - não existe RISING nem CHANGE (ambas as bordas) nesse pino,
+  ao contrário do `attachInterrupt` do AVR. Ver ressalva grande no topo do
+  arquivo.
+- `main.c` - boot com decoder de trigger real conectado.
 
-**RAM do esqueleto atual: 288 bytes** (`DSEG+OSEG+XSEG+XISEG` do linker).
-Ainda não inclui decoders/fuel/comms/storage - não é o número final.
+**RAM: 303 bytes** com `--stack-auto` (501 sem - ver seção acima),
+para `globals+timebase+scheduler+decoders+main`. Ainda faltam fuel/tables/
+comms/storage - não é o número final.
 
 ## Numeração de interrupção do SDCC (`__interrupt(N)`)
 
@@ -45,24 +65,25 @@ Tabela completa em `mc68hc908gp32_sfr.h`.
    `scheduler.h`) - placeholder, ajustar para o clock real da placa.
 3. **Pinos das bobinas** (`PTA0`/`PTA1` em `scheduler.c`) - placeholder, sem
    mapeamento de pinagem real definido ainda.
-4. **Reentrância** - funções chamadas tanto do loop principal quanto de ISR
-   ainda não passaram por auditoria (SDCC usa parâmetros como variável
-   global fixa por padrão, não pilha - ver discussão na sessão).
-5. **Ainda faltam**: decoders (trigger), fuel, tables (sem EEPROM - GP32 só
-   tem Flash, ver ressalva de storage), comms (protocolo Speeduino via SCI).
+4. **Reentrância** - com `--stack-auto`, funções normais já usam pilha real
+   (resolve a maior parte da preocupação original). Falta confirmar como
+   isso interage com `__interrupt` especificamente (ex: `triggerPri_*` são
+   chamadas de dentro de `isr_irq()` E fazem chamadas profundas - validar
+   que o SDCC não precisa de `__reentrant` explícito adicional nelas).
+5. **RISING/CHANGE no pino IRQ** - não suportado pelo hardware dedicado
+   (só FALLING). Alternativa seria o módulo KBI (Port A) - não investigado.
+6. **Ainda faltam**: fuel, tables (sem EEPROM - GP32 só tem Flash, ver
+   ressalva de storage), comms (protocolo Speeduino via SCI).
 
 ## Build
 
 ```sh
-# workaround do bug de empacotamento do sdcc (Ubuntu 4.2.0): a chamada
-# automática do assembler quebra ("sdas6808 ll -plosgffw ..."), roda-se
-# o pipeline em 3 passos manualmente:
-for f in globals timebase scheduler main; do
-  sdcc -mhc08 --std-c99 -Wall -S $f.c
-  sdas6808 -plosgffw $f.rel $f.asm
-done
-sdcc -mhc08 --std-c99 globals.rel timebase.rel scheduler.rel main.rel -o slowduino_hc08.ihx
+make
 ```
+
+Ver `Makefile` - já embute o workaround do bug de empacotamento do sdcc
+(Ubuntu 4.2.0: a chamada automática do assembler quebra, "sdas6808 ll
+-plosgffw ..." com um "ll" espúrio) e a flag `--stack-auto` obrigatória.
 
 ## Validação
 

@@ -1,34 +1,36 @@
 /**
  * @file main.c
- * @brief Boot minimo do port Slowduino-HC08 - so pra validar a base
- *        (registradores, scheduler, timebase) compilando e rodando no
- *        simulador antes de portar decoders/fuel/comms.
+ * @brief Boot do port Slowduino-HC08 - decoder de trigger real conectado
  *
- * Nao tenta decodificar trigger ainda - agenda um pulso de ignicao
- * periodico artificial (a cada ~20ms) so para ter algo observavel via
- * GPIO (PTA0/PTA1) no simulador.
+ * Ainda faltam fuel/comms/storage - configPage1/configPage2 ficam com os
+ * valores zerados de boot (sem loadDefaults() nem protocolo Speeduino
+ * ainda), entao RPM/PW/advance nao vao refletir um motor de verdade, mas
+ * a cadeia trigger -> ISR -> scheduler ja fica completa e testavel.
  */
 
 #include "globals.h"
 #include "scheduler.h"
+#include "decoders.h"
 #include "timebase.h"
 
 int main(void) {
   timebaseInit();
   schedulerInit();
+  triggerInit();
 
-  __asm cli __endasm; /* habilita interrupcoes (equivalente a sei() do AVR) */
-
-  currentStatus.RPM = 0;
+  interrupts();
 
   for (;;) {
-    static uint32_t lastPulse = 0;
+    static uint32_t lastLoop67Hz = 0;
     uint32_t now = micros();
 
-    if ((uint32_t)(now - lastPulse) >= 20000UL) {  /* ~50Hz, so para teste */
-      lastPulse = now;
-      setIgnitionSchedule(&ignitionSchedule1, 2000, 2500, 1);
-      setIgnitionSchedule(&ignitionSchedule2, 2000, 2500, 2);
+    /* Mesma cadencia de calculateRPM()/checkSyncLoss() do loop() no AVR
+     * (~67ms, ver CLAUDE.md) - aqui feito por tempo decorrido em vez de
+     * time-slicing por millis() (ainda nao portado). */
+    if ((uint32_t)(now - lastLoop67Hz) >= 67000UL) {
+      lastLoop67Hz = now;
+      calculateRPM();
+      checkSyncLoss();
     }
   }
 
