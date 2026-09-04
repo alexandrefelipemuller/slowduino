@@ -35,30 +35,8 @@ struct Table3D {
   // Para VE: uint8_t (0-255%). Para Ign: int8_t (-128 a +127 graus).
   uint16_t eepromValuesBase;
 
-  // Cache para otimização
-  uint8_t lastX;         // Último índice X
-  uint8_t lastY;         // Último índice Y
-  uint16_t lastInputX;   // Último input X (RPM)
-  uint8_t lastInputY;    // Último input Y (MAP)
-  int16_t lastOutput;    // Último resultado
-
   // Flag indicando se valores são signed
   bool isSigned;
-};
-
-// ============================================================================
-// ESTRUTURA DE TABELA 2D (para correções)
-// ============================================================================
-
-struct Table2D {
-  uint8_t size;              // Número de pontos
-  int8_t* bins;              // Eixo X (ex: temperatura)
-  uint8_t* values;           // Valores Y (ex: % de correção)
-
-  // Cache
-  uint8_t lastBin;
-  int8_t lastInput;
-  uint8_t lastOutput;
 };
 
 // ============================================================================
@@ -96,15 +74,6 @@ void initTables();
  * Implementa interpolação bilinear entre os 4 pontos mais próximos.
  */
 int16_t getTableValue(struct Table3D* table, uint8_t valueY, uint16_t valueX);
-
-/**
- * @brief Obtém valor de tabela 2D com interpolação linear
- *
- * @param table Ponteiro para tabela
- * @param value Valor de entrada (ex: temperatura)
- * @return Valor interpolado
- */
-uint8_t getTable2DValue(struct Table2D* table, int8_t value);
 
 /**
  * @brief Encontra índices no eixo X (RPM) para interpolação
@@ -168,12 +137,5 @@ uint8_t lookupCurveU8(const int8_t* bins, const uint8_t* values, uint8_t size, i
  * valor pode ser (ex: idle advance por delta de RPM, que admite retardo).
  */
 int8_t lookupCurveI8(const uint8_t* bins, const int8_t* values, uint8_t size, int16_t x);
-
-/**
- * @brief Limpa cache de todas as tabelas
- *
- * Útil após modificação de tabelas via TunerStudio
- */
-void clearTableCaches();
 
 #endif // TABLES_H

@@ -25,9 +25,9 @@ struct TriggerState {
   volatile uint32_t toothOneTime;          // Timestamp do dente #1 (referência)
 
   // Contadores
-  volatile uint16_t toothCurrentCount;     // Contador de dentes na revolução atual
-  volatile uint16_t toothTotalCount;       // Total de dentes na roda (ex: 36)
-  volatile uint16_t triggerActualTeeth;    // Dentes reais (ex: 35 em 36-1)
+  volatile uint8_t toothCurrentCount;      // Contador de dentes na revolução atual
+  volatile uint8_t toothTotalCount;        // Total de dentes na roda (ex: 36)
+  volatile uint8_t triggerActualTeeth;     // Dentes reais (ex: 35 em 36-1)
 
   // Gaps e sincronização
   volatile uint32_t curGap;                // Gap atual entre dentes

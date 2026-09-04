@@ -8,9 +8,6 @@
 static const uint16_t IGNITION_MIN_DELAY_US = 25;  // Proteção contra eventos já vencidos
 
 // Instancia schedules globais
-volatile FuelSchedule fuelSchedule1 = {SCHED_OFF, 0, 0, 0, 1};
-volatile FuelSchedule fuelSchedule2 = {SCHED_OFF, 0, 0, 0, 2};
-volatile FuelSchedule fuelSchedule3 = {SCHED_OFF, 0, 0, 0, 3};
 volatile IgnitionSchedule ignitionSchedule1 = {SCHED_OFF, 0, 0, 0, 1};
 volatile IgnitionSchedule ignitionSchedule2 = {SCHED_OFF, 0, 0, 0, 2};
 
@@ -59,52 +56,6 @@ void setupTimer1() {
   // Habilita interrupções de Compare Match para Channels A, B
   TIMSK1 |= (1 << OCIE1A);  // Compare Match A (usaremos para fuel/ign 1)
   TIMSK1 |= (1 << OCIE1B);  // Compare Match B (usaremos para fuel/ign 2)
-}
-
-// ============================================================================
-// AGENDAMENTO DE INJEÇÃO
-// ============================================================================
-
-void setFuelSchedule(volatile FuelSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel) {
-  // Proteção: Não agendar se schedule anterior ainda está RUNNING
-  if (schedule->status == SCHED_RUNNING) {
-    // Cancela schedule anterior
-    clearFuelSchedule(schedule);
-  }
-
-  // Converte microsegundos para ticks do timer (× 2)
-  uint16_t startTicks = US_TO_TIMER1(startTime);
-  uint16_t durationTicks = US_TO_TIMER1(duration);
-
-  // Calcula valores de compare
-  uint16_t currentCount = TCNT1;
-  schedule->startCompare = currentCount + startTicks;
-  schedule->endCompare = schedule->startCompare + durationTicks;
-  schedule->duration = durationTicks;
-  schedule->channel = channel;
-  schedule->status = SCHED_PENDING;
-
-  // Configura compare register apropriado
-  if (channel == 1 || channel == 3) {
-    // Canais 1 e 3 compartilham OCR1A
-    OCR1A = schedule->startCompare;
-  } else {
-    // Canal 2 usa OCR1B
-    OCR1B = schedule->startCompare;
-  }
-}
-
-void clearFuelSchedule(volatile FuelSchedule* schedule) {
-  schedule->status = SCHED_OFF;
-
-  // Fecha injetor se estava aberto
-  if (schedule->channel == 1) {
-    closeInjector1();
-  } else if (schedule->channel == 2) {
-    closeInjector2();
-  } else if (schedule->channel == 3) {
-    closeInjector3();
-  }
 }
 
 // ============================================================================

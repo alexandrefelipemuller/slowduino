@@ -25,9 +25,6 @@ void initTables() {
   // Endereço EEPROM onde os valores de cada tabela residem (fixo, nunca muda)
   veTable.eepromValuesBase = EEPROM_VE_TABLE;
   ignTable.eepromValuesBase = EEPROM_IGN_TABLE;
-
-  // Limpa cache
-  clearTableCaches();
 }
 
 // ============================================================================
@@ -44,11 +41,6 @@ static int16_t readTableCell(const struct Table3D* table, uint8_t y, uint8_t x) 
 // ============================================================================
 
 int16_t getTableValue(struct Table3D* table, uint8_t valueY, uint16_t valueX) {
-  // Verifica cache
-  if (table->lastInputX == valueX && table->lastInputY == valueY) {
-    return table->lastOutput;
-  }
-
   // Encontra índices nos eixos
   uint8_t xLow, xHigh, yLow, yHigh;
   findTableXIndices(table, valueX, &xLow, &xHigh);
@@ -62,11 +54,6 @@ int16_t getTableValue(struct Table3D* table, uint8_t valueY, uint16_t valueX) {
 
   // Caso especial: se índices são iguais, não precisa interpolar
   if (xLow == xHigh && yLow == yHigh) {
-    table->lastOutput = q11;
-    table->lastInputX = valueX;
-    table->lastInputY = valueY;
-    table->lastX = xLow;
-    table->lastY = yLow;
     return q11;
   }
 
@@ -95,13 +82,6 @@ int16_t getTableValue(struct Table3D* table, uint8_t valueY, uint16_t valueX) {
     result = interpolate(valueY, y1, y2, r1, r2);
   }
 
-  // Atualiza cache
-  table->lastOutput = result;
-  table->lastInputX = valueX;
-  table->lastInputY = valueY;
-  table->lastX = xLow;
-  table->lastY = yLow;
-
   return result;
 }
 
@@ -125,20 +105,7 @@ void findTableXIndices(struct Table3D* table, uint16_t value, uint8_t* idxLow, u
   }
 
   // Busca linear (tabela pequena, busca binária não compensa)
-  // Começa do último índice usado (provável estar próximo)
-  uint8_t startIdx = table->lastX;
-
-  // Busca para frente
-  for (uint8_t i = startIdx; i < TABLE_SIZE_X - 1; i++) {
-    if (value >= table->axisX[i] && value < table->axisX[i + 1]) {
-      *idxLow = i;
-      *idxHigh = i + 1;
-      return;
-    }
-  }
-
-  // Se não encontrou, busca para trás
-  for (int8_t i = startIdx - 1; i >= 0; i--) {
+  for (uint8_t i = 0; i < TABLE_SIZE_X - 1; i++) {
     if (value >= table->axisX[i] && value < table->axisX[i + 1]) {
       *idxLow = i;
       *idxHigh = i + 1;
@@ -166,20 +133,8 @@ void findTableYIndices(struct Table3D* table, uint8_t value, uint8_t* idxLow, ui
     return;
   }
 
-  // Busca linear otimizada
-  uint8_t startIdx = table->lastY;
-
-  // Busca para frente
-  for (uint8_t i = startIdx; i < TABLE_SIZE_Y - 1; i++) {
-    if (value >= table->axisY[i] && value < table->axisY[i + 1]) {
-      *idxLow = i;
-      *idxHigh = i + 1;
-      return;
-    }
-  }
-
-  // Busca para trás
-  for (int8_t i = startIdx - 1; i >= 0; i--) {
+  // Busca linear
+  for (uint8_t i = 0; i < TABLE_SIZE_Y - 1; i++) {
     if (value >= table->axisY[i] && value < table->axisY[i + 1]) {
       *idxLow = i;
       *idxHigh = i + 1;
@@ -190,54 +145,6 @@ void findTableYIndices(struct Table3D* table, uint8_t value, uint8_t* idxLow, ui
   // Fallback
   *idxLow = TABLE_SIZE_Y - 2;
   *idxHigh = TABLE_SIZE_Y - 1;
-}
-
-// ============================================================================
-// INTERPOLAÇÃO 2D (Linear)
-// ============================================================================
-
-uint8_t getTable2DValue(struct Table2D* table, int8_t value) {
-  // Verifica cache
-  if (table->lastInput == value) {
-    return table->lastOutput;
-  }
-
-  // Verifica limites
-  if (value <= table->bins[0]) {
-    table->lastOutput = table->values[0];
-    table->lastInput = value;
-    table->lastBin = 0;
-    return table->values[0];
-  }
-
-  if (value >= table->bins[table->size - 1]) {
-    table->lastOutput = table->values[table->size - 1];
-    table->lastInput = value;
-    table->lastBin = table->size - 1;
-    return table->values[table->size - 1];
-  }
-
-  // Busca linear
-  for (uint8_t i = 0; i < table->size - 1; i++) {
-    if (value >= table->bins[i] && value < table->bins[i + 1]) {
-      // Interpola
-      uint8_t result = interpolate(
-        value,
-        table->bins[i],
-        table->bins[i + 1],
-        table->values[i],
-        table->values[i + 1]
-      );
-
-      table->lastOutput = result;
-      table->lastInput = value;
-      table->lastBin = i;
-      return result;
-    }
-  }
-
-  // Fallback
-  return table->values[table->size - 1];
 }
 
 // ============================================================================
@@ -270,20 +177,4 @@ int8_t lookupCurveI8(const uint8_t* bins, const int8_t* values, uint8_t size, in
   }
 
   return values[size - 1];
-}
-
-// ============================================================================
-// UTILITÁRIOS
-// ============================================================================
-
-void clearTableCaches() {
-  veTable.lastInputX = 0xFFFF;
-  veTable.lastInputY = 0xFF;
-  veTable.lastX = 0;
-  veTable.lastY = 0;
-
-  ignTable.lastInputX = 0xFFFF;
-  ignTable.lastInputY = 0xFF;
-  ignTable.lastX = 0;
-  ignTable.lastY = 0;
 }

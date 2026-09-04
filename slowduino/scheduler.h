@@ -23,14 +23,6 @@ enum ScheduleStatus {
   SCHED_RUNNING    // Em execução
 };
 
-struct FuelSchedule {
-  volatile ScheduleStatus status;
-  volatile uint16_t startCompare;     // Valor OCR para início
-  volatile uint16_t endCompare;       // Valor OCR para fim
-  volatile uint16_t duration;         // Duração em ticks do timer
-  volatile uint8_t channel;           // Canal (1, 2 ou 3)
-};
-
 struct IgnitionSchedule {
   volatile ScheduleStatus status;
   volatile uint16_t startCompare;     // Início do dwell (carga)
@@ -40,9 +32,6 @@ struct IgnitionSchedule {
 };
 
 // Schedules globais
-extern volatile FuelSchedule fuelSchedule1;
-extern volatile FuelSchedule fuelSchedule2;
-extern volatile FuelSchedule fuelSchedule3;
 extern volatile IgnitionSchedule ignitionSchedule1;
 extern volatile IgnitionSchedule ignitionSchedule2;
 
@@ -68,21 +57,6 @@ void setupTimer1();
 // ============================================================================
 // FUNÇÕES DE AGENDAMENTO DE INJEÇÃO
 // ============================================================================
-
-/**
- * @brief Agenda evento de injeção
- *
- * @param schedule Ponteiro para struct de schedule
- * @param startTime Tempo de início (microsegundos a partir de agora)
- * @param duration Duração da injeção (microsegundos)
- * @param channel Canal do injetor (1, 2 ou 3)
- */
-void setFuelSchedule(volatile FuelSchedule* schedule, uint16_t startTime, uint16_t duration, uint8_t channel);
-
-/**
- * @brief Cancela schedule de injeção
- */
-void clearFuelSchedule(volatile FuelSchedule* schedule);
 
 // ============================================================================
 // FUNÇÕES DE AGENDAMENTO DE IGNIÇÃO

@@ -816,9 +816,7 @@ uint8_t writePageValues(uint8_t page, uint16_t offset, uint16_t length, const ui
     }
   }
 
-  if (tableChanged) {
-    clearTableCaches();
-  }
+  (void)tableChanged;  // sem cache de tabela para invalidar (lookup lê direto da EEPROM)
 
   return SERIAL_RC_OK;
 }

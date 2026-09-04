@@ -40,3 +40,8 @@
 # debug information files
 *.dwo
 .claude/
+
+# PlatformIO build artifacts / local venv
+.pio/
+.pio_venv/
+simulator/.pio/
