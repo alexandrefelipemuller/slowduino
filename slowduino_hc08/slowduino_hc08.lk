@@ -1,0 +1,14 @@
+-muwx
+-s slowduino_hc08.ihx
+-b HOME = 0x8000
+-b DSEG = 0x0080
+-k /tmp/claude-1000/-home-alexandre-Projects-slowduino/89111903-bd1f-4df1-a701-b8e382db4edb/scratchpad/sdcc_local/extracted/usr/bin/../share/sdcc/lib/hc08
+-k /tmp/claude-1000/-home-alexandre-Projects-slowduino/89111903-bd1f-4df1-a701-b8e382db4edb/scratchpad/sdcc_local/extracted/usr/share/sdcc/share/sdcc/lib/hc08
+-k /usr/share/sdcc/lib/hc08
+-l hc08
+globals.rel
+timebase.rel
+scheduler.rel
+main.rel
+
+-e
