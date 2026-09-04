@@ -45,3 +45,14 @@
 .pio/
 .pio_venv/
 simulator/.pio/
+
+# Artefatos de build do SDCC (port HC08)
+slowduino_hc08/*.rel
+slowduino_hc08/*.asm
+slowduino_hc08/*.ihx
+slowduino_hc08/*.map
+slowduino_hc08/*.sym
+slowduino_hc08/*.lst
+slowduino_hc08/*.rst
+slowduino_hc08/*.lk
+slowduino_hc08/*.adb
