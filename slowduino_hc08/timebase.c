@@ -24,10 +24,10 @@ uint32_t micros(void) {
 
   /* Le os dois de forma atomica (mesma tecnica do timer0_millis do AVR:
    * desliga interrupcao, le os dois valores consistentes, religa). */
-  noInterrupts();
-  overflows = tim2OverflowCount;
-  count = (uint16_t)((T2CNTH << 8) | T2CNTL);
-  interrupts();
+  __critical {
+    overflows = tim2OverflowCount;
+    count = (uint16_t)((T2CNTH << 8) | T2CNTL);
+  }
 
   /* 1 tick = 1/8 us (clock de 8MHz, prescaler /1) -> divide por 8 */
   return (overflows << 13) + (count >> 3);

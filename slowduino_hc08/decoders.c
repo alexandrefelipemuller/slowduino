@@ -231,10 +231,10 @@ void calculateRPM(void) {
 
     triggerState.RPM = (uint16_t)rpm;
 
-    noInterrupts();
-    currentStatus.RPM = triggerState.RPM;
-    currentStatus.hasSync = true;
-    interrupts();
+    __critical {
+      currentStatus.RPM = triggerState.RPM;
+      currentStatus.hasSync = true;
+    }
   } else {
     triggerState.RPM = 0;
     currentStatus.RPM = 0;
@@ -245,11 +245,11 @@ void checkSyncLoss(void) {
   uint32_t timeSinceLastTooth = micros() - triggerState.toothLastToothTime;
 
   if (timeSinceLastTooth > (SYNC_TIMEOUT * 1000UL)) {
-    noInterrupts();
-    triggerState.hasSync = false;
-    currentStatus.hasSync = false;
-    currentStatus.RPM = 0;
-    interrupts();
+    __critical {
+      triggerState.hasSync = false;
+      currentStatus.hasSync = false;
+      currentStatus.RPM = 0;
+    }
   }
 }
 
@@ -292,31 +292,29 @@ void attachTriggerInterrupt(void) {
 }
 
 void resetTriggerState(void) {
-  noInterrupts();
+  __critical {
+    triggerState.toothLastToothTime = 0;
+    triggerState.toothLastMinusOneTime = 0;
+    triggerState.revolutionTime = 0;
+    triggerState.toothOneTime = 0;
 
-  triggerState.toothLastToothTime = 0;
-  triggerState.toothLastMinusOneTime = 0;
-  triggerState.revolutionTime = 0;
-  triggerState.toothOneTime = 0;
+    triggerState.toothCurrentCount = 0;
+    triggerState.toothTotalCount = 0;
+    triggerState.triggerActualTeeth = 0;
 
-  triggerState.toothCurrentCount = 0;
-  triggerState.toothTotalCount = 0;
-  triggerState.triggerActualTeeth = 0;
+    triggerState.curGap = 0;
+    triggerState.lastGap = 0;
+    triggerState.hasSync = false;
+    triggerState.syncLossCounter = 0;
 
-  triggerState.curGap = 0;
-  triggerState.lastGap = 0;
-  triggerState.hasSync = false;
-  triggerState.syncLossCounter = 0;
+    triggerState.RPM = 0;
+    triggerState.toothPeriod = 0;
 
-  triggerState.RPM = 0;
-  triggerState.toothPeriod = 0;
+    currentStatus.hasSync = false;
+    currentStatus.RPM = 0;
 
-  currentStatus.hasSync = false;
-  currentStatus.RPM = 0;
-
-  revolutionCounter = 0;
-
-  interrupts();
+    revolutionCounter = 0;
+  }
 }
 
 /* N=2 verificado empiricamente (0xFFFE - 2*2 = 0xFFFA = vetor IRQ). Com

@@ -50,12 +50,12 @@ int main(void) {
         int8_t newAdvance = calculateAdvance();
         uint16_t newDwell = calculateDwell();
 
-        noInterrupts();
-        currentStatus.PW1 = newPW1;
-        currentStatus.PW2 = newPW1;
-        currentStatus.advance = newAdvance;
-        currentStatus.dwell = newDwell;
-        interrupts();
+        __critical {
+          currentStatus.PW1 = newPW1;
+          currentStatus.PW2 = newPW1;
+          currentStatus.advance = newAdvance;
+          currentStatus.dwell = newDwell;
+        }
       }
     }
   }
