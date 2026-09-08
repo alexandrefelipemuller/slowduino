@@ -58,7 +58,9 @@ struct ConfigPage1 {
   uint8_t  aeMode, aeThresh, aePct;
   uint8_t  primePulse;
   uint8_t  crankRPM;
-  uint8_t  oilPressureProtEnable, oilPressureProtThreshold, oilPressureProtHysteresis, oilPressureProtDelay;
+  /* oilPressureProt{Enable,Threshold,Hysteresis,Delay} (4B) tambem ficam
+   * de fora pelo mesmo motivo do bloco de IAC em ConfigPage2: nenhum .c
+   * deste port le esses campos ainda. */
 };
 extern struct ConfigPage1 configPage1;
 
@@ -69,14 +71,15 @@ struct ConfigPage2 {
   uint8_t  revLimitRPM;
   int8_t   cltAdvBins[4], cltAdvValues[4];
   uint8_t  ignInvert, triggerEdge;
-  uint8_t  engineProtectEnable, engineProtectRPM, engineProtectRPMHysteresis;
-  uint8_t  iacAlgorithm, idleFreq;
-  int8_t   iacBins[4];
-  uint8_t  iacOLPWMVal[4], iacCLValues[4];
-  int8_t   iacCrankBins[4];
-  uint8_t  iacCrankDuty[4];
-  uint8_t  idleKP, idleKI, idleKD;
-  uint8_t  iacCLminValue, iacCLmaxValue, idleTaperTime, iacTPSlimit;
+  /* O AVR ainda carrega aqui o bloco de engine protect (3B) e todo o
+   * controle de marcha lenta por IAC/PWM (iacAlgorithm, idleFreq,
+   * iacBins/iacOLPWMVal/iacCLValues/iacCrankBins/iacCrankDuty, ganhos
+   * idleKP/KI/KD, iacCLmin/max, idleTaperTime, iacTPSlimit): 32 bytes.
+   * Nada disso existe neste port - nao ha saida de IAC nem PWM aqui e
+   * nenhum .c referencia esses campos - e o GP32 tem 512 BYTES de RAM no
+   * total (contra 2KB do AVR). Reservar RAM estatica para uma feature
+   * nao implementada era o que empurrava o topo dos dados para dentro da
+   * regiao da pilha. Voltam junto com o codigo que os usar. */
   uint8_t  idleAdvEnabled, idleAdvTPS, idleAdvRPM;
   uint8_t  idleAdvBins[4];
   int8_t   idleAdvValues[4];

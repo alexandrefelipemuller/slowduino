@@ -53,6 +53,6 @@ void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length);
 void burnEEPROM(void);
 
 uint16_t getPageSize(uint8_t page);
-void buildRealtimePacket(uint8_t *buffer);
+uint8_t realtimeByte(uint8_t index);
 
 #endif /* COMMS_H */

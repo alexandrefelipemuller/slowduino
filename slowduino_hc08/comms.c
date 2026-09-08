@@ -249,10 +249,11 @@ void processLegacyCommand(uint8_t command) {
 }
 
 void sendRealtimeData(void) {
-  uint8_t buffer[LOG_ENTRY_SIZE];
-  buffer[0] = 0x00;
-  buildRealtimePacket(&buffer[1]);
-  sendBytes(buffer, LOG_ENTRY_SIZE);
+  uint8_t i;
+  sciWriteByte(0x00);
+  for (i = 0; i < LOG_ENTRIES_COUNT; i++) {
+    sciWriteByte(realtimeByte(i));
+  }
 }
 
 void sendFirmwareVersion(void) { sciPrintString("Speeduino 202402"); }
@@ -292,15 +293,21 @@ void processModernCommand(void) {
 
   switch (command) {
     case 'A': {
-      uint8_t buffer[1 + 1 + LOG_ENTRIES_COUNT];
       uint16_t responseLength = 1 + 1 + LOG_ENTRIES_COUNT;
-      buffer[0] = SERIAL_RC_OK;
-      buffer[1] = 0x00;
-      buildRealtimePacket(&buffer[2]);
+      uint32_t crc = 0xFFFFFFFFUL;
+      uint8_t i;
 
       sendU16BE(responseLength);
-      sendBytes(buffer, responseLength);
-      sendU32BE(calculateCRC32(buffer, responseLength));
+      sendByte(SERIAL_RC_OK);
+      crc = crc32Update(crc, SERIAL_RC_OK);
+      sendByte(0x00);
+      crc = crc32Update(crc, 0x00);
+      for (i = 0; i < LOG_ENTRIES_COUNT; i++) {
+        uint8_t b = realtimeByte(i);
+        sendByte(b);
+        crc = crc32Update(crc, b);
+      }
+      sendU32BE(~crc);
       break;
     }
 
@@ -695,13 +702,9 @@ void sendPageCRC32(uint8_t page) {
 
 void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
   if (subcmd == 0x30) {
-    uint8_t fullBuffer[1 + LOG_ENTRIES_COUNT];
     uint16_t fullBufferSize = 1 + LOG_ENTRIES_COUNT;
     uint32_t crc = 0xFFFFFFFFUL;
     uint16_t responseLength, i;
-
-    fullBuffer[0] = 0x00;
-    buildRealtimePacket(&fullBuffer[1]);
 
     if (offset >= fullBufferSize) {
       offset = 0;
@@ -714,11 +717,13 @@ void sendOutputChannels(uint8_t subcmd, uint16_t offset, uint16_t length) {
     responseLength = (uint16_t)(1 + length);
     sendU16BE(responseLength);
     sendByte(SERIAL_RC_OK);
-    sendBytes(fullBuffer + offset, length);
-
     crc = crc32Update(crc, SERIAL_RC_OK);
+    /* indice 0 do canal e o byte 0x00 de cabecalho; 1..N sao o pacote */
     for (i = 0; i < length; i++) {
-      crc = crc32Update(crc, fullBuffer[offset + i]);
+      uint16_t idx = (uint16_t)(offset + i);
+      uint8_t b = (idx == 0) ? 0x00 : realtimeByte((uint8_t)(idx - 1));
+      sendByte(b);
+      crc = crc32Update(crc, b);
     }
     crc = ~crc;
     sendU32BE(crc);
@@ -737,62 +742,47 @@ void burnEEPROM(void) {
 /* ==========================================================================
  * REALTIME DATA PACKET (126 bytes de log entries)
  * ========================================================================== */
-void buildRealtimePacket(uint8_t *buffer) {
-  uint16_t map16, freeRam, loops;
-
-  memset(buffer, 0, LOG_ENTRIES_COUNT);
-
-  buffer[0] = (uint8_t)(currentStatus.secl & 0xFF);
-
-  buffer[1] = 0;
-  if (currentStatus.RPM > 0) buffer[1] |= 0x01;
-
-  buffer[2] = currentStatus.engineStatus;
-  buffer[3] = currentStatus.hasSync ? 0 : 1;
-
-  map16 = (uint16_t)(currentStatus.MAP * 10);
-  buffer[4] = (uint8_t)(map16 & 0xFF);
-  buffer[5] = (uint8_t)((map16 >> 8) & 0xFF);
-
-  buffer[6] = (uint8_t)(currentStatus.IAT + 40);
-  buffer[7] = (uint8_t)(currentStatus.coolant + 40);
-  buffer[8] = currentStatus.batCorrection;
-  buffer[9] = currentStatus.battery10;
-  buffer[10] = currentStatus.O2;
-  buffer[11] = 100;
-  buffer[12] = 100;
-  buffer[13] = currentStatus.wueCorrection;
-
-  buffer[14] = (uint8_t)(currentStatus.RPM & 0xFF);
-  buffer[15] = (uint8_t)((currentStatus.RPM >> 8) & 0xFF);
-
-  buffer[24] = (uint8_t)(currentStatus.advance + 40);
-  buffer[25] = currentStatus.TPS;
-
-  loops = 2000;
-  buffer[26] = (uint8_t)(loops & 0xFF);
-  buffer[27] = (uint8_t)((loops >> 8) & 0xFF);
-
-  freeRam = getFreeRam();
-  buffer[28] = (uint8_t)(freeRam & 0xFF);
-  buffer[29] = (uint8_t)((freeRam >> 8) & 0xFF);
-
-  buffer[32] = currentStatus.hasSync ? 0x01 : 0x00;
-  buffer[35] = 0;
-  buffer[38] = currentStatus.idleValveDuty;
-  buffer[41] = 100;
-
-  buffer[76] = (uint8_t)(currentStatus.PW1 & 0xFF);
-  buffer[77] = (uint8_t)((currentStatus.PW1 >> 8) & 0xFF);
-  buffer[78] = (uint8_t)(currentStatus.PW2 & 0xFF);
-  buffer[79] = (uint8_t)((currentStatus.PW2 >> 8) & 0xFF);
-  buffer[80] = (uint8_t)(currentStatus.PW3 & 0xFF);
-  buffer[81] = (uint8_t)((currentStatus.PW3 >> 8) & 0xFF);
-  buffer[82] = 0;
-  buffer[83] = 0;
-
-  buffer[92] = (uint8_t)(currentStatus.CLIdleTarget / 10U);
-  buffer[102] = currentStatus.VE;
-  buffer[104] = 0;
-  buffer[105] = 0;
+/* Um byte de cada vez em vez de montar o pacote inteiro num buffer: o
+ * pacote tem 126 bytes e o GP32 tem ~90 bytes de pilha no total (512B de
+ * RAM menos os dados estaticos), entao um "uint8_t buffer[127]" local
+ * estourava a pilha por cima das variaveis estaticas do proprio comms -
+ * era o que quebrava o parsing de comando depois da primeira resposta.
+ * O pacote e esparso (quase tudo zero), o que torna o switch barato. */
+uint8_t realtimeByte(uint8_t index) {
+  switch (index) {
+    case 0:   return (uint8_t)(currentStatus.secl & 0xFF);
+    case 1:   return (currentStatus.RPM > 0) ? 0x01 : 0x00;
+    case 2:   return currentStatus.engineStatus;
+    case 3:   return currentStatus.hasSync ? 0 : 1;
+    case 4:   return (uint8_t)(((uint16_t)(currentStatus.MAP * 10)) & 0xFF);
+    case 5:   return (uint8_t)((((uint16_t)(currentStatus.MAP * 10)) >> 8) & 0xFF);
+    case 6:   return (uint8_t)(currentStatus.IAT + 40);
+    case 7:   return (uint8_t)(currentStatus.coolant + 40);
+    case 8:   return currentStatus.batCorrection;
+    case 9:   return currentStatus.battery10;
+    case 10:  return currentStatus.O2;
+    case 11:  return 100;
+    case 12:  return 100;
+    case 13:  return currentStatus.wueCorrection;
+    case 14:  return (uint8_t)(currentStatus.RPM & 0xFF);
+    case 15:  return (uint8_t)((currentStatus.RPM >> 8) & 0xFF);
+    case 24:  return (uint8_t)(currentStatus.advance + 40);
+    case 25:  return currentStatus.TPS;
+    case 26:  return (uint8_t)(2000U & 0xFF);
+    case 27:  return (uint8_t)((2000U >> 8) & 0xFF);
+    case 28:  return (uint8_t)(getFreeRam() & 0xFF);
+    case 29:  return (uint8_t)((getFreeRam() >> 8) & 0xFF);
+    case 32:  return currentStatus.hasSync ? 0x01 : 0x00;
+    case 38:  return currentStatus.idleValveDuty;
+    case 41:  return 100;
+    case 76:  return (uint8_t)(currentStatus.PW1 & 0xFF);
+    case 77:  return (uint8_t)((currentStatus.PW1 >> 8) & 0xFF);
+    case 78:  return (uint8_t)(currentStatus.PW2 & 0xFF);
+    case 79:  return (uint8_t)((currentStatus.PW2 >> 8) & 0xFF);
+    case 80:  return (uint8_t)(currentStatus.PW3 & 0xFF);
+    case 81:  return (uint8_t)((currentStatus.PW3 >> 8) & 0xFF);
+    case 92:  return (uint8_t)(currentStatus.CLIdleTarget / 10U);
+    case 102: return currentStatus.VE;
+    default:  return 0;
+  }
 }
