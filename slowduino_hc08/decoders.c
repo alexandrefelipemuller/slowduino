@@ -185,6 +185,16 @@ static void triggerPri_BasicDistributor(void) {
 void triggerSetup_MissingTooth(void) {
   triggerState.triggerTeeth = configPage2.triggerTeeth;
   triggerState.triggerMissing = configPage2.triggerMissing;
+  /* Uma instalacao "limpa" (sem storage real ainda - ver storage.c - ou
+   * antes do TunerStudio gravar a config) chega aqui com triggerTeeth=0.
+   * Sem essa guarda, "3600 / triggerTeeth" e uma divisao por zero logo
+   * no boot, antes de qualquer coisa (inclusive o comms) rodar. 36 e o
+   * padrao mais comum (36-1) so para dar um valor operavel; a config de
+   * verdade sobrescreve isso assim que carregada. */
+  if (triggerState.triggerTeeth == 0) {
+    triggerState.triggerTeeth = 36;
+    triggerState.triggerMissing = 1;
+  }
   triggerState.triggerActualTeeth = triggerState.triggerTeeth - triggerState.triggerMissing;
   triggerState.toothAngle = (uint16_t)(3600 / triggerState.triggerTeeth);
   triggerState.triggerFilterTime = 50;
