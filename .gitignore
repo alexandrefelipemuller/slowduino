@@ -50,6 +50,7 @@ simulator/.pio/
 slowduino_hc08/*.rel
 slowduino_hc08/*.asm
 slowduino_hc08/*.ihx
+slowduino_hc08/*.s19
 slowduino_hc08/*.map
 slowduino_hc08/*.sym
 slowduino_hc08/*.lst

@@ -22,14 +22,28 @@ TARGET  = slowduino_hc08
 
 .PHONY: all clean
 
-all: $(TARGET).ihx
+all: $(TARGET).s19
 
-$(TARGET).ihx: $(SRCS:%=%.rel)
+# vectors.rel must come after main.rel: SDCC only auto-generates the
+# RESET vector (via main.asm's own "CODEIVT (ABS)" area), never the
+# other interrupt vectors just because a function is __interrupt(N) -
+# see vectors.s for why and which ones.
+#
+# Output as .s19, not .ihx: SDCC's hc08 backend always emits Motorola
+# S-record regardless of the output filename's extension, but ucsim
+# picks its loader purely from that extension (content is never
+# sniffed) - naming it .ihx made it get fed through the Intel HEX
+# parser instead, silently producing garbage (including a wrong reset
+# vector, seen as a wild jump into unlinked memory almost immediately).
+$(TARGET).s19: $(SRCS:%=%.rel) vectors.rel
 	$(CC) $(CFLAGS) $^ -o $@
 
 %.rel: %.c
 	$(CC) $(CFLAGS) -S $<
 	$(AS) -plosgffw $@ $*.asm
+
+vectors.rel: vectors.s
+	$(AS) -plosgffw $@ $<
 
 clean:
 	rm -f *.rel *.asm *.ihx *.map *.sym *.lst *.rst *.lk *.adb
