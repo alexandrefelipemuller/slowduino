@@ -211,11 +211,14 @@
   // Outras Entradas Digitais
   #define PIN_VSS              PB3
 
-  // Entradas Analógicas (ADC1, canais 0-7 = PA0-PA7 no F103)
+  // Entradas Analógicas (ADC1). PA2/PA3 ficam LIVRES de propósito: são a
+  // USART2, que é o `Serial` padrão do variant genérico F103C8 quando a USB
+  // CDC está desligada. analogRead() nesses pinos os coloca em modo analógico
+  // e mata a UART (issue #4). MAP/TPS usam PB0/PB1 (ADC1 canais 8/9).
   #define PIN_CLT              PA0
   #define PIN_IAT              PA1
-  #define PIN_MAP              PA2
-  #define PIN_TPS              PA3
+  #define PIN_MAP              PB0
+  #define PIN_TPS              PB1
   #define PIN_O2               PA4
   #define PIN_BAT              PA5
   #define PIN_OIL_PRESSURE     PA6

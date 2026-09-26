@@ -7,6 +7,7 @@
 #   ./build.sh uno_debug    -> firmware com log serial (DEBUG_ENABLED)
 #   ./build.sh sim          -> simulador de roda fonica (simulator/)
 #   ./build.sh mega2560     -> firmware para Mega2560
+#   ./build.sh bluepill     -> firmware para STM32F103C8 (Blue Pill)
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,6 +35,8 @@ else
   rm -rf ".pio/build/$TARGET"
   "$PIO" run -e "$TARGET"
   HEX=".pio/build/$TARGET/firmware.hex"
+  # STM32 gera .bin (gravado via ST-Link/STM32CubeProgrammer), não .hex
+  [ -f "$HEX" ] || HEX=".pio/build/$TARGET/firmware.bin"
   echo "-> $HEX"
 fi
 
