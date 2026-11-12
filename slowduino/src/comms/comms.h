@@ -10,12 +10,18 @@
 #define COMMS_H
 
 #include <Arduino.h>
-#include "globals.h"
-#include "config.h"
+#include "../data/globals.h"
+#include "../data/config.h"
 
 // ============================================================================
 // RESPONSE CODES
 // ============================================================================
+// Assinatura anunciada ao TunerStudio (comandos I/Q/S) e no [MegaTune] do .ini.
+// O prefixo "speeduino" é exigido pela whitelist de firmwares do TunerStudio
+// (variante MS Lite); o sufixo "(slowduino)" distingue este firmware do
+// Speeduino real. Manter igual ao `signature` de tunerstudio/*.ini.
+#define TS_SIGNATURE "speeduino 202402(slowduino)"
+
 #define SERIAL_RC_OK        0x00  // Sucesso
 #define SERIAL_RC_BURN_OK   0x04  // EEPROM burn OK
 #define SERIAL_RC_RANGE_ERR 0x80  // Erro de range/offset
@@ -134,9 +140,7 @@ void sendSerialCapability();
 /**
  * @brief Envia interface version (compatibilidade Speeduino)
  *
- * Comando 'I' - retorna "speeduino 202402(s)" (prefixo "speeduino" exigido
- * pela whitelist de firmwares suportados do TunerStudio; "(s)" identifica
- * Slowduino sem colidir com a assinatura do Speeduino real)
+ * Comando 'I' - retorna TS_SIGNATURE.
  */
 void sendInterfaceVersion();
 

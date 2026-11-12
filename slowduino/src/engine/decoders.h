@@ -10,8 +10,8 @@
 #define DECODERS_H
 
 #include <Arduino.h>
-#include "globals.h"
-#include "config.h"
+#include "../data/globals.h"
+#include "../data/config.h"
 
 // ============================================================================
 // ESTRUTURA DE DADOS DO DECODER

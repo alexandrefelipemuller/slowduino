@@ -26,25 +26,21 @@ Criar uma ECU funcional que:
 
 ## 🏗️ Estrutura de Arquivos
 
-### Arquivos Core
+### Layout (slowduino/)
+Pastas por domínio dentro de `src/` (a Arduino IDE só compila a raiz do
+sketch e `src/`). Includes entre pastas são relativos (`"../data/globals.h"`).
 ```
-slowduino.ino          - Loop principal e setup
-globals.h/cpp          - Estruturas de dados e variáveis globais
-config.h               - Constantes, defaults, PROGMEM tables
+slowduino.ino              - Loop principal e setup
+src/boards/                - board.h (contrato de placa: boardInit, boardFreeRam), board_config.h (seleção),
+                             board_uno.h / board_speeduino_v04.h / board_bluepill.h (pinos), board_avr.cpp / board_stm32.cpp
+src/data/                  - globals.h/cpp (structs, estado), config.h (constantes, defaults PROGMEM)
+src/engine/                - decoders, scheduler, fuel, ignition, sensors, auxiliaries, protections
+src/comms/                 - comms.h/cpp (protocolo Speeduino/TunerStudio, TS_SIGNATURE)
+src/storage/               - storage.h/cpp (EEPROM)
+src/support/               - tables.h/cpp (tabelas 3D 16x16, interpolação)
 ```
-
-### Subsistemas
-```
-storage.h/cpp          - Persistência EEPROM
-tables.h/cpp           - Tabelas 3D (8×8) com interpolação bilinear
-sensors.h/cpp          - Leitura ADC com filtros IIR
-decoders.h/cpp         - Trigger decoders + ISR scheduling
-fuel.h/cpp             - Cálculo de injeção e correções
-ignition.h/cpp         - Cálculo de avanço e dwell
-scheduler.h/cpp        - Timer1 para eventos de injeção/ignição
-comms.h/cpp            - Protocolo Speeduino (TunerStudio)
-auxiliaries.h/cpp      - Controle de ventoinha, IAC e bomba
-```
+> Tabelas são **16×16** (`TABLE_SIZE_X/Y` em config.h), não 8×8 como citado
+> mais abaixo neste arquivo (trechos antigos). RAM na `main`: ~1660 B (81%).
 
 ## 🔧 Conceitos Críticos
 

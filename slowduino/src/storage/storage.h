@@ -9,8 +9,8 @@
 #define STORAGE_H
 
 #include <Arduino.h>
-#include "globals.h"
-#include "config.h"
+#include "../data/globals.h"
+#include "../data/config.h"
 
 // ============================================================================
 // FUNÇÕES PÚBLICAS

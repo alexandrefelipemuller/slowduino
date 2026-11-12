@@ -4,7 +4,7 @@
  */
 
 #include "auxiliaries.h"
-#include "tables.h"
+#include "../support/tables.h"
 
 #if !defined(__AVR__)
 #include <HardwareTimer.h>

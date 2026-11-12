@@ -7,9 +7,9 @@
 #define IGNITION_H
 
 #include <Arduino.h>
-#include "globals.h"
-#include "config.h"
-#include "tables.h"
+#include "../data/globals.h"
+#include "../data/config.h"
+#include "../support/tables.h"
 
 // ============================================================================
 // FUNÇÕES PRINCIPAIS

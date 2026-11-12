@@ -1,7 +1,7 @@
 #ifndef PROTECTIONS_H
 #define PROTECTIONS_H
 
-#include "globals.h"
+#include "../data/globals.h"
 
 void protectionProcess();
 bool protectionRPMActive();

@@ -10,7 +10,7 @@
 #define GLOBALS_H
 
 #include <Arduino.h>
-#include "board_config.h"  // Configuração de hardware (Slowduino ou Speeduino v0.4)
+#include "../boards/board_config.h"  // Configuração de hardware (Slowduino ou Speeduino v0.4)
 
 // ============================================================================
 // VERSÃO DO FIRMWARE

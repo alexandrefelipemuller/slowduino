@@ -4,7 +4,7 @@
  */
 
 #include "storage.h"
-#include "tables.h"
+#include "../support/tables.h"
 #include <EEPROM.h>
 
 // Forward declarations

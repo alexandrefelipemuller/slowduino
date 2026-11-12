@@ -9,7 +9,7 @@
 #define TABLES_H
 
 #include <Arduino.h>
-#include "config.h"
+#include "../data/config.h"
 
 // ============================================================================
 // ESTRUTURA DE TABELA 3D (8x8)

@@ -23,18 +23,19 @@
  * @date 2025
  */
 
-#include "globals.h"
-#include "config.h"
-#include "storage.h"
-#include "sensors.h"
-#include "tables.h"
-#include "decoders.h"
-#include "fuel.h"
-#include "ignition.h"
-#include "scheduler.h"
-#include "comms.h"
-#include "auxiliaries.h"
-#include "protections.h"
+#include "src/boards/board.h"
+#include "src/data/globals.h"
+#include "src/data/config.h"
+#include "src/storage/storage.h"
+#include "src/engine/sensors.h"
+#include "src/support/tables.h"
+#include "src/engine/decoders.h"
+#include "src/engine/fuel.h"
+#include "src/engine/ignition.h"
+#include "src/engine/scheduler.h"
+#include "src/comms/comms.h"
+#include "src/engine/auxiliaries.h"
+#include "src/engine/protections.h"
 
 // ============================================================================
 // VARIÁVEIS DO LOOP
@@ -54,15 +55,8 @@ static bool primedFuel = false;
 // ============================================================================
 
 void setup() {
-  // Inicializa serial
-  Serial.begin(SERIAL_BAUD);
-#if defined(USBCON) && defined(USBD_USE_CDC)
-  // Porte STM32 com USB CDC: por padrão o core descarta em silêncio TUDO que
-  // é escrito no Serial enquanto o host não ativa a linha DTR. Terminais e
-  // drivers que abrem a porta sem DTR recebiam zero bytes (issue #4) - o
-  // firmware lia o 'Q' mas a resposta nunca saía.
-  Serial.dtr(false);
-#endif
+  // Inicializa serial/USB (específico da placa, ver src/boards/board.h)
+  boardInit(SERIAL_BAUD);
   DEBUG_PRINTLN(F(""));
   DEBUG_PRINTLN(F("========================================"));
   DEBUG_PRINTLN(F("  SLOWDUINO - Super Lowcost Speeduino"));

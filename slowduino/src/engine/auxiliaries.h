@@ -8,8 +8,8 @@
 #ifndef AUXILIARIES_H
 #define AUXILIARIES_H
 
-#include "globals.h"
-#include "config.h"
+#include "../data/globals.h"
+#include "../data/config.h"
 
 // ============================================================================
 // INICIALIZAÇÃO

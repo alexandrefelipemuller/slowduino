@@ -4,23 +4,9 @@
  */
 
 #include "comms.h"
-#include "storage.h"
-#include "tables.h"
-
-// RAM livre (heap topo até o stack pointer). __brkval/__heap_start só
-// existem no runtime AVR-libc; no STM32 (newlib) o equivalente é o símbolo
-// de linker `end` (fim do BSS/início do heap).
-static uint16_t getFreeRam() {
-#if defined(__AVR__)
-  extern int __heap_start, *__brkval;
-  int v;
-  return (uint16_t)((int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval));
-#else
-  extern char end;
-  char v;
-  return (uint16_t)((uint32_t)&v - (uint32_t)&end);
-#endif
-}
+#include "../boards/board.h"
+#include "../storage/storage.h"
+#include "../support/tables.h"
 
 // ============================================================================
 // TABELA CRC32
@@ -282,8 +268,8 @@ void processLegacyCommand(uint8_t command) {
       sendRealtimeData();
       break;
 
-    case 'I':  // Interface version (assinatura própria do Slowduino)
-      Serial.print(F("speeduino 202402(s)"));
+    case 'I':  // Interface version (TS_SIGNATURE)
+      Serial.print(F(TS_SIGNATURE));
       break;
 
     case 'Q':  // Firmware version
@@ -312,7 +298,7 @@ void processLegacyCommand(uint8_t command) {
       break;
 
     case 'm':  // Free RAM
-      sendU16(getFreeRam());
+      sendU16(boardFreeRam());
       break;
 
     case 'N':  // New line
@@ -336,11 +322,11 @@ void sendRealtimeData() {
 }
 
 void sendFirmwareVersion() {
-  Serial.print(F("speeduino 202402(s)"));
+  Serial.print(F(TS_SIGNATURE));
 }
 
 void sendProductString() {
-  Serial.print(F("speeduino 202402(s)"));
+  Serial.print(F(TS_SIGNATURE));
 }
 
 void sendProtocolVersion() {
@@ -438,8 +424,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        // Assinatura própria do Slowduino (não colide com o Speeduino real)
-        const char* iface = "speeduino 202402(s)";
+        const char* iface = TS_SIGNATURE;
         uint8_t ilen = strlen(iface);
         memcpy(&tempBuf[len], iface, ilen);
         len += ilen;
@@ -457,7 +442,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        const char* ver = "speeduino 202402(s)";
+        const char* ver = TS_SIGNATURE;
         uint8_t vlen = strlen(ver);
         memcpy(&tempBuf[len], ver, vlen);
         len += vlen;
@@ -475,7 +460,7 @@ void processModernCommand() {
 
         tempBuf[len++] = SERIAL_RC_OK;
 
-        const char* prod = "speeduino 202402(s)";
+        const char* prod = TS_SIGNATURE;
         uint8_t plen = strlen(prod);
         memcpy(&tempBuf[len], prod, plen);
         len += plen;
@@ -998,7 +983,7 @@ void buildRealtimePacket(uint8_t* buffer) {
   buffer[27] = (loops >> 8) & 0xFF;
 
   // Offset 28-29: freeRAM
-  uint16_t freeRam = getFreeRam();
+  uint16_t freeRam = boardFreeRam();
   buffer[28] = freeRam & 0xFF;
   buffer[29] = (freeRam >> 8) & 0xFF;
 
