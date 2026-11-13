@@ -1,0 +1,1424 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module scheduler
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 ;--------------------------------------------------------
+                             20 ; Public variables in this module
+                             21 ;--------------------------------------------------------
+                             22 	.globl _isr_tim1_ch1
+                             23 	.globl _isr_tim1_ch0
+                             24 	.globl _micros
+                             25 	.globl _ignitionSchedule2
+                             26 	.globl _ignitionSchedule1
+                             27 	.globl _injector3Polling
+                             28 	.globl _injector2Polling
+                             29 	.globl _injector1Polling
+                             30 	.globl _scheduleInjectorPolling
+                             31 	.globl _processInjectorPolling
+                             32 	.globl _schedulerInit
+                             33 	.globl _setIgnitionSchedule
+                             34 	.globl _clearIgnitionSchedule
+                             35 ;--------------------------------------------------------
+                             36 ; ram data
+                             37 ;--------------------------------------------------------
+                             38 	.area DSEG    (PAG)
+                             39 ;--------------------------------------------------------
+                             40 ; overlayable items in ram
+                             41 ;--------------------------------------------------------
+                             42 ;--------------------------------------------------------
+                             43 ; absolute ram data
+                             44 ;--------------------------------------------------------
+                             45 	.area IABS    (ABS)
+                             46 	.area IABS    (ABS)
+                             47 ;--------------------------------------------------------
+                             48 ; absolute external ram data
+                             49 ;--------------------------------------------------------
+                             50 	.area XABS    (ABS)
+                             51 ;--------------------------------------------------------
+                             52 ; external initialized ram data
+                             53 ;--------------------------------------------------------
+                             54 	.area XISEG
+   0000                      55 _ignitionSchedule1::
+   0000                      56 	.ds 8
+   0008                      57 _ignitionSchedule2::
+   0008                      58 	.ds 8
+                             59 ;--------------------------------------------------------
+                             60 ; extended address mode data
+                             61 ;--------------------------------------------------------
+                             62 	.area XSEG
+   0000                      63 _injector1Polling::
+   0000                      64 	.ds 10
+   000A                      65 _injector2Polling::
+   000A                      66 	.ds 10
+   0014                      67 _injector3Polling::
+   0014                      68 	.ds 10
+                             69 ;--------------------------------------------------------
+                             70 ; global & static initialisations
+                             71 ;--------------------------------------------------------
+                             72 	.area HOME    (CODE)
+                             73 	.area GSINIT  (CODE)
+                             74 	.area GSFINAL (CODE)
+                             75 	.area GSINIT  (CODE)
+                             76 ;--------------------------------------------------------
+                             77 ; Home
+                             78 ;--------------------------------------------------------
+                             79 	.area HOME    (CODE)
+                             80 	.area HOME    (CODE)
+                             81 ;--------------------------------------------------------
+                             82 ; code
+                             83 ;--------------------------------------------------------
+                             84 	.area CSEG    (CODE)
+                             85 ;------------------------------------------------------------
+                             86 ;Allocation info for local variables in function 'getTimer1Count'
+                             87 ;------------------------------------------------------------
+                             88 ;sloc0                     Allocated to stack - sp +1
+                             89 ;------------------------------------------------------------
+                             90 ;scheduler.h:55: static inline uint16_t getTimer1Count(void) {
+                             91 ;	-----------------------------------------
+                             92 ;	 function getTimer1Count
+                             93 ;	-----------------------------------------
+                             94 ;	Register assignment is optimal.
+                             95 ;	Stack space usage: 2 bytes.
+   0000                      96 _getTimer1Count:
+   0000 A7 FE         [ 2]   97 	ais	#-2
+                             98 ;scheduler.h:56: return (uint16_t)((T1CNTH << 8) | T1CNTL);
+   0002 B6 21         [ 3]   99 	lda	*0x21
+   0004 5F            [ 1]  100 	clrx
+   0005 9E E7 01      [ 4]  101 	sta	1,s
+   0008 9E EF 02      [ 4]  102 	stx	2,s
+   000B B6 22         [ 3]  103 	lda	*0x22
+   000D 9E EA 02      [ 4]  104 	ora	2,s
+   0010 87            [ 2]  105 	psha
+   0011 9F            [ 1]  106 	txa
+   0012 9E EA 02      [ 4]  107 	ora	2,s
+   0015 97            [ 1]  108 	tax
+   0016 86            [ 2]  109 	pula
+                            110 ;scheduler.h:57: }
+   0017 A7 02         [ 2]  111 	ais	#2
+   0019 81            [ 4]  112 	rts
+                            113 ;------------------------------------------------------------
+                            114 ;Allocation info for local variables in function 'beginCoil1Charge'
+                            115 ;------------------------------------------------------------
+                            116 ;scheduler.c:28: static void beginCoil1Charge(void) { PTA |= COIL1_BIT; }
+                            117 ;	-----------------------------------------
+                            118 ;	 function beginCoil1Charge
+                            119 ;	-----------------------------------------
+                            120 ;	Register assignment is optimal.
+                            121 ;	Stack space usage: 0 bytes.
+   001A                     122 _beginCoil1Charge:
+   001A B6 00         [ 3]  123 	lda	*0x00
+   001C AA 01         [ 2]  124 	ora	#0x01
+   001E B7 00         [ 3]  125 	sta	*0x00
+   0020 81            [ 4]  126 	rts
+                            127 ;------------------------------------------------------------
+                            128 ;Allocation info for local variables in function 'endCoil1Charge'
+                            129 ;------------------------------------------------------------
+                            130 ;scheduler.c:29: static void endCoil1Charge(void)   { PTA &= (uint8_t)~COIL1_BIT; }
+                            131 ;	-----------------------------------------
+                            132 ;	 function endCoil1Charge
+                            133 ;	-----------------------------------------
+                            134 ;	Register assignment is optimal.
+                            135 ;	Stack space usage: 0 bytes.
+   0021                     136 _endCoil1Charge:
+   0021 B6 00         [ 3]  137 	lda	*0x00
+   0023 A4 FE         [ 2]  138 	and	#0xfe
+   0025 B7 00         [ 3]  139 	sta	*0x00
+   0027 81            [ 4]  140 	rts
+                            141 ;------------------------------------------------------------
+                            142 ;Allocation info for local variables in function 'beginCoil2Charge'
+                            143 ;------------------------------------------------------------
+                            144 ;scheduler.c:30: static void beginCoil2Charge(void) { PTA |= COIL2_BIT; }
+                            145 ;	-----------------------------------------
+                            146 ;	 function beginCoil2Charge
+                            147 ;	-----------------------------------------
+                            148 ;	Register assignment is optimal.
+                            149 ;	Stack space usage: 0 bytes.
+   0028                     150 _beginCoil2Charge:
+   0028 B6 00         [ 3]  151 	lda	*0x00
+   002A AA 02         [ 2]  152 	ora	#0x02
+   002C B7 00         [ 3]  153 	sta	*0x00
+   002E 81            [ 4]  154 	rts
+                            155 ;------------------------------------------------------------
+                            156 ;Allocation info for local variables in function 'endCoil2Charge'
+                            157 ;------------------------------------------------------------
+                            158 ;scheduler.c:31: static void endCoil2Charge(void)   { PTA &= (uint8_t)~COIL2_BIT; }
+                            159 ;	-----------------------------------------
+                            160 ;	 function endCoil2Charge
+                            161 ;	-----------------------------------------
+                            162 ;	Register assignment is optimal.
+                            163 ;	Stack space usage: 0 bytes.
+   002F                     164 _endCoil2Charge:
+   002F B6 00         [ 3]  165 	lda	*0x00
+   0031 A4 FD         [ 2]  166 	and	#0xfd
+   0033 B7 00         [ 3]  167 	sta	*0x00
+   0035 81            [ 4]  168 	rts
+                            169 ;------------------------------------------------------------
+                            170 ;Allocation info for local variables in function 'openInjector1'
+                            171 ;------------------------------------------------------------
+                            172 ;scheduler.c:39: static void openInjector1(void)  { PTB |= INJ1_BIT; }
+                            173 ;	-----------------------------------------
+                            174 ;	 function openInjector1
+                            175 ;	-----------------------------------------
+                            176 ;	Register assignment is optimal.
+                            177 ;	Stack space usage: 0 bytes.
+   0036                     178 _openInjector1:
+   0036 B6 01         [ 3]  179 	lda	*0x01
+   0038 AA 01         [ 2]  180 	ora	#0x01
+   003A B7 01         [ 3]  181 	sta	*0x01
+   003C 81            [ 4]  182 	rts
+                            183 ;------------------------------------------------------------
+                            184 ;Allocation info for local variables in function 'closeInjector1'
+                            185 ;------------------------------------------------------------
+                            186 ;scheduler.c:40: static void closeInjector1(void) { PTB &= (uint8_t)~INJ1_BIT; }
+                            187 ;	-----------------------------------------
+                            188 ;	 function closeInjector1
+                            189 ;	-----------------------------------------
+                            190 ;	Register assignment is optimal.
+                            191 ;	Stack space usage: 0 bytes.
+   003D                     192 _closeInjector1:
+   003D B6 01         [ 3]  193 	lda	*0x01
+   003F A4 FE         [ 2]  194 	and	#0xfe
+   0041 B7 01         [ 3]  195 	sta	*0x01
+   0043 81            [ 4]  196 	rts
+                            197 ;------------------------------------------------------------
+                            198 ;Allocation info for local variables in function 'openInjector2'
+                            199 ;------------------------------------------------------------
+                            200 ;scheduler.c:41: static void openInjector2(void)  { PTB |= INJ2_BIT; }
+                            201 ;	-----------------------------------------
+                            202 ;	 function openInjector2
+                            203 ;	-----------------------------------------
+                            204 ;	Register assignment is optimal.
+                            205 ;	Stack space usage: 0 bytes.
+   0044                     206 _openInjector2:
+   0044 B6 01         [ 3]  207 	lda	*0x01
+   0046 AA 02         [ 2]  208 	ora	#0x02
+   0048 B7 01         [ 3]  209 	sta	*0x01
+   004A 81            [ 4]  210 	rts
+                            211 ;------------------------------------------------------------
+                            212 ;Allocation info for local variables in function 'closeInjector2'
+                            213 ;------------------------------------------------------------
+                            214 ;scheduler.c:42: static void closeInjector2(void) { PTB &= (uint8_t)~INJ2_BIT; }
+                            215 ;	-----------------------------------------
+                            216 ;	 function closeInjector2
+                            217 ;	-----------------------------------------
+                            218 ;	Register assignment is optimal.
+                            219 ;	Stack space usage: 0 bytes.
+   004B                     220 _closeInjector2:
+   004B B6 01         [ 3]  221 	lda	*0x01
+   004D A4 FD         [ 2]  222 	and	#0xfd
+   004F B7 01         [ 3]  223 	sta	*0x01
+   0051 81            [ 4]  224 	rts
+                            225 ;------------------------------------------------------------
+                            226 ;Allocation info for local variables in function 'openInjector3'
+                            227 ;------------------------------------------------------------
+                            228 ;scheduler.c:43: static void openInjector3(void)  { PTB |= INJ3_BIT; }
+                            229 ;	-----------------------------------------
+                            230 ;	 function openInjector3
+                            231 ;	-----------------------------------------
+                            232 ;	Register assignment is optimal.
+                            233 ;	Stack space usage: 0 bytes.
+   0052                     234 _openInjector3:
+   0052 B6 01         [ 3]  235 	lda	*0x01
+   0054 AA 04         [ 2]  236 	ora	#0x04
+   0056 B7 01         [ 3]  237 	sta	*0x01
+   0058 81            [ 4]  238 	rts
+                            239 ;------------------------------------------------------------
+                            240 ;Allocation info for local variables in function 'closeInjector3'
+                            241 ;------------------------------------------------------------
+                            242 ;scheduler.c:44: static void closeInjector3(void) { PTB &= (uint8_t)~INJ3_BIT; }
+                            243 ;	-----------------------------------------
+                            244 ;	 function closeInjector3
+                            245 ;	-----------------------------------------
+                            246 ;	Register assignment is optimal.
+                            247 ;	Stack space usage: 0 bytes.
+   0059                     248 _closeInjector3:
+   0059 B6 01         [ 3]  249 	lda	*0x01
+   005B A4 FB         [ 2]  250 	and	#0xfb
+   005D B7 01         [ 3]  251 	sta	*0x01
+   005F 81            [ 4]  252 	rts
+                            253 ;------------------------------------------------------------
+                            254 ;Allocation info for local variables in function 'scheduleInjectorPolling'
+                            255 ;------------------------------------------------------------
+                            256 ;startDelay                Allocated to stack - sp +15
+                            257 ;pulseWidth                Allocated to stack - sp +19
+                            258 ;injState                  Allocated to stack - sp +11
+                            259 ;now                       Allocated to stack - sp +7
+                            260 ;sloc0                     Allocated to stack - sp +1
+                            261 ;sloc1                     Allocated to stack - sp +9
+                            262 ;sloc2                     Allocated to stack - sp +5
+                            263 ;------------------------------------------------------------
+                            264 ;scheduler.c:50: void scheduleInjectorPolling(InjectorPollingState *injState, uint32_t startDelay, uint16_t pulseWidth) {
+                            265 ;	-----------------------------------------
+                            266 ;	 function scheduleInjectorPolling
+                            267 ;	-----------------------------------------
+                            268 ;	Register assignment is optimal.
+                            269 ;	Stack space usage: 12 bytes.
+   0060                     270 _scheduleInjectorPolling:
+   0060 87            [ 2]  271 	psha
+   0061 89            [ 2]  272 	pshx
+   0062 A7 F6         [ 2]  273 	ais	#-10
+                            274 ;scheduler.c:51: uint32_t now = micros();
+   0064 CDr00r00      [ 5]  275 	jsr	_micros
+   0067 9E E7 04      [ 4]  276 	sta	4,s
+   006A 9E EF 03      [ 4]  277 	stx	3,s
+   006D B6*00         [ 3]  278 	lda	*___SDCC_hc08_ret2
+   006F 9E E7 02      [ 4]  279 	sta	2,s
+   0072 B6*00         [ 3]  280 	lda	*___SDCC_hc08_ret3
+   0074 9E E7 01      [ 4]  281 	sta	1,s
+                            282 ;scheduler.c:52: injState->openTime = now + startDelay;
+   0077 95            [ 2]  283 	tsx
+   0078 E6 0A         [ 3]  284 	lda	10,x
+   007A E7 08         [ 3]  285 	sta	8,x
+   007C E6 0B         [ 3]  286 	lda	11,x
+   007E E7 09         [ 3]  287 	sta	9,x
+   0080 E6 03         [ 3]  288 	lda	3,x
+   0082 EB 11         [ 3]  289 	add	17,x
+   0084 E7 03         [ 3]  290 	sta	3,x
+   0086 E6 02         [ 3]  291 	lda	2,x
+   0088 E9 10         [ 3]  292 	adc	16,x
+   008A E7 02         [ 3]  293 	sta	2,x
+   008C E6 01         [ 3]  294 	lda	1,x
+   008E E9 0F         [ 3]  295 	adc	15,x
+   0090 E7 01         [ 3]  296 	sta	1,x
+   0092 F6            [ 2]  297 	lda	,x
+   0093 E9 0E         [ 3]  298 	adc	14,x
+   0095 F7            [ 2]  299 	sta	,x
+   0096 E6 08         [ 3]  300 	lda	8,x
+   0098 87            [ 2]  301 	psha
+   0099 8A            [ 2]  302 	pulh
+   009A 9E EE 0A      [ 4]  303 	ldx	10,s
+   009D 9E E6 01      [ 4]  304 	lda	1,s
+   00A0 E7 02         [ 3]  305 	sta	2,x
+   00A2 9E E6 02      [ 4]  306 	lda	2,s
+   00A5 E7 03         [ 3]  307 	sta	3,x
+   00A7 9E E6 03      [ 4]  308 	lda	3,s
+   00AA E7 04         [ 3]  309 	sta	4,x
+   00AC 9E E6 04      [ 4]  310 	lda	4,s
+   00AF E7 05         [ 3]  311 	sta	5,x
+                            312 ;scheduler.c:53: injState->closeTime = injState->openTime + pulseWidth;
+   00B1 95            [ 2]  313 	tsx
+   00B2 E6 0A         [ 3]  314 	lda	10,x
+   00B4 E7 08         [ 3]  315 	sta	8,x
+   00B6 E6 0B         [ 3]  316 	lda	11,x
+   00B8 E7 09         [ 3]  317 	sta	9,x
+   00BA E6 13         [ 3]  318 	lda	19,x
+   00BC E7 07         [ 3]  319 	sta	7,x
+   00BE E6 12         [ 3]  320 	lda	18,x
+   00C0 E7 06         [ 3]  321 	sta	6,x
+   00C2 4F            [ 1]  322 	clra
+   00C3 E7 05         [ 3]  323 	sta	5,x
+   00C5 E7 04         [ 3]  324 	sta	4,x
+   00C7 E6 03         [ 3]  325 	lda	3,x
+   00C9 EB 07         [ 3]  326 	add	7,x
+   00CB E7 07         [ 3]  327 	sta	7,x
+   00CD E6 02         [ 3]  328 	lda	2,x
+   00CF E9 06         [ 3]  329 	adc	6,x
+   00D1 E7 06         [ 3]  330 	sta	6,x
+   00D3 E6 01         [ 3]  331 	lda	1,x
+   00D5 E9 05         [ 3]  332 	adc	5,x
+   00D7 E7 05         [ 3]  333 	sta	5,x
+   00D9 F6            [ 2]  334 	lda	,x
+   00DA E9 04         [ 3]  335 	adc	4,x
+   00DC E7 04         [ 3]  336 	sta	4,x
+   00DE E6 08         [ 3]  337 	lda	8,x
+   00E0 87            [ 2]  338 	psha
+   00E1 8A            [ 2]  339 	pulh
+   00E2 9E EE 0A      [ 4]  340 	ldx	10,s
+   00E5 9E E6 05      [ 4]  341 	lda	5,s
+   00E8 E7 06         [ 3]  342 	sta	6,x
+   00EA 9E E6 06      [ 4]  343 	lda	6,s
+   00ED E7 07         [ 3]  344 	sta	7,x
+   00EF 9E E6 07      [ 4]  345 	lda	7,s
+   00F2 E7 08         [ 3]  346 	sta	8,x
+   00F4 9E E6 08      [ 4]  347 	lda	8,s
+   00F7 E7 09         [ 3]  348 	sta	9,x
+                            349 ;scheduler.c:54: injState->isScheduled = true;
+   00F9 9E E6 0B      [ 4]  350 	lda	11,s
+   00FC 87            [ 2]  351 	psha
+   00FD 8A            [ 2]  352 	pulh
+   00FE 9E EE 0C      [ 4]  353 	ldx	12,s
+   0101 A6 01         [ 2]  354 	lda	#0x01
+   0103 F7            [ 2]  355 	sta	,x
+                            356 ;scheduler.c:55: injState->isOpen = false;
+   0104 95            [ 2]  357 	tsx
+   0105 E6 0A         [ 3]  358 	lda	10,x
+   0107 E7 04         [ 3]  359 	sta	4,x
+   0109 E6 0B         [ 3]  360 	lda	11,x
+   010B E7 05         [ 3]  361 	sta	5,x
+   010D E6 04         [ 3]  362 	lda	4,x
+   010F 87            [ 2]  363 	psha
+   0110 8A            [ 2]  364 	pulh
+   0111 9E EE 06      [ 4]  365 	ldx	6,s
+   0114 4F            [ 1]  366 	clra
+   0115 E7 01         [ 3]  367 	sta	1,x
+                            368 ;scheduler.c:56: }
+   0117 A7 0C         [ 2]  369 	ais	#12
+   0119 81            [ 4]  370 	rts
+                            371 ;------------------------------------------------------------
+                            372 ;Allocation info for local variables in function 'processInjectorPolling'
+                            373 ;------------------------------------------------------------
+                            374 ;now                       Allocated to stack - sp +5
+                            375 ;sloc0                     Allocated to stack - sp +5
+                            376 ;sloc1                     Allocated to stack - sp +1
+                            377 ;------------------------------------------------------------
+                            378 ;scheduler.c:58: void processInjectorPolling(void) {
+                            379 ;	-----------------------------------------
+                            380 ;	 function processInjectorPolling
+                            381 ;	-----------------------------------------
+                            382 ;	Register assignment is optimal.
+                            383 ;	Stack space usage: 8 bytes.
+   011A                     384 _processInjectorPolling:
+   011A A7 F8         [ 2]  385 	ais	#-8
+                            386 ;scheduler.c:59: uint32_t now = micros();
+   011C CDr00r00      [ 5]  387 	jsr	_micros
+   011F 9E E7 08      [ 4]  388 	sta	8,s
+   0122 9E EF 07      [ 4]  389 	stx	7,s
+   0125 B6*00         [ 3]  390 	lda	*___SDCC_hc08_ret2
+   0127 9E E7 06      [ 4]  391 	sta	6,s
+   012A B6*00         [ 3]  392 	lda	*___SDCC_hc08_ret3
+   012C 9E E7 05      [ 4]  393 	sta	5,s
+                            394 ;scheduler.c:61: if (injector1Polling.isScheduled) {
+   012F C6r00r00      [ 4]  395 	lda	_injector1Polling
+   0132 26 02         [ 3]  396 	bne	00205$
+   0134 20 78         [ 3]  397 	bra	00109$
+   0136                     398 00205$:
+                            399 ;scheduler.c:62: if (!injector1Polling.isOpen && now >= injector1Polling.openTime) {
+   0136 CEr00r01      [ 4]  400 	ldx	(_injector1Polling + 0x0001)
+   0139 26 3C         [ 3]  401 	bne	00105$
+   013B C6r00r02      [ 4]  402 	lda	(_injector1Polling + 0x0002)
+   013E 9E E7 01      [ 4]  403 	sta	1,s
+   0141 C6r00r03      [ 4]  404 	lda	((_injector1Polling + 0x0002) + 1)
+   0144 9E E7 02      [ 4]  405 	sta	2,s
+   0147 C6r00r04      [ 4]  406 	lda	((_injector1Polling + 0x0002) + 2)
+   014A 9E E7 03      [ 4]  407 	sta	3,s
+   014D C6r00r05      [ 4]  408 	lda	((_injector1Polling + 0x0002) + 3)
+   0150 9E E7 04      [ 4]  409 	sta	4,s
+   0153 9E E6 08      [ 4]  410 	lda	8,s
+   0156 9E E0 04      [ 4]  411 	sub	4,s
+   0159 9E E6 07      [ 4]  412 	lda	7,s
+   015C 9E E2 03      [ 4]  413 	sbc	3,s
+   015F 9E E6 06      [ 4]  414 	lda	6,s
+   0162 9E E2 02      [ 4]  415 	sbc	2,s
+   0165 9E E6 05      [ 4]  416 	lda	5,s
+   0168 9E E2 01      [ 4]  417 	sbc	1,s
+   016B 25 0A         [ 3]  418 	bcs	00105$
+                            419 ;scheduler.c:63: openInjector1();
+   016D CDr00r36      [ 5]  420 	jsr	_openInjector1
+                            421 ;scheduler.c:64: injector1Polling.isOpen = true;
+   0170 A6 01         [ 2]  422 	lda	#0x01
+   0172 C7r00r01      [ 4]  423 	sta	(_injector1Polling + 0x0001)
+   0175 20 37         [ 3]  424 	bra	00109$
+   0177                     425 00105$:
+                            426 ;scheduler.c:65: } else if (injector1Polling.isOpen && now >= injector1Polling.closeTime) {
+   0177 5D            [ 1]  427 	tstx
+   0178 27 34         [ 3]  428 	beq	00109$
+   017A C6r00r06      [ 4]  429 	lda	(_injector1Polling + 0x0006)
+   017D 9E E7 01      [ 4]  430 	sta	1,s
+   0180 C6r00r07      [ 4]  431 	lda	((_injector1Polling + 0x0006) + 1)
+   0183 9E E7 02      [ 4]  432 	sta	2,s
+   0186 C6r00r08      [ 4]  433 	lda	((_injector1Polling + 0x0006) + 2)
+   0189 9E E7 03      [ 4]  434 	sta	3,s
+   018C C6r00r09      [ 4]  435 	lda	((_injector1Polling + 0x0006) + 3)
+   018F 9E E7 04      [ 4]  436 	sta	4,s
+   0192 95            [ 2]  437 	tsx
+   0193 E6 07         [ 3]  438 	lda	7,x
+   0195 E0 03         [ 3]  439 	sub	3,x
+   0197 E6 06         [ 3]  440 	lda	6,x
+   0199 E2 02         [ 3]  441 	sbc	2,x
+   019B E6 05         [ 3]  442 	lda	5,x
+   019D E2 01         [ 3]  443 	sbc	1,x
+   019F E6 04         [ 3]  444 	lda	4,x
+   01A1 F2            [ 2]  445 	sbc	,x
+   01A2 25 0A         [ 3]  446 	bcs	00109$
+                            447 ;scheduler.c:66: closeInjector1();
+   01A4 CDr00r3D      [ 5]  448 	jsr	_closeInjector1
+                            449 ;scheduler.c:67: injector1Polling.isOpen = false;
+   01A7 4F            [ 1]  450 	clra
+   01A8 C7r00r01      [ 4]  451 	sta	(_injector1Polling + 0x0001)
+                            452 ;scheduler.c:68: injector1Polling.isScheduled = false;
+   01AB C7r00r00      [ 4]  453 	sta	_injector1Polling
+   01AE                     454 00109$:
+                            455 ;scheduler.c:72: if (injector2Polling.isScheduled) {
+   01AE C6r00r0A      [ 4]  456 	lda	_injector2Polling
+   01B1 26 02         [ 3]  457 	bne	00210$
+   01B3 20 78         [ 3]  458 	bra	00118$
+   01B5                     459 00210$:
+                            460 ;scheduler.c:73: if (!injector2Polling.isOpen && now >= injector2Polling.openTime) {
+   01B5 CEr00r0B      [ 4]  461 	ldx	(_injector2Polling + 0x0001)
+   01B8 26 3C         [ 3]  462 	bne	00114$
+   01BA C6r00r0C      [ 4]  463 	lda	(_injector2Polling + 0x0002)
+   01BD 9E E7 01      [ 4]  464 	sta	1,s
+   01C0 C6r00r0D      [ 4]  465 	lda	((_injector2Polling + 0x0002) + 1)
+   01C3 9E E7 02      [ 4]  466 	sta	2,s
+   01C6 C6r00r0E      [ 4]  467 	lda	((_injector2Polling + 0x0002) + 2)
+   01C9 9E E7 03      [ 4]  468 	sta	3,s
+   01CC C6r00r0F      [ 4]  469 	lda	((_injector2Polling + 0x0002) + 3)
+   01CF 9E E7 04      [ 4]  470 	sta	4,s
+   01D2 9E E6 08      [ 4]  471 	lda	8,s
+   01D5 9E E0 04      [ 4]  472 	sub	4,s
+   01D8 9E E6 07      [ 4]  473 	lda	7,s
+   01DB 9E E2 03      [ 4]  474 	sbc	3,s
+   01DE 9E E6 06      [ 4]  475 	lda	6,s
+   01E1 9E E2 02      [ 4]  476 	sbc	2,s
+   01E4 9E E6 05      [ 4]  477 	lda	5,s
+   01E7 9E E2 01      [ 4]  478 	sbc	1,s
+   01EA 25 0A         [ 3]  479 	bcs	00114$
+                            480 ;scheduler.c:74: openInjector2();
+   01EC CDr00r44      [ 5]  481 	jsr	_openInjector2
+                            482 ;scheduler.c:75: injector2Polling.isOpen = true;
+   01EF A6 01         [ 2]  483 	lda	#0x01
+   01F1 C7r00r0B      [ 4]  484 	sta	(_injector2Polling + 0x0001)
+   01F4 20 37         [ 3]  485 	bra	00118$
+   01F6                     486 00114$:
+                            487 ;scheduler.c:76: } else if (injector2Polling.isOpen && now >= injector2Polling.closeTime) {
+   01F6 5D            [ 1]  488 	tstx
+   01F7 27 34         [ 3]  489 	beq	00118$
+   01F9 C6r00r10      [ 4]  490 	lda	(_injector2Polling + 0x0006)
+   01FC 9E E7 01      [ 4]  491 	sta	1,s
+   01FF C6r00r11      [ 4]  492 	lda	((_injector2Polling + 0x0006) + 1)
+   0202 9E E7 02      [ 4]  493 	sta	2,s
+   0205 C6r00r12      [ 4]  494 	lda	((_injector2Polling + 0x0006) + 2)
+   0208 9E E7 03      [ 4]  495 	sta	3,s
+   020B C6r00r13      [ 4]  496 	lda	((_injector2Polling + 0x0006) + 3)
+   020E 9E E7 04      [ 4]  497 	sta	4,s
+   0211 95            [ 2]  498 	tsx
+   0212 E6 07         [ 3]  499 	lda	7,x
+   0214 E0 03         [ 3]  500 	sub	3,x
+   0216 E6 06         [ 3]  501 	lda	6,x
+   0218 E2 02         [ 3]  502 	sbc	2,x
+   021A E6 05         [ 3]  503 	lda	5,x
+   021C E2 01         [ 3]  504 	sbc	1,x
+   021E E6 04         [ 3]  505 	lda	4,x
+   0220 F2            [ 2]  506 	sbc	,x
+   0221 25 0A         [ 3]  507 	bcs	00118$
+                            508 ;scheduler.c:77: closeInjector2();
+   0223 CDr00r4B      [ 5]  509 	jsr	_closeInjector2
+                            510 ;scheduler.c:78: injector2Polling.isOpen = false;
+   0226 4F            [ 1]  511 	clra
+   0227 C7r00r0B      [ 4]  512 	sta	(_injector2Polling + 0x0001)
+                            513 ;scheduler.c:79: injector2Polling.isScheduled = false;
+   022A C7r00r0A      [ 4]  514 	sta	_injector2Polling
+   022D                     515 00118$:
+                            516 ;scheduler.c:83: if (injector3Polling.isScheduled) {
+   022D C6r00r14      [ 4]  517 	lda	_injector3Polling
+   0230 26 02         [ 3]  518 	bne	00215$
+   0232 20 78         [ 3]  519 	bra	00128$
+   0234                     520 00215$:
+                            521 ;scheduler.c:84: if (!injector3Polling.isOpen && now >= injector3Polling.openTime) {
+   0234 CEr00r15      [ 4]  522 	ldx	(_injector3Polling + 0x0001)
+   0237 26 3C         [ 3]  523 	bne	00123$
+   0239 C6r00r16      [ 4]  524 	lda	(_injector3Polling + 0x0002)
+   023C 9E E7 01      [ 4]  525 	sta	1,s
+   023F C6r00r17      [ 4]  526 	lda	((_injector3Polling + 0x0002) + 1)
+   0242 9E E7 02      [ 4]  527 	sta	2,s
+   0245 C6r00r18      [ 4]  528 	lda	((_injector3Polling + 0x0002) + 2)
+   0248 9E E7 03      [ 4]  529 	sta	3,s
+   024B C6r00r19      [ 4]  530 	lda	((_injector3Polling + 0x0002) + 3)
+   024E 9E E7 04      [ 4]  531 	sta	4,s
+   0251 9E E6 08      [ 4]  532 	lda	8,s
+   0254 9E E0 04      [ 4]  533 	sub	4,s
+   0257 9E E6 07      [ 4]  534 	lda	7,s
+   025A 9E E2 03      [ 4]  535 	sbc	3,s
+   025D 9E E6 06      [ 4]  536 	lda	6,s
+   0260 9E E2 02      [ 4]  537 	sbc	2,s
+   0263 9E E6 05      [ 4]  538 	lda	5,s
+   0266 9E E2 01      [ 4]  539 	sbc	1,s
+   0269 25 0A         [ 3]  540 	bcs	00123$
+                            541 ;scheduler.c:85: openInjector3();
+   026B CDr00r52      [ 5]  542 	jsr	_openInjector3
+                            543 ;scheduler.c:86: injector3Polling.isOpen = true;
+   026E A6 01         [ 2]  544 	lda	#0x01
+   0270 C7r00r15      [ 4]  545 	sta	(_injector3Polling + 0x0001)
+   0273 20 37         [ 3]  546 	bra	00128$
+   0275                     547 00123$:
+                            548 ;scheduler.c:87: } else if (injector3Polling.isOpen && now >= injector3Polling.closeTime) {
+   0275 5D            [ 1]  549 	tstx
+   0276 27 34         [ 3]  550 	beq	00128$
+   0278 C6r00r1A      [ 4]  551 	lda	(_injector3Polling + 0x0006)
+   027B 9E E7 01      [ 4]  552 	sta	1,s
+   027E C6r00r1B      [ 4]  553 	lda	((_injector3Polling + 0x0006) + 1)
+   0281 9E E7 02      [ 4]  554 	sta	2,s
+   0284 C6r00r1C      [ 4]  555 	lda	((_injector3Polling + 0x0006) + 2)
+   0287 9E E7 03      [ 4]  556 	sta	3,s
+   028A C6r00r1D      [ 4]  557 	lda	((_injector3Polling + 0x0006) + 3)
+   028D 9E E7 04      [ 4]  558 	sta	4,s
+   0290 95            [ 2]  559 	tsx
+   0291 E6 07         [ 3]  560 	lda	7,x
+   0293 E0 03         [ 3]  561 	sub	3,x
+   0295 E6 06         [ 3]  562 	lda	6,x
+   0297 E2 02         [ 3]  563 	sbc	2,x
+   0299 E6 05         [ 3]  564 	lda	5,x
+   029B E2 01         [ 3]  565 	sbc	1,x
+   029D E6 04         [ 3]  566 	lda	4,x
+   029F F2            [ 2]  567 	sbc	,x
+   02A0 25 0A         [ 3]  568 	bcs	00128$
+                            569 ;scheduler.c:88: closeInjector3();
+   02A2 CDr00r59      [ 5]  570 	jsr	_closeInjector3
+                            571 ;scheduler.c:89: injector3Polling.isOpen = false;
+   02A5 4F            [ 1]  572 	clra
+   02A6 C7r00r15      [ 4]  573 	sta	(_injector3Polling + 0x0001)
+                            574 ;scheduler.c:90: injector3Polling.isScheduled = false;
+   02A9 C7r00r14      [ 4]  575 	sta	_injector3Polling
+   02AC                     576 00128$:
+                            577 ;scheduler.c:93: }
+   02AC A7 08         [ 2]  578 	ais	#8
+   02AE 81            [ 4]  579 	rts
+                            580 ;------------------------------------------------------------
+                            581 ;Allocation info for local variables in function 'schedulerInit'
+                            582 ;------------------------------------------------------------
+                            583 ;scheduler.c:95: void schedulerInit(void) {
+                            584 ;	-----------------------------------------
+                            585 ;	 function schedulerInit
+                            586 ;	-----------------------------------------
+                            587 ;	Register assignment is optimal.
+                            588 ;	Stack space usage: 0 bytes.
+   02AF                     589 _schedulerInit:
+                            590 ;scheduler.c:96: DDRA |= (COIL1_BIT | COIL2_BIT);  /* bobinas como saida */
+   02AF B6 04         [ 3]  591 	lda	*0x04
+   02B1 AA 03         [ 2]  592 	ora	#0x03
+   02B3 B7 04         [ 3]  593 	sta	*0x04
+                            594 ;scheduler.c:97: DDRB |= (INJ1_BIT | INJ2_BIT | INJ3_BIT);  /* injetores como saida */
+   02B5 B6 05         [ 3]  595 	lda	*0x05
+   02B7 AA 07         [ 2]  596 	ora	#0x07
+   02B9 B7 05         [ 3]  597 	sta	*0x05
+                            598 ;scheduler.c:98: endCoil1Charge();
+   02BB CDr00r21      [ 5]  599 	jsr	_endCoil1Charge
+                            600 ;scheduler.c:99: endCoil2Charge();
+   02BE CDr00r2F      [ 5]  601 	jsr	_endCoil2Charge
+                            602 ;scheduler.c:100: closeInjector1();
+   02C1 CDr00r3D      [ 5]  603 	jsr	_closeInjector1
+                            604 ;scheduler.c:101: closeInjector2();
+   02C4 CDr00r4B      [ 5]  605 	jsr	_closeInjector2
+                            606 ;scheduler.c:102: closeInjector3();
+   02C7 CDr00r59      [ 5]  607 	jsr	_closeInjector3
+                            608 ;scheduler.c:107: T1SC = (1 << T1SC_TRST);
+   02CA 6E 10 20      [ 4]  609 	mov	#0x10,*0x20
+                            610 ;scheduler.c:108: T1SC0 = (1 << TxSCx_MSxA);
+   02CD 6E 10 25      [ 4]  611 	mov	#0x10,*0x25
+                            612 ;scheduler.c:109: T1SC0 |= (1 << TxSCx_CHxIE);
+   02D0 B6 25         [ 3]  613 	lda	*0x25
+   02D2 AA 40         [ 2]  614 	ora	#0x40
+   02D4 B7 25         [ 3]  615 	sta	*0x25
+                            616 ;scheduler.c:110: T1SC1 = (1 << TxSCx_MSxA) | (1 << TxSCx_CHxIE);
+   02D6 6E 50 28      [ 4]  617 	mov	#0x50,*0x28
+                            618 ;scheduler.c:111: T1SC = (6 << T1SC_PS0);  /* PS[2:0]=110 -> /64. Ver US_TO_TIMER1 em scheduler.h */
+   02D9 6E 06 20      [ 4]  619 	mov	#0x06,*0x20
+                            620 ;scheduler.c:112: }
+   02DC 81            [ 4]  621 	rts
+                            622 ;------------------------------------------------------------
+                            623 ;Allocation info for local variables in function 'handleIgnitionChannel'
+                            624 ;------------------------------------------------------------
+                            625 ;beginCharge               Allocated to stack - sp +11
+                            626 ;endCharge                 Allocated to stack - sp +13
+                            627 ;compareReg                Allocated to stack - sp +15
+                            628 ;schedule                  Allocated to stack - sp +7
+                            629 ;__1966080003              Allocated to registers a x 
+                            630 ;sloc0                     Allocated to stack - sp +5
+                            631 ;sloc1                     Allocated to stack - sp +1
+                            632 ;sloc2                     Allocated to stack - sp +3
+                            633 ;------------------------------------------------------------
+                            634 ;scheduler.c:114: static void handleIgnitionChannel(volatile IgnitionSchedule *schedule,
+                            635 ;	-----------------------------------------
+                            636 ;	 function handleIgnitionChannel
+                            637 ;	-----------------------------------------
+                            638 ;	Register assignment is optimal.
+                            639 ;	Stack space usage: 8 bytes.
+   02DD                     640 _handleIgnitionChannel:
+   02DD 87            [ 2]  641 	psha
+   02DE 89            [ 2]  642 	pshx
+   02DF A7 FA         [ 2]  643 	ais	#-6
+                            644 ;scheduler.c:118: if (schedule->status == SCHED_PENDING) {
+   02E1 95            [ 2]  645 	tsx
+   02E2 E6 06         [ 3]  646 	lda	6,x
+   02E4 E7 04         [ 3]  647 	sta	4,x
+   02E6 E6 07         [ 3]  648 	lda	7,x
+   02E8 E7 05         [ 3]  649 	sta	5,x
+   02EA E6 04         [ 3]  650 	lda	4,x
+   02EC 87            [ 2]  651 	psha
+   02ED 8A            [ 2]  652 	pulh
+   02EE 9E EE 06      [ 4]  653 	ldx	6,s
+   02F1 F6            [ 2]  654 	lda	,x
+   02F2 41 01 03      [ 4]  655 	cbeqa	#0x01,00125$
+   02F5 CCr03r8B      [ 3]  656 	jmp	00104$
+   02F8                     657 00125$:
+                            658 ;scheduler.c:119: schedule->status = SCHED_RUNNING;
+   02F8 9E E6 05      [ 4]  659 	lda	5,s
+   02FB 87            [ 2]  660 	psha
+   02FC 8A            [ 2]  661 	pulh
+   02FD 9E EE 06      [ 4]  662 	ldx	6,s
+   0300 A6 02         [ 2]  663 	lda	#0x02
+   0302 F7            [ 2]  664 	sta	,x
+                            665 ;scheduler.c:120: beginCharge();
+   0303 AD 02         [ 4]  666 	bsr	00127$
+   0305 20 09         [ 3]  667 	bra	00126$
+   0307                     668 00127$:
+   0307 9E E6 0E      [ 4]  669 	lda	14,s
+   030A 87            [ 2]  670 	psha
+   030B 9E E6 0E      [ 4]  671 	lda	14,s
+   030E 87            [ 2]  672 	psha
+   030F 81            [ 4]  673 	rts
+   0310                     674 00126$:
+                            675 ;scheduler.c:121: *compareReg = schedule->endCompare;
+   0310 95            [ 2]  676 	tsx
+   0311 E6 0E         [ 3]  677 	lda	14,x
+   0313 F7            [ 2]  678 	sta	,x
+   0314 E6 0F         [ 3]  679 	lda	15,x
+   0316 E7 01         [ 3]  680 	sta	1,x
+   0318 E6 04         [ 3]  681 	lda	4,x
+   031A E7 02         [ 3]  682 	sta	2,x
+   031C E6 05         [ 3]  683 	lda	5,x
+   031E E7 03         [ 3]  684 	sta	3,x
+   0320 E6 02         [ 3]  685 	lda	2,x
+   0322 87            [ 2]  686 	psha
+   0323 8A            [ 2]  687 	pulh
+   0324 9E EE 04      [ 4]  688 	ldx	4,s
+   0327 E6 04         [ 3]  689 	lda	4,x
+   0329 EE 03         [ 3]  690 	ldx	3,x
+   032B 89            [ 2]  691 	pshx
+   032C 9E EE 02      [ 4]  692 	ldx	2,s
+   032F 89            [ 2]  693 	pshx
+   0330 8A            [ 2]  694 	pulh
+   0331 9E EE 03      [ 4]  695 	ldx	3,s
+   0334 E7 01         [ 3]  696 	sta	1,x
+   0336 86            [ 2]  697 	pula
+   0337 F7            [ 2]  698 	sta	,x
+                            699 ;scheduler.h:56: return (uint16_t)((T1CNTH << 8) | T1CNTL);
+   0338 B6 21         [ 3]  700 	lda	*0x21
+   033A 5F            [ 1]  701 	clrx
+   033B 9E E7 01      [ 4]  702 	sta	1,s
+   033E 9E EF 02      [ 4]  703 	stx	2,s
+   0341 B6 22         [ 3]  704 	lda	*0x22
+   0343 9E EA 02      [ 4]  705 	ora	2,s
+   0346 87            [ 2]  706 	psha
+   0347 9F            [ 1]  707 	txa
+   0348 9E EA 02      [ 4]  708 	ora	2,s
+   034B 97            [ 1]  709 	tax
+   034C 86            [ 2]  710 	pula
+                            711 ;scheduler.c:123: if ((int16_t)(getTimer1Count() - schedule->endCompare) >= 0) {
+   034D 89            [ 2]  712 	pshx
+   034E 9E EE 04      [ 4]  713 	ldx	4,s
+   0351 89            [ 2]  714 	pshx
+   0352 8A            [ 2]  715 	pulh
+   0353 9E EE 05      [ 4]  716 	ldx	5,s
+   0356 87            [ 2]  717 	psha
+   0357 E6 03         [ 3]  718 	lda	3,x
+   0359 9E E7 05      [ 4]  719 	sta	5,s
+   035C E6 04         [ 3]  720 	lda	4,x
+   035E 9E E7 06      [ 4]  721 	sta	6,s
+   0361 86            [ 2]  722 	pula
+   0362 88            [ 2]  723 	pulx
+   0363 9E E0 04      [ 4]  724 	sub	4,s
+   0366 87            [ 2]  725 	psha
+   0367 9F            [ 1]  726 	txa
+   0368 9E E2 04      [ 4]  727 	sbc	4,s
+   036B 97            [ 1]  728 	tax
+   036C 86            [ 2]  729 	pula
+   036D 9F            [ 1]  730 	txa
+   036E A0 00         [ 2]  731 	sub	#0x00
+   0370 91 17         [ 3]  732 	blt	00102$
+                            733 ;scheduler.c:124: schedule->status = SCHED_OFF;
+   0372 9E E6 05      [ 4]  734 	lda	5,s
+   0375 87            [ 2]  735 	psha
+   0376 8A            [ 2]  736 	pulh
+   0377 9E EE 06      [ 4]  737 	ldx	6,s
+   037A 4F            [ 1]  738 	clra
+   037B F7            [ 2]  739 	sta	,x
+                            740 ;scheduler.c:125: endCharge();
+   037C AD 02         [ 4]  741 	bsr	00130$
+   037E 20 09         [ 3]  742 	bra	00129$
+   0380                     743 00130$:
+   0380 9E E6 10      [ 4]  744 	lda	16,s
+   0383 87            [ 2]  745 	psha
+   0384 9E E6 10      [ 4]  746 	lda	16,s
+   0387 87            [ 2]  747 	psha
+   0388 81            [ 4]  748 	rts
+   0389                     749 00129$:
+   0389                     750 00102$:
+                            751 ;scheduler.c:127: return;
+   0389 20 24         [ 3]  752 	bra	00108$
+   038B                     753 00104$:
+                            754 ;scheduler.c:130: if (schedule->status == SCHED_RUNNING) {
+   038B 9E E6 05      [ 4]  755 	lda	5,s
+   038E 87            [ 2]  756 	psha
+   038F 8A            [ 2]  757 	pulh
+   0390 9E EE 06      [ 4]  758 	ldx	6,s
+   0393 F6            [ 2]  759 	lda	,x
+   0394 A1 02         [ 2]  760 	cmp	#0x02
+   0396 26 17         [ 3]  761 	bne	00108$
+                            762 ;scheduler.c:131: schedule->status = SCHED_OFF;
+   0398 9E E6 05      [ 4]  763 	lda	5,s
+   039B 87            [ 2]  764 	psha
+   039C 8A            [ 2]  765 	pulh
+   039D 9E EE 06      [ 4]  766 	ldx	6,s
+   03A0 4F            [ 1]  767 	clra
+   03A1 F7            [ 2]  768 	sta	,x
+                            769 ;scheduler.c:132: endCharge();
+   03A2 AD 02         [ 4]  770 	bsr	00133$
+   03A4 20 09         [ 3]  771 	bra	00132$
+   03A6                     772 00133$:
+   03A6 9E E6 10      [ 4]  773 	lda	16,s
+   03A9 87            [ 2]  774 	psha
+   03AA 9E E6 10      [ 4]  775 	lda	16,s
+   03AD 87            [ 2]  776 	psha
+   03AE 81            [ 4]  777 	rts
+   03AF                     778 00132$:
+   03AF                     779 00108$:
+                            780 ;scheduler.c:134: }
+   03AF A7 08         [ 2]  781 	ais	#8
+   03B1 81            [ 4]  782 	rts
+                            783 ;------------------------------------------------------------
+                            784 ;Allocation info for local variables in function 'armIgnitionCompare'
+                            785 ;------------------------------------------------------------
+                            786 ;beginCharge               Allocated to stack - sp +13
+                            787 ;endCharge                 Allocated to stack - sp +15
+                            788 ;compareReg                Allocated to stack - sp +17
+                            789 ;schedule                  Allocated to stack - sp +9
+                            790 ;__1310720005              Allocated to registers a x 
+                            791 ;sloc0                     Allocated to stack - sp +5
+                            792 ;sloc1                     Allocated to stack - sp +7
+                            793 ;sloc2                     Allocated to stack - sp +3
+                            794 ;sloc3                     Allocated to stack - sp +1
+                            795 ;------------------------------------------------------------
+                            796 ;scheduler.c:136: static void armIgnitionCompare(volatile IgnitionSchedule *schedule,
+                            797 ;	-----------------------------------------
+                            798 ;	 function armIgnitionCompare
+                            799 ;	-----------------------------------------
+                            800 ;	Register assignment is optimal.
+                            801 ;	Stack space usage: 10 bytes.
+   03B2                     802 _armIgnitionCompare:
+   03B2 87            [ 2]  803 	psha
+   03B3 89            [ 2]  804 	pshx
+   03B4 A7 F8         [ 2]  805 	ais	#-8
+                            806 ;scheduler.c:140: *compareReg = schedule->startCompare;
+   03B6 95            [ 2]  807 	tsx
+   03B7 E6 10         [ 3]  808 	lda	16,x
+   03B9 E7 04         [ 3]  809 	sta	4,x
+   03BB E6 11         [ 3]  810 	lda	17,x
+   03BD E7 05         [ 3]  811 	sta	5,x
+   03BF E6 08         [ 3]  812 	lda	8,x
+   03C1 E7 06         [ 3]  813 	sta	6,x
+   03C3 E6 09         [ 3]  814 	lda	9,x
+   03C5 E7 07         [ 3]  815 	sta	7,x
+   03C7 E6 06         [ 3]  816 	lda	6,x
+   03C9 E7 02         [ 3]  817 	sta	2,x
+   03CB E6 07         [ 3]  818 	lda	7,x
+   03CD E7 03         [ 3]  819 	sta	3,x
+   03CF E6 02         [ 3]  820 	lda	2,x
+   03D1 87            [ 2]  821 	psha
+   03D2 8A            [ 2]  822 	pulh
+   03D3 9E EE 04      [ 4]  823 	ldx	4,s
+   03D6 E6 02         [ 3]  824 	lda	2,x
+   03D8 EE 01         [ 3]  825 	ldx	1,x
+   03DA 89            [ 2]  826 	pshx
+   03DB 9E EE 06      [ 4]  827 	ldx	6,s
+   03DE 89            [ 2]  828 	pshx
+   03DF 8A            [ 2]  829 	pulh
+   03E0 9E EE 07      [ 4]  830 	ldx	7,s
+   03E3 E7 01         [ 3]  831 	sta	1,x
+   03E5 86            [ 2]  832 	pula
+   03E6 F7            [ 2]  833 	sta	,x
+                            834 ;scheduler.h:56: return (uint16_t)((T1CNTH << 8) | T1CNTL);
+   03E7 B6 21         [ 3]  835 	lda	*0x21
+   03E9 5F            [ 1]  836 	clrx
+   03EA 9E E7 01      [ 4]  837 	sta	1,s
+   03ED 9E EF 02      [ 4]  838 	stx	2,s
+   03F0 B6 22         [ 3]  839 	lda	*0x22
+   03F2 9E EA 02      [ 4]  840 	ora	2,s
+   03F5 87            [ 2]  841 	psha
+   03F6 9F            [ 1]  842 	txa
+   03F7 9E EA 02      [ 4]  843 	ora	2,s
+   03FA 97            [ 1]  844 	tax
+   03FB 86            [ 2]  845 	pula
+                            846 ;scheduler.c:142: if ((int16_t)(getTimer1Count() - schedule->startCompare) >= 0) {
+   03FC 89            [ 2]  847 	pshx
+   03FD 9E EE 04      [ 4]  848 	ldx	4,s
+   0400 89            [ 2]  849 	pshx
+   0401 8A            [ 2]  850 	pulh
+   0402 9E EE 05      [ 4]  851 	ldx	5,s
+   0405 87            [ 2]  852 	psha
+   0406 E6 01         [ 3]  853 	lda	1,x
+   0408 9E E7 03      [ 4]  854 	sta	3,s
+   040B E6 02         [ 3]  855 	lda	2,x
+   040D 9E E7 04      [ 4]  856 	sta	4,s
+   0410 86            [ 2]  857 	pula
+   0411 88            [ 2]  858 	pulx
+   0412 9E E0 02      [ 4]  859 	sub	2,s
+   0415 87            [ 2]  860 	psha
+   0416 9F            [ 1]  861 	txa
+   0417 9E E2 02      [ 4]  862 	sbc	2,s
+   041A 97            [ 1]  863 	tax
+   041B 86            [ 2]  864 	pula
+   041C 9F            [ 1]  865 	txa
+   041D A0 00         [ 2]  866 	sub	#0x00
+   041F 91 1C         [ 3]  867 	blt	00104$
+                            868 ;scheduler.c:143: handleIgnitionChannel(schedule, beginCharge, endCharge, compareReg);
+   0421 95            [ 2]  869 	tsx
+   0422 E6 05         [ 3]  870 	lda	5,x
+   0424 87            [ 2]  871 	psha
+   0425 E6 04         [ 3]  872 	lda	4,x
+   0427 87            [ 2]  873 	psha
+   0428 E6 0F         [ 3]  874 	lda	15,x
+   042A 87            [ 2]  875 	psha
+   042B E6 0E         [ 3]  876 	lda	14,x
+   042D 87            [ 2]  877 	psha
+   042E E6 0D         [ 3]  878 	lda	13,x
+   0430 87            [ 2]  879 	psha
+   0431 E6 0C         [ 3]  880 	lda	12,x
+   0433 87            [ 2]  881 	psha
+   0434 E6 07         [ 3]  882 	lda	7,x
+   0436 EE 06         [ 3]  883 	ldx	6,x
+   0438 CDr02rDD      [ 5]  884 	jsr	_handleIgnitionChannel
+   043B A7 06         [ 2]  885 	ais	#6
+   043D                     886 00104$:
+                            887 ;scheduler.c:145: }
+   043D A7 0A         [ 2]  888 	ais	#10
+   043F 81            [ 4]  889 	rts
+                            890 ;------------------------------------------------------------
+                            891 ;Allocation info for local variables in function 'setIgnitionSchedule'
+                            892 ;------------------------------------------------------------
+                            893 ;startTime                 Allocated to stack - sp +33
+                            894 ;duration                  Allocated to stack - sp +37
+                            895 ;channel                   Allocated to stack - sp +39
+                            896 ;schedule                  Allocated to stack - sp +27
+                            897 ;__1310720007              Allocated to stack - sp +25
+                            898 ;startTicks                Allocated to stack - sp +5
+                            899 ;durationTicks             Allocated to stack - sp +1
+                            900 ;totalTicks                Allocated to stack - sp +15
+                            901 ;minTicks                  Allocated to stack - sp +11
+                            902 ;currentCount              Allocated to registers 
+                            903 ;startTicks16              Allocated to registers x h 
+                            904 ;durationTicks16           Allocated to stack - sp +29
+                            905 ;sloc0                     Allocated to stack - sp +17
+                            906 ;sloc1                     Allocated to stack - sp +19
+                            907 ;sloc2                     Allocated to stack - sp +13
+                            908 ;sloc3                     Allocated to stack - sp +21
+                            909 ;sloc4                     Allocated to stack - sp +9
+                            910 ;------------------------------------------------------------
+                            911 ;scheduler.c:147: void setIgnitionSchedule(volatile IgnitionSchedule *schedule, uint32_t startTime,
+                            912 ;	-----------------------------------------
+                            913 ;	 function setIgnitionSchedule
+                            914 ;	-----------------------------------------
+                            915 ;	Register assignment might be sub-optimal.
+                            916 ;	Stack space usage: 30 bytes.
+   0440                     917 _setIgnitionSchedule:
+   0440 A7 E2         [ 2]  918 	ais	#-30
+   0442 9E E7 1C      [ 4]  919 	sta	28,s
+   0445 9E EF 1B      [ 4]  920 	stx	27,s
+                            921 ;scheduler.c:153: schedule->status = SCHED_OFF;
+   0448 95            [ 2]  922 	tsx
+   0449 E6 1A         [ 3]  923 	lda	26,x
+   044B E7 10         [ 3]  924 	sta	16,x
+   044D E6 1B         [ 3]  925 	lda	27,x
+   044F E7 11         [ 3]  926 	sta	17,x
+                            927 ;scheduler.c:152: if (channel > 2) {
+   0451 E6 26         [ 3]  928 	lda	38,x
+   0453 A1 02         [ 2]  929 	cmp	#0x02
+   0455 23 0C         [ 3]  930 	bls	00102$
+                            931 ;scheduler.c:153: schedule->status = SCHED_OFF;
+   0457 E6 10         [ 3]  932 	lda	16,x
+   0459 87            [ 2]  933 	psha
+   045A 8A            [ 2]  934 	pulh
+   045B 9E EE 12      [ 4]  935 	ldx	18,s
+   045E 4F            [ 1]  936 	clra
+   045F F7            [ 2]  937 	sta	,x
+                            938 ;scheduler.c:154: return;
+   0460 CCr06rBD      [ 3]  939 	jmp	00119$
+   0463                     940 00102$:
+                            941 ;scheduler.c:157: if (schedule->status == SCHED_RUNNING) {
+   0463 9E E6 11      [ 4]  942 	lda	17,s
+   0466 87            [ 2]  943 	psha
+   0467 8A            [ 2]  944 	pulh
+   0468 9E EE 12      [ 4]  945 	ldx	18,s
+   046B F6            [ 2]  946 	lda	,x
+                            947 ;scheduler.c:159: if (schedule->channel == 1) { endCoil1Charge(); } else { endCoil2Charge(); }
+   046C 95            [ 2]  948 	tsx
+   046D EE 10         [ 3]  949 	ldx	16,x
+   046F 9E EF 13      [ 4]  950 	stx	19,s
+   0472 87            [ 2]  951 	psha
+   0473 9E E6 13      [ 4]  952 	lda	19,s
+   0476 9E E7 15      [ 4]  953 	sta	21,s
+   0479 86            [ 2]  954 	pula
+                            955 ;scheduler.c:157: if (schedule->status == SCHED_RUNNING) {
+   047A A1 02         [ 2]  956 	cmp	#0x02
+   047C 26 20         [ 3]  957 	bne	00107$
+                            958 ;scheduler.c:158: schedule->status = SCHED_OFF;
+   047E 9E E6 11      [ 4]  959 	lda	17,s
+   0481 87            [ 2]  960 	psha
+   0482 8A            [ 2]  961 	pulh
+   0483 9E EE 12      [ 4]  962 	ldx	18,s
+   0486 4F            [ 1]  963 	clra
+   0487 F7            [ 2]  964 	sta	,x
+                            965 ;scheduler.c:159: if (schedule->channel == 1) { endCoil1Charge(); } else { endCoil2Charge(); }
+   0488 9E E6 13      [ 4]  966 	lda	19,s
+   048B 87            [ 2]  967 	psha
+   048C 8A            [ 2]  968 	pulh
+   048D 9E EE 14      [ 4]  969 	ldx	20,s
+   0490 E6 07         [ 3]  970 	lda	7,x
+   0492 A1 01         [ 2]  971 	cmp	#0x01
+   0494 26 05         [ 3]  972 	bne	00104$
+   0496 CDr00r21      [ 5]  973 	jsr	_endCoil1Charge
+   0499 20 03         [ 3]  974 	bra	00107$
+   049B                     975 00104$:
+   049B CDr00r2F      [ 5]  976 	jsr	_endCoil2Charge
+   049E                     977 00107$:
+                            978 ;scheduler.c:162: startTicks = US_TO_TIMER1(startTime);
+   049E 95            [ 2]  979 	tsx
+   049F E6 23         [ 3]  980 	lda	35,x
+   04A1 EE 22         [ 3]  981 	ldx	34,x
+   04A3 54            [ 1]  982 	lsrx
+   04A4 46            [ 1]  983 	rora
+   04A5 54            [ 1]  984 	lsrx
+   04A6 46            [ 1]  985 	rora
+   04A7 54            [ 1]  986 	lsrx
+   04A8 46            [ 1]  987 	rora
+   04A9 9E E7 10      [ 4]  988 	sta	16,s
+   04AC 9E EF 0F      [ 4]  989 	stx	15,s
+   04AF 9E E6 22      [ 4]  990 	lda	34,s
+   04B2 62            [ 3]  991 	nsa	
+   04B3 A4 F0         [ 2]  992 	and	#0xf0
+   04B5 48            [ 1]  993 	lsla	
+   04B6 9E EA 0F      [ 4]  994 	ora	15,s
+   04B9 9E E7 0F      [ 4]  995 	sta	15,s
+   04BC 9E E6 22      [ 4]  996 	lda	34,s
+   04BF 9E EE 21      [ 4]  997 	ldx	33,s
+   04C2 54            [ 1]  998 	lsrx
+   04C3 46            [ 1]  999 	rora
+   04C4 54            [ 1] 1000 	lsrx
+   04C5 46            [ 1] 1001 	rora
+   04C6 54            [ 1] 1002 	lsrx
+   04C7 46            [ 1] 1003 	rora
+   04C8 9E E7 0E      [ 4] 1004 	sta	14,s
+   04CB 9E EF 0D      [ 4] 1005 	stx	13,s
+   04CE 9E EE 10      [ 4] 1006 	ldx	16,s
+   04D1 9E E6 0F      [ 4] 1007 	lda	15,s
+   04D4 87            [ 2] 1008 	psha
+   04D5 8A            [ 2] 1009 	pulh
+   04D6 9E EF 10      [ 4] 1010 	stx	16,s
+   04D9 8B            [ 2] 1011 	pshh
+   04DA 86            [ 2] 1012 	pula
+   04DB 9E E7 0F      [ 4] 1013 	sta	15,s
+   04DE 4F            [ 1] 1014 	clra
+   04DF 9E E7 0E      [ 4] 1015 	sta	14,s
+   04E2 9E E7 0D      [ 4] 1016 	sta	13,s
+   04E5 95            [ 2] 1017 	tsx
+   04E6 E6 0C         [ 3] 1018 	lda	12,x
+   04E8 E7 04         [ 3] 1019 	sta	4,x
+   04EA E6 0D         [ 3] 1020 	lda	13,x
+   04EC E7 05         [ 3] 1021 	sta	5,x
+   04EE E6 0E         [ 3] 1022 	lda	14,x
+   04F0 E7 06         [ 3] 1023 	sta	6,x
+   04F2 E6 0F         [ 3] 1024 	lda	15,x
+   04F4 E7 07         [ 3] 1025 	sta	7,x
+                           1026 ;scheduler.c:163: durationTicks = US_TO_TIMER1(duration);
+   04F6 E6 25         [ 3] 1027 	lda	37,x
+   04F8 EE 24         [ 3] 1028 	ldx	36,x
+   04FA 54            [ 1] 1029 	lsrx
+   04FB 46            [ 1] 1030 	rora
+   04FC 54            [ 1] 1031 	lsrx
+   04FD 46            [ 1] 1032 	rora
+   04FE 54            [ 1] 1033 	lsrx
+   04FF 46            [ 1] 1034 	rora
+   0500 9E E7 18      [ 4] 1035 	sta	24,s
+   0503 9E EF 17      [ 4] 1036 	stx	23,s
+   0506 87            [ 2] 1037 	psha
+   0507 4F            [ 1] 1038 	clra
+   0508 9E E7 17      [ 4] 1039 	sta	23,s
+   050B 4F            [ 1] 1040 	clra
+   050C 9E E7 16      [ 4] 1041 	sta	22,s
+   050F 86            [ 2] 1042 	pula
+   0510 95            [ 2] 1043 	tsx
+   0511 E6 14         [ 3] 1044 	lda	20,x
+   0513 F7            [ 2] 1045 	sta	,x
+   0514 E6 15         [ 3] 1046 	lda	21,x
+   0516 E7 01         [ 3] 1047 	sta	1,x
+   0518 E6 16         [ 3] 1048 	lda	22,x
+   051A E7 02         [ 3] 1049 	sta	2,x
+   051C E6 17         [ 3] 1050 	lda	23,x
+   051E E7 03         [ 3] 1051 	sta	3,x
+                           1052 ;scheduler.c:164: if (durationTicks == 0) { durationTicks = 1; }
+   0520 E6 14         [ 3] 1053 	lda	20,x
+   0522 EA 15         [ 3] 1054 	ora	21,x
+   0524 EA 16         [ 3] 1055 	ora	22,x
+   0526 EA 17         [ 3] 1056 	ora	23,x
+   0528 26 09         [ 3] 1057 	bne	00109$
+   052A 4F            [ 1] 1058 	clra
+   052B F7            [ 2] 1059 	sta	,x
+   052C E7 01         [ 3] 1060 	sta	1,x
+   052E E7 02         [ 3] 1061 	sta	2,x
+   0530 4C            [ 1] 1062 	inca
+   0531 E7 03         [ 3] 1063 	sta	3,x
+   0533                    1064 00109$:
+                           1065 ;scheduler.c:166: totalTicks = startTicks + durationTicks;
+   0533 95            [ 2] 1066 	tsx
+   0534 E6 0F         [ 3] 1067 	lda	15,x
+   0536 EB 03         [ 3] 1068 	add	3,x
+   0538 E7 17         [ 3] 1069 	sta	23,x
+   053A E6 0E         [ 3] 1070 	lda	14,x
+   053C E9 02         [ 3] 1071 	adc	2,x
+   053E E7 16         [ 3] 1072 	sta	22,x
+   0540 E6 0D         [ 3] 1073 	lda	13,x
+   0542 E9 01         [ 3] 1074 	adc	1,x
+   0544 E7 15         [ 3] 1075 	sta	21,x
+   0546 E6 0C         [ 3] 1076 	lda	12,x
+   0548 F9            [ 2] 1077 	adc	,x
+   0549 E7 14         [ 3] 1078 	sta	20,x
+                           1079 ;scheduler.c:167: minTicks = US_TO_TIMER1(IGNITION_MIN_DELAY_US);
+   054B C6r00r01      [ 4] 1080 	lda	(_IGNITION_MIN_DELAY_US + 1)
+   054E CEr00r00      [ 4] 1081 	ldx	_IGNITION_MIN_DELAY_US
+   0551 54            [ 1] 1082 	lsrx
+   0552 46            [ 1] 1083 	rora
+   0553 54            [ 1] 1084 	lsrx
+   0554 46            [ 1] 1085 	rora
+   0555 54            [ 1] 1086 	lsrx
+   0556 46            [ 1] 1087 	rora
+   0557 9E E7 0C      [ 4] 1088 	sta	12,s
+   055A 9E EF 0B      [ 4] 1089 	stx	11,s
+   055D 87            [ 2] 1090 	psha
+   055E 4F            [ 1] 1091 	clra
+   055F 9E E7 0B      [ 4] 1092 	sta	11,s
+   0562 4F            [ 1] 1093 	clra
+   0563 9E E7 0A      [ 4] 1094 	sta	10,s
+   0566 86            [ 2] 1095 	pula
+                           1096 ;scheduler.c:169: if (startTicks < minTicks) {
+   0567 95            [ 2] 1097 	tsx
+   0568 E6 0F         [ 3] 1098 	lda	15,x
+   056A E0 0B         [ 3] 1099 	sub	11,x
+   056C E6 0E         [ 3] 1100 	lda	14,x
+   056E E2 0A         [ 3] 1101 	sbc	10,x
+   0570 E6 0D         [ 3] 1102 	lda	13,x
+   0572 E2 09         [ 3] 1103 	sbc	9,x
+   0574 E6 0C         [ 3] 1104 	lda	12,x
+   0576 E2 08         [ 3] 1105 	sbc	8,x
+   0578 24 45         [ 3] 1106 	bcc	00114$
+                           1107 ;scheduler.c:170: startTicks = minTicks;
+   057A E6 08         [ 3] 1108 	lda	8,x
+   057C E7 04         [ 3] 1109 	sta	4,x
+   057E E6 09         [ 3] 1110 	lda	9,x
+   0580 E7 05         [ 3] 1111 	sta	5,x
+   0582 E6 0A         [ 3] 1112 	lda	10,x
+   0584 E7 06         [ 3] 1113 	sta	6,x
+   0586 E6 0B         [ 3] 1114 	lda	11,x
+   0588 E7 07         [ 3] 1115 	sta	7,x
+                           1116 ;scheduler.c:171: if (totalTicks > startTicks) {
+   058A E6 0B         [ 3] 1117 	lda	11,x
+   058C E0 17         [ 3] 1118 	sub	23,x
+   058E E6 0A         [ 3] 1119 	lda	10,x
+   0590 E2 16         [ 3] 1120 	sbc	22,x
+   0592 E6 09         [ 3] 1121 	lda	9,x
+   0594 E2 15         [ 3] 1122 	sbc	21,x
+   0596 E6 08         [ 3] 1123 	lda	8,x
+   0598 E2 14         [ 3] 1124 	sbc	20,x
+   059A 24 19         [ 3] 1125 	bcc	00111$
+                           1126 ;scheduler.c:172: durationTicks = totalTicks - startTicks;
+   059C E6 17         [ 3] 1127 	lda	23,x
+   059E E0 0B         [ 3] 1128 	sub	11,x
+   05A0 E7 03         [ 3] 1129 	sta	3,x
+   05A2 E6 16         [ 3] 1130 	lda	22,x
+   05A4 E2 0A         [ 3] 1131 	sbc	10,x
+   05A6 E7 02         [ 3] 1132 	sta	2,x
+   05A8 E6 15         [ 3] 1133 	lda	21,x
+   05AA E2 09         [ 3] 1134 	sbc	9,x
+   05AC E7 01         [ 3] 1135 	sta	1,x
+   05AE E6 14         [ 3] 1136 	lda	20,x
+   05B0 E2 08         [ 3] 1137 	sbc	8,x
+   05B2 F7            [ 2] 1138 	sta	,x
+   05B3 20 0A         [ 3] 1139 	bra	00114$
+   05B5                    1140 00111$:
+                           1141 ;scheduler.c:174: durationTicks = 1;
+   05B5 95            [ 2] 1142 	tsx
+   05B6 4F            [ 1] 1143 	clra
+   05B7 F7            [ 2] 1144 	sta	,x
+   05B8 E7 01         [ 3] 1145 	sta	1,x
+   05BA E7 02         [ 3] 1146 	sta	2,x
+   05BC 4C            [ 1] 1147 	inca
+   05BD E7 03         [ 3] 1148 	sta	3,x
+   05BF                    1149 00114$:
+                           1150 ;scheduler.h:56: return (uint16_t)((T1CNTH << 8) | T1CNTL);
+   05BF B6 21         [ 3] 1151 	lda	*0x21
+   05C1 5F            [ 1] 1152 	clrx
+   05C2 9E E7 09      [ 4] 1153 	sta	9,s
+   05C5 9E EF 0A      [ 4] 1154 	stx	10,s
+   05C8 B6 22         [ 3] 1155 	lda	*0x22
+   05CA 9E EA 0A      [ 4] 1156 	ora	10,s
+   05CD 87            [ 2] 1157 	psha
+   05CE 9F            [ 1] 1158 	txa
+   05CF 9E EA 0A      [ 4] 1159 	ora	10,s
+   05D2 97            [ 1] 1160 	tax
+   05D3 86            [ 2] 1161 	pula
+   05D4 9E E7 1A      [ 4] 1162 	sta	26,s
+   05D7 9E EF 19      [ 4] 1163 	stx	25,s
+                           1164 ;scheduler.c:179: startTicks16 = (uint16_t)startTicks;
+   05DA 9E EE 08      [ 4] 1165 	ldx	8,s
+   05DD 9E E6 07      [ 4] 1166 	lda	7,s
+   05E0 87            [ 2] 1167 	psha
+   05E1 8A            [ 2] 1168 	pulh
+                           1169 ;scheduler.c:180: durationTicks16 = (uint16_t)durationTicks;
+   05E2 9E E6 04      [ 4] 1170 	lda	4,s
+   05E5 9E E7 1E      [ 4] 1171 	sta	30,s
+   05E8 9E E6 03      [ 4] 1172 	lda	3,s
+   05EB 9E E7 1D      [ 4] 1173 	sta	29,s
+                           1174 ;scheduler.c:182: schedule->startCompare = currentCount + startTicks16;
+   05EE 9E E6 11      [ 4] 1175 	lda	17,s
+   05F1 9E E7 09      [ 4] 1176 	sta	9,s
+   05F4 9E E6 12      [ 4] 1177 	lda	18,s
+   05F7 9E E7 0A      [ 4] 1178 	sta	10,s
+   05FA 9F            [ 1] 1179 	txa
+   05FB 9E EB 1A      [ 4] 1180 	add	26,s
+   05FE 97            [ 1] 1181 	tax
+   05FF 8B            [ 2] 1182 	pshh
+   0600 86            [ 2] 1183 	pula
+   0601 9E E9 19      [ 4] 1184 	adc	25,s
+   0604 89            [ 2] 1185 	pshx
+   0605 87            [ 2] 1186 	psha
+   0606 89            [ 2] 1187 	pshx
+   0607 9E E6 0C      [ 4] 1188 	lda	12,s
+   060A 87            [ 2] 1189 	psha
+   060B 8A            [ 2] 1190 	pulh
+   060C 9E EE 0D      [ 4] 1191 	ldx	13,s
+   060F E7 01         [ 3] 1192 	sta	1,x
+   0611 86            [ 2] 1193 	pula
+   0612 E7 02         [ 3] 1194 	sta	2,x
+   0614 86            [ 2] 1195 	pula
+   0615 88            [ 2] 1196 	pulx
+                           1197 ;scheduler.c:183: schedule->endCompare = schedule->startCompare + durationTicks16;
+   0616 87            [ 2] 1198 	psha
+   0617 9E E6 12      [ 4] 1199 	lda	18,s
+   061A 9E E7 16      [ 4] 1200 	sta	22,s
+   061D 9E E6 13      [ 4] 1201 	lda	19,s
+   0620 9E E7 17      [ 4] 1202 	sta	23,s
+   0623 86            [ 2] 1203 	pula
+   0624 89            [ 2] 1204 	pshx
+   0625 9E EE 0A      [ 4] 1205 	ldx	10,s
+   0628 89            [ 2] 1206 	pshx
+   0629 8A            [ 2] 1207 	pulh
+   062A 9E EE 0B      [ 4] 1208 	ldx	11,s
+   062D 87            [ 2] 1209 	psha
+   062E E6 01         [ 3] 1210 	lda	1,x
+   0630 E6 02         [ 3] 1211 	lda	2,x
+   0632 86            [ 2] 1212 	pula
+   0633 88            [ 2] 1213 	pulx
+   0634 87            [ 2] 1214 	psha
+   0635 9F            [ 1] 1215 	txa
+   0636 9E EB 1F      [ 4] 1216 	add	31,s
+   0639 97            [ 1] 1217 	tax
+   063A 86            [ 2] 1218 	pula
+   063B 9E E9 1D      [ 4] 1219 	adc	29,s
+   063E 89            [ 2] 1220 	pshx
+   063F 9E EE 16      [ 4] 1221 	ldx	22,s
+   0642 89            [ 2] 1222 	pshx
+   0643 8A            [ 2] 1223 	pulh
+   0644 9E EE 17      [ 4] 1224 	ldx	23,s
+   0647 E7 03         [ 3] 1225 	sta	3,x
+   0649 86            [ 2] 1226 	pula
+   064A E7 04         [ 3] 1227 	sta	4,x
+                           1228 ;scheduler.c:184: schedule->duration = durationTicks16;
+   064C 95            [ 2] 1229 	tsx
+   064D E6 10         [ 3] 1230 	lda	16,x
+   064F E7 08         [ 3] 1231 	sta	8,x
+   0651 E6 11         [ 3] 1232 	lda	17,x
+   0653 E7 09         [ 3] 1233 	sta	9,x
+   0655 E6 08         [ 3] 1234 	lda	8,x
+   0657 87            [ 2] 1235 	psha
+   0658 8A            [ 2] 1236 	pulh
+   0659 9E EE 0A      [ 4] 1237 	ldx	10,s
+   065C 9E E6 1D      [ 4] 1238 	lda	29,s
+   065F E7 05         [ 3] 1239 	sta	5,x
+   0661 9E E6 1E      [ 4] 1240 	lda	30,s
+   0664 E7 06         [ 3] 1241 	sta	6,x
+                           1242 ;scheduler.c:185: schedule->channel = channel;
+   0666 9E E6 13      [ 4] 1243 	lda	19,s
+   0669 87            [ 2] 1244 	psha
+   066A 8A            [ 2] 1245 	pulh
+   066B 9E EE 14      [ 4] 1246 	ldx	20,s
+   066E 9E E6 27      [ 4] 1247 	lda	39,s
+   0671 E7 07         [ 3] 1248 	sta	7,x
+                           1249 ;scheduler.c:186: schedule->status = SCHED_PENDING;
+   0673 9E E6 11      [ 4] 1250 	lda	17,s
+   0676 87            [ 2] 1251 	psha
+   0677 8A            [ 2] 1252 	pulh
+   0678 9E EE 12      [ 4] 1253 	ldx	18,s
+   067B A6 01         [ 2] 1254 	lda	#0x01
+   067D F7            [ 2] 1255 	sta	,x
+                           1256 ;scheduler.c:188: if (channel == 1) {
+   067E 9E E6 27      [ 4] 1257 	lda	39,s
+   0681 A1 01         [ 2] 1258 	cmp	#0x01
+   0683 26 1D         [ 3] 1259 	bne	00116$
+                           1260 ;scheduler.c:189: armIgnitionCompare(schedule, beginCoil1Charge, endCoil1Charge, (volatile uint16_t *)&T1CH0H);
+   0685 A6 26         [ 2] 1261 	lda	#0x26
+   0687 87            [ 2] 1262 	psha
+   0688 4F            [ 1] 1263 	clra
+   0689 87            [ 2] 1264 	psha
+   068A A6r21         [ 2] 1265 	lda	#_endCoil1Charge
+   068C 87            [ 2] 1266 	psha
+   068D A6s00         [ 2] 1267 	lda	#>_endCoil1Charge
+   068F 87            [ 2] 1268 	psha
+   0690 A6r1A         [ 2] 1269 	lda	#_beginCoil1Charge
+   0692 87            [ 2] 1270 	psha
+   0693 A6s00         [ 2] 1271 	lda	#>_beginCoil1Charge
+   0695 87            [ 2] 1272 	psha
+   0696 95            [ 2] 1273 	tsx
+   0697 E6 17         [ 3] 1274 	lda	23,x
+   0699 EE 16         [ 3] 1275 	ldx	22,x
+   069B CDr03rB2      [ 5] 1276 	jsr	_armIgnitionCompare
+   069E A7 06         [ 2] 1277 	ais	#6
+   06A0 20 1B         [ 3] 1278 	bra	00119$
+   06A2                    1279 00116$:
+                           1280 ;scheduler.c:191: armIgnitionCompare(schedule, beginCoil2Charge, endCoil2Charge, (volatile uint16_t *)&T1CH1H);
+   06A2 A6 29         [ 2] 1281 	lda	#0x29
+   06A4 87            [ 2] 1282 	psha
+   06A5 4F            [ 1] 1283 	clra
+   06A6 87            [ 2] 1284 	psha
+   06A7 A6r2F         [ 2] 1285 	lda	#_endCoil2Charge
+   06A9 87            [ 2] 1286 	psha
+   06AA A6s00         [ 2] 1287 	lda	#>_endCoil2Charge
+   06AC 87            [ 2] 1288 	psha
+   06AD A6r28         [ 2] 1289 	lda	#_beginCoil2Charge
+   06AF 87            [ 2] 1290 	psha
+   06B0 A6s00         [ 2] 1291 	lda	#>_beginCoil2Charge
+   06B2 87            [ 2] 1292 	psha
+   06B3 95            [ 2] 1293 	tsx
+   06B4 E6 17         [ 3] 1294 	lda	23,x
+   06B6 EE 16         [ 3] 1295 	ldx	22,x
+   06B8 CDr03rB2      [ 5] 1296 	jsr	_armIgnitionCompare
+   06BB A7 06         [ 2] 1297 	ais	#6
+   06BD                    1298 00119$:
+                           1299 ;scheduler.c:193: }
+   06BD A7 1E         [ 2] 1300 	ais	#30
+   06BF 81            [ 4] 1301 	rts
+                           1302 ;------------------------------------------------------------
+                           1303 ;Allocation info for local variables in function 'clearIgnitionSchedule'
+                           1304 ;------------------------------------------------------------
+                           1305 ;schedule                  Allocated to stack - sp +1
+                           1306 ;------------------------------------------------------------
+                           1307 ;scheduler.c:195: void clearIgnitionSchedule(volatile IgnitionSchedule *schedule) {
+                           1308 ;	-----------------------------------------
+                           1309 ;	 function clearIgnitionSchedule
+                           1310 ;	-----------------------------------------
+                           1311 ;	Register assignment is optimal.
+                           1312 ;	Stack space usage: 2 bytes.
+   06C0                    1313 _clearIgnitionSchedule:
+   06C0 87            [ 2] 1314 	psha
+   06C1 89            [ 2] 1315 	pshx
+                           1316 ;scheduler.c:196: schedule->status = SCHED_OFF;
+   06C2 8A            [ 2] 1317 	pulh
+   06C3 88            [ 2] 1318 	pulx
+   06C4 89            [ 2] 1319 	pshx
+   06C5 8B            [ 2] 1320 	pshh
+   06C6 89            [ 2] 1321 	pshx
+   06C7 8B            [ 2] 1322 	pshh
+   06C8 4F            [ 1] 1323 	clra
+   06C9 F7            [ 2] 1324 	sta	,x
+   06CA 8A            [ 2] 1325 	pulh
+   06CB 88            [ 2] 1326 	pulx
+                           1327 ;scheduler.c:197: if (schedule->channel == 1) {
+   06CC E6 07         [ 3] 1328 	lda	7,x
+   06CE A1 01         [ 2] 1329 	cmp	#0x01
+   06D0 26 05         [ 3] 1330 	bne	00104$
+                           1331 ;scheduler.c:198: endCoil1Charge();
+   06D2 CDr00r21      [ 5] 1332 	jsr	_endCoil1Charge
+   06D5 20 09         [ 3] 1333 	bra	00106$
+   06D7                    1334 00104$:
+                           1335 ;scheduler.c:199: } else if (schedule->channel == 2) {
+   06D7 E6 07         [ 3] 1336 	lda	7,x
+   06D9 A1 02         [ 2] 1337 	cmp	#0x02
+   06DB 26 03         [ 3] 1338 	bne	00106$
+                           1339 ;scheduler.c:200: endCoil2Charge();
+   06DD CDr00r2F      [ 5] 1340 	jsr	_endCoil2Charge
+   06E0                    1341 00106$:
+                           1342 ;scheduler.c:202: }
+   06E0 A7 02         [ 2] 1343 	ais	#2
+   06E2 81            [ 4] 1344 	rts
+                           1345 ;------------------------------------------------------------
+                           1346 ;Allocation info for local variables in function 'isr_tim1_ch0'
+                           1347 ;------------------------------------------------------------
+                           1348 ;scheduler.c:205: void isr_tim1_ch0(void) __interrupt(4) {
+                           1349 ;	-----------------------------------------
+                           1350 ;	 function isr_tim1_ch0
+                           1351 ;	-----------------------------------------
+                           1352 ;	Register assignment is optimal.
+                           1353 ;	Stack space usage: 0 bytes.
+   06E3                    1354 _isr_tim1_ch0:
+   06E3 8B            [ 2] 1355 	pshh
+                           1356 ;scheduler.c:206: handleIgnitionChannel(&ignitionSchedule1, beginCoil1Charge, endCoil1Charge, (volatile uint16_t *)&T1CH0H);
+   06E4 A6 26         [ 2] 1357 	lda	#0x26
+   06E6 87            [ 2] 1358 	psha
+   06E7 4F            [ 1] 1359 	clra
+   06E8 87            [ 2] 1360 	psha
+   06E9 A6r21         [ 2] 1361 	lda	#_endCoil1Charge
+   06EB 87            [ 2] 1362 	psha
+   06EC A6s00         [ 2] 1363 	lda	#>_endCoil1Charge
+   06EE 87            [ 2] 1364 	psha
+   06EF A6r1A         [ 2] 1365 	lda	#_beginCoil1Charge
+   06F1 87            [ 2] 1366 	psha
+   06F2 A6s00         [ 2] 1367 	lda	#>_beginCoil1Charge
+   06F4 87            [ 2] 1368 	psha
+   06F5 A6r00         [ 2] 1369 	lda	#_ignitionSchedule1
+   06F7 AEs00         [ 2] 1370 	ldx	#>_ignitionSchedule1
+   06F9 CDr02rDD      [ 5] 1371 	jsr	_handleIgnitionChannel
+   06FC A7 06         [ 2] 1372 	ais	#6
+                           1373 ;scheduler.c:207: }
+   06FE 8A            [ 2] 1374 	pulh
+   06FF 80            [ 7] 1375 	rti
+                           1376 ;------------------------------------------------------------
+                           1377 ;Allocation info for local variables in function 'isr_tim1_ch1'
+                           1378 ;------------------------------------------------------------
+                           1379 ;scheduler.c:209: void isr_tim1_ch1(void) __interrupt(5) {
+                           1380 ;	-----------------------------------------
+                           1381 ;	 function isr_tim1_ch1
+                           1382 ;	-----------------------------------------
+                           1383 ;	Register assignment is optimal.
+                           1384 ;	Stack space usage: 0 bytes.
+   0700                    1385 _isr_tim1_ch1:
+   0700 8B            [ 2] 1386 	pshh
+                           1387 ;scheduler.c:210: handleIgnitionChannel(&ignitionSchedule2, beginCoil2Charge, endCoil2Charge, (volatile uint16_t *)&T1CH1H);
+   0701 A6 29         [ 2] 1388 	lda	#0x29
+   0703 87            [ 2] 1389 	psha
+   0704 4F            [ 1] 1390 	clra
+   0705 87            [ 2] 1391 	psha
+   0706 A6r2F         [ 2] 1392 	lda	#_endCoil2Charge
+   0708 87            [ 2] 1393 	psha
+   0709 A6s00         [ 2] 1394 	lda	#>_endCoil2Charge
+   070B 87            [ 2] 1395 	psha
+   070C A6r28         [ 2] 1396 	lda	#_beginCoil2Charge
+   070E 87            [ 2] 1397 	psha
+   070F A6s00         [ 2] 1398 	lda	#>_beginCoil2Charge
+   0711 87            [ 2] 1399 	psha
+   0712 A6r08         [ 2] 1400 	lda	#_ignitionSchedule2
+   0714 AEs00         [ 2] 1401 	ldx	#>_ignitionSchedule2
+   0716 CDr02rDD      [ 5] 1402 	jsr	_handleIgnitionChannel
+   0719 A7 06         [ 2] 1403 	ais	#6
+                           1404 ;scheduler.c:211: }
+   071B 8A            [ 2] 1405 	pulh
+   071C 80            [ 7] 1406 	rti
+                           1407 	.area CSEG    (CODE)
+                           1408 	.area CONST   (CODE)
+   0000                    1409 _IGNITION_MIN_DELAY_US:
+   0000 00 19              1410 	.dw #0x0019
+                           1411 	.area XINIT   (CODE)
+   0000                    1412 __xinit__ignitionSchedule1:
+   0000 00                 1413 	.db #0x00	; 0
+   0001 00 00              1414 	.dw #0x0000
+   0003 00 00              1415 	.dw #0x0000
+   0005 00 00              1416 	.dw #0x0000
+   0007 01                 1417 	.db #0x01	; 1
+   0008                    1418 __xinit__ignitionSchedule2:
+   0008 00                 1419 	.db #0x00	; 0
+   0009 00 00              1420 	.dw #0x0000
+   000B 00 00              1421 	.dw #0x0000
+   000D 00 00              1422 	.dw #0x0000
+   000F 02                 1423 	.db #0x02	; 2
+                           1424 	.area CABS    (ABS,CODE)

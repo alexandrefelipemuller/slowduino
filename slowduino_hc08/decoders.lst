@@ -1,0 +1,2341 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module decoders
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 ;--------------------------------------------------------
+                             20 ; Public variables in this module
+                             21 ;--------------------------------------------------------
+                             22 	.globl _isr_irq
+                             23 	.globl _micros
+                             24 	.globl _scheduleInjectorPolling
+                             25 	.globl _setIgnitionSchedule
+                             26 	.globl _revolutionCounter
+                             27 	.globl _triggerState
+                             28 	.globl _triggerSetup_MissingTooth
+                             29 	.globl _triggerSetup_BasicDistributor
+                             30 	.globl _triggerInit
+                             31 	.globl _calculateRPM
+                             32 	.globl _checkSyncLoss
+                             33 	.globl _angleToTime
+                             34 	.globl _timeToAngle
+                             35 	.globl _getCrankAngle
+                             36 	.globl _attachTriggerInterrupt
+                             37 	.globl _resetTriggerState
+                             38 ;--------------------------------------------------------
+                             39 ; ram data
+                             40 ;--------------------------------------------------------
+                             41 	.area DSEG    (PAG)
+                             42 ;--------------------------------------------------------
+                             43 ; overlayable items in ram
+                             44 ;--------------------------------------------------------
+                             45 ;--------------------------------------------------------
+                             46 ; absolute ram data
+                             47 ;--------------------------------------------------------
+                             48 	.area IABS    (ABS)
+                             49 	.area IABS    (ABS)
+                             50 ;--------------------------------------------------------
+                             51 ; absolute external ram data
+                             52 ;--------------------------------------------------------
+                             53 	.area XABS    (ABS)
+                             54 ;--------------------------------------------------------
+                             55 ; external initialized ram data
+                             56 ;--------------------------------------------------------
+                             57 	.area XISEG
+   0000                      58 _revolutionCounter::
+   0000                      59 	.ds 1
+   0001                      60 _triggerEdgesPerTooth:
+   0001                      61 	.ds 1
+                             62 ;--------------------------------------------------------
+                             63 ; extended address mode data
+                             64 ;--------------------------------------------------------
+                             65 	.area XSEG
+   0000                      66 _triggerState::
+   0000                      67 	.ds 41
+   0029                      68 _currentTriggerISR:
+   0029                      69 	.ds 2
+                             70 ;--------------------------------------------------------
+                             71 ; global & static initialisations
+                             72 ;--------------------------------------------------------
+                             73 	.area HOME    (CODE)
+                             74 	.area GSINIT  (CODE)
+                             75 	.area GSFINAL (CODE)
+                             76 	.area GSINIT  (CODE)
+                             77 ;--------------------------------------------------------
+                             78 ; Home
+                             79 ;--------------------------------------------------------
+                             80 	.area HOME    (CODE)
+                             81 	.area HOME    (CODE)
+                             82 ;--------------------------------------------------------
+                             83 ; code
+                             84 ;--------------------------------------------------------
+                             85 	.area CSEG    (CODE)
+                             86 ;------------------------------------------------------------
+                             87 ;Allocation info for local variables in function 'noInterrupts'
+                             88 ;------------------------------------------------------------
+                             89 ;globals.h:100: static inline void noInterrupts(void) { __asm sei __endasm; }
+                             90 ;	-----------------------------------------
+                             91 ;	 function noInterrupts
+                             92 ;	-----------------------------------------
+                             93 ;	Register assignment is optimal.
+                             94 ;	Stack space usage: 0 bytes.
+   0000                      95 _noInterrupts:
+   0000 9B            [ 2]   96 	 sei	
+   0001 81            [ 4]   97 	rts
+                             98 ;------------------------------------------------------------
+                             99 ;Allocation info for local variables in function 'interrupts'
+                            100 ;------------------------------------------------------------
+                            101 ;globals.h:101: static inline void interrupts(void)   { __asm cli __endasm; }
+                            102 ;	-----------------------------------------
+                            103 ;	 function interrupts
+                            104 ;	-----------------------------------------
+                            105 ;	Register assignment is optimal.
+                            106 ;	Stack space usage: 0 bytes.
+   0002                     107 _interrupts:
+   0002 9A            [ 2]  108 	 cli	
+   0003 81            [ 4]  109 	rts
+                            110 ;------------------------------------------------------------
+                            111 ;Allocation info for local variables in function 'getTimer1Count'
+                            112 ;------------------------------------------------------------
+                            113 ;sloc0                     Allocated to stack - sp +1
+                            114 ;------------------------------------------------------------
+                            115 ;scheduler.h:55: static inline uint16_t getTimer1Count(void) {
+                            116 ;	-----------------------------------------
+                            117 ;	 function getTimer1Count
+                            118 ;	-----------------------------------------
+                            119 ;	Register assignment is optimal.
+                            120 ;	Stack space usage: 2 bytes.
+   0004                     121 _getTimer1Count:
+   0004 A7 FE         [ 2]  122 	ais	#-2
+                            123 ;scheduler.h:56: return (uint16_t)((T1CNTH << 8) | T1CNTL);
+   0006 B6 21         [ 3]  124 	lda	*0x21
+   0008 5F            [ 1]  125 	clrx
+   0009 9E E7 01      [ 4]  126 	sta	1,s
+   000C 9E EF 02      [ 4]  127 	stx	2,s
+   000F B6 22         [ 3]  128 	lda	*0x22
+   0011 9E EA 02      [ 4]  129 	ora	2,s
+   0014 87            [ 2]  130 	psha
+   0015 9F            [ 1]  131 	txa
+   0016 9E EA 02      [ 4]  132 	ora	2,s
+   0019 97            [ 1]  133 	tax
+   001A 86            [ 2]  134 	pula
+                            135 ;scheduler.h:57: }
+   001B A7 02         [ 2]  136 	ais	#2
+   001D 81            [ 4]  137 	rts
+                            138 ;------------------------------------------------------------
+                            139 ;Allocation info for local variables in function 'scheduleInjectionISR'
+                            140 ;------------------------------------------------------------
+                            141 ;timeToInjection           Allocated to stack - sp +5
+                            142 ;pw1                       Allocated to stack - sp +7
+                            143 ;pw2                       Allocated to stack - sp +5
+                            144 ;sloc0                     Allocated to stack - sp +1
+                            145 ;------------------------------------------------------------
+                            146 ;decoders.c:43: static void scheduleInjectionISR(void) {
+                            147 ;	-----------------------------------------
+                            148 ;	 function scheduleInjectionISR
+                            149 ;	-----------------------------------------
+                            150 ;	Register assignment might be sub-optimal.
+                            151 ;	Stack space usage: 8 bytes.
+   001E                     152 _scheduleInjectionISR:
+   001E A7 F8         [ 2]  153 	ais	#-8
+                            154 ;decoders.c:47: if (triggerState.revolutionTime == 0) return;
+   0020 C6r00r08      [ 4]  155 	lda	(_triggerState + 0x0008)
+   0023 9E E7 01      [ 4]  156 	sta	1,s
+   0026 C6r00r09      [ 4]  157 	lda	((_triggerState + 0x0008) + 1)
+   0029 9E E7 02      [ 4]  158 	sta	2,s
+   002C C6r00r0A      [ 4]  159 	lda	((_triggerState + 0x0008) + 2)
+   002F 9E E7 03      [ 4]  160 	sta	3,s
+   0032 C6r00r0B      [ 4]  161 	lda	((_triggerState + 0x0008) + 3)
+   0035 9E E7 04      [ 4]  162 	sta	4,s
+   0038 95            [ 2]  163 	tsx
+   0039 F6            [ 2]  164 	lda	,x
+   003A EA 01         [ 3]  165 	ora	1,x
+   003C EA 02         [ 3]  166 	ora	2,x
+   003E EA 03         [ 3]  167 	ora	3,x
+   0040 26 03         [ 3]  168 	bne	00102$
+   0042 CCr01r3D      [ 3]  169 	jmp	00112$
+   0045                     170 00102$:
+                            171 ;decoders.c:49: timeToInjection = ((uint32_t)INJECTION_ANGLE * triggerState.revolutionTime) / 360UL;
+   0045 C6r00r08      [ 4]  172 	lda	(_triggerState + 0x0008)
+   0048 9E E7 01      [ 4]  173 	sta	1,s
+   004B C6r00r09      [ 4]  174 	lda	((_triggerState + 0x0008) + 1)
+   004E 9E E7 02      [ 4]  175 	sta	2,s
+   0051 C6r00r0A      [ 4]  176 	lda	((_triggerState + 0x0008) + 2)
+   0054 9E E7 03      [ 4]  177 	sta	3,s
+   0057 C6r00r0B      [ 4]  178 	lda	((_triggerState + 0x0008) + 3)
+   005A 9E E7 04      [ 4]  179 	sta	4,s
+   005D 95            [ 2]  180 	tsx
+   005E E6 03         [ 3]  181 	lda	3,x
+   0060 87            [ 2]  182 	psha
+   0061 E6 02         [ 3]  183 	lda	2,x
+   0063 87            [ 2]  184 	psha
+   0064 E6 01         [ 3]  185 	lda	1,x
+   0066 87            [ 2]  186 	psha
+   0067 F6            [ 2]  187 	lda	,x
+   0068 87            [ 2]  188 	psha
+   0069 A6 0E         [ 2]  189 	lda	#0x0e
+   006B 87            [ 2]  190 	psha
+   006C A6 01         [ 2]  191 	lda	#0x01
+   006E 87            [ 2]  192 	psha
+   006F 4A            [ 1]  193 	deca
+   0070 87            [ 2]  194 	psha
+   0071 87            [ 2]  195 	psha
+   0072 CDr00r00      [ 5]  196 	jsr	__mullong
+   0075 9E E7 0C      [ 4]  197 	sta	12,s
+   0078 9E EF 0B      [ 4]  198 	stx	11,s
+   007B B6*00         [ 3]  199 	lda	*___SDCC_hc08_ret2
+   007D 9E E7 0A      [ 4]  200 	sta	10,s
+   0080 B6*00         [ 3]  201 	lda	*___SDCC_hc08_ret3
+   0082 9E E7 09      [ 4]  202 	sta	9,s
+   0085 A7 08         [ 2]  203 	ais	#8
+   0087 A6 68         [ 2]  204 	lda	#0x68
+   0089 87            [ 2]  205 	psha
+   008A A6 01         [ 2]  206 	lda	#0x01
+   008C 87            [ 2]  207 	psha
+   008D 4A            [ 1]  208 	deca
+   008E 87            [ 2]  209 	psha
+   008F 87            [ 2]  210 	psha
+   0090 95            [ 2]  211 	tsx
+   0091 E6 07         [ 3]  212 	lda	7,x
+   0093 87            [ 2]  213 	psha
+   0094 E6 06         [ 3]  214 	lda	6,x
+   0096 87            [ 2]  215 	psha
+   0097 E6 05         [ 3]  216 	lda	5,x
+   0099 87            [ 2]  217 	psha
+   009A E6 04         [ 3]  218 	lda	4,x
+   009C 87            [ 2]  219 	psha
+                            220 ;decoders.c:51: pw1 = currentStatus.PW1;
+   009D CDr00r00      [ 5]  221 	jsr	__divulong
+   00A0 9E E7 0C      [ 4]  222 	sta	12,s
+   00A3 9E EF 0B      [ 4]  223 	stx	11,s
+   00A6 B6*00         [ 3]  224 	lda	*___SDCC_hc08_ret2
+   00A8 9E E7 0A      [ 4]  225 	sta	10,s
+   00AB B6*00         [ 3]  226 	lda	*___SDCC_hc08_ret3
+   00AD 9E E7 09      [ 4]  227 	sta	9,s
+   00B0 A7 08         [ 2]  228 	ais	#8
+   00B2 C6r00r1C      [ 4]  229 	lda	(_currentStatus + 0x001c)
+   00B5 9E E7 07      [ 4]  230 	sta	7,s
+   00B8 C6r00r1D      [ 4]  231 	lda	((_currentStatus + 0x001c) + 1)
+   00BB 9E E7 08      [ 4]  232 	sta	8,s
+                            233 ;decoders.c:52: pw2 = currentStatus.PW2;
+   00BE C6r00r1E      [ 4]  234 	lda	(_currentStatus + 0x001e)
+   00C1 9E E7 05      [ 4]  235 	sta	5,s
+   00C4 C6r00r1F      [ 4]  236 	lda	((_currentStatus + 0x001e) + 1)
+   00C7 9E E7 06      [ 4]  237 	sta	6,s
+                            238 ;decoders.c:53: if (pw1 < INJ_MIN_PW || pw1 > INJ_MAX_PW) pw1 = INJ_MIN_PW;
+   00CA 9E E6 07      [ 4]  239 	lda	7,s
+   00CD 87            [ 2]  240 	psha
+   00CE 8A            [ 2]  241 	pulh
+   00CF 9E EE 08      [ 4]  242 	ldx	8,s
+   00D2 65 01 F4      [ 3]  243 	cphx	#0x01f4
+   00D5 25 05         [ 3]  244 	bcs	00103$
+   00D7 65 4E 20      [ 3]  245 	cphx	#0x4e20
+   00DA 23 09         [ 3]  246 	bls	00104$
+   00DC                     247 00103$:
+   00DC 95            [ 2]  248 	tsx
+   00DD A6 01         [ 2]  249 	lda	#0x01
+   00DF E7 06         [ 3]  250 	sta	6,x
+   00E1 A6 F4         [ 2]  251 	lda	#0xf4
+   00E3 E7 07         [ 3]  252 	sta	7,x
+   00E5                     253 00104$:
+                            254 ;decoders.c:54: if (pw2 < INJ_MIN_PW || pw2 > INJ_MAX_PW) pw2 = INJ_MIN_PW;
+   00E5 9E E6 05      [ 4]  255 	lda	5,s
+   00E8 87            [ 2]  256 	psha
+   00E9 8A            [ 2]  257 	pulh
+   00EA 9E EE 06      [ 4]  258 	ldx	6,s
+   00ED 65 01 F4      [ 3]  259 	cphx	#0x01f4
+   00F0 25 05         [ 3]  260 	bcs	00106$
+   00F2 65 4E 20      [ 3]  261 	cphx	#0x4e20
+   00F5 23 09         [ 3]  262 	bls	00107$
+   00F7                     263 00106$:
+   00F7 95            [ 2]  264 	tsx
+   00F8 A6 01         [ 2]  265 	lda	#0x01
+   00FA E7 04         [ 3]  266 	sta	4,x
+   00FC A6 F4         [ 2]  267 	lda	#0xf4
+   00FE E7 05         [ 3]  268 	sta	5,x
+   0100                     269 00107$:
+                            270 ;decoders.c:56: if (revolutionCounter == 0) {
+   0100 C6r00r00      [ 4]  271 	lda	_revolutionCounter
+   0103 26 1D         [ 3]  272 	bne	00110$
+                            273 ;decoders.c:57: scheduleInjectorPolling(&injector1Polling, timeToInjection, pw1);
+   0105 95            [ 2]  274 	tsx
+   0106 E6 07         [ 3]  275 	lda	7,x
+   0108 87            [ 2]  276 	psha
+   0109 E6 06         [ 3]  277 	lda	6,x
+   010B 87            [ 2]  278 	psha
+   010C E6 03         [ 3]  279 	lda	3,x
+   010E 87            [ 2]  280 	psha
+   010F E6 02         [ 3]  281 	lda	2,x
+   0111 87            [ 2]  282 	psha
+   0112 E6 01         [ 3]  283 	lda	1,x
+   0114 87            [ 2]  284 	psha
+   0115 F6            [ 2]  285 	lda	,x
+   0116 87            [ 2]  286 	psha
+   0117 A6r00         [ 2]  287 	lda	#_injector1Polling
+   0119 AEs00         [ 2]  288 	ldx	#>_injector1Polling
+   011B CDr00r00      [ 5]  289 	jsr	_scheduleInjectorPolling
+   011E A7 06         [ 2]  290 	ais	#6
+   0120 20 1B         [ 3]  291 	bra	00112$
+   0122                     292 00110$:
+                            293 ;decoders.c:59: scheduleInjectorPolling(&injector2Polling, timeToInjection, pw2);
+   0122 95            [ 2]  294 	tsx
+   0123 E6 05         [ 3]  295 	lda	5,x
+   0125 87            [ 2]  296 	psha
+   0126 E6 04         [ 3]  297 	lda	4,x
+   0128 87            [ 2]  298 	psha
+   0129 E6 03         [ 3]  299 	lda	3,x
+   012B 87            [ 2]  300 	psha
+   012C E6 02         [ 3]  301 	lda	2,x
+   012E 87            [ 2]  302 	psha
+   012F E6 01         [ 3]  303 	lda	1,x
+   0131 87            [ 2]  304 	psha
+   0132 F6            [ 2]  305 	lda	,x
+   0133 87            [ 2]  306 	psha
+   0134 A6r00         [ 2]  307 	lda	#_injector2Polling
+   0136 AEs00         [ 2]  308 	ldx	#>_injector2Polling
+   0138 CDr00r00      [ 5]  309 	jsr	_scheduleInjectorPolling
+   013B A7 06         [ 2]  310 	ais	#6
+   013D                     311 00112$:
+                            312 ;decoders.c:61: }
+   013D A7 08         [ 2]  313 	ais	#8
+   013F 81            [ 4]  314 	rts
+                            315 ;------------------------------------------------------------
+                            316 ;Allocation info for local variables in function 'scheduleIgnitionISR'
+                            317 ;------------------------------------------------------------
+                            318 ;advance                   Allocated to stack - sp +9
+                            319 ;dwellTime                 Allocated to stack - sp +12
+                            320 ;dwellAngle                Allocated to stack - sp +10
+                            321 ;sparkAngle                Allocated to stack - sp +14
+                            322 ;dwellStartAngle           Allocated to registers x h 
+                            323 ;timeToDwell               Allocated to stack - sp +3
+                            324 ;sloc0                     Allocated to stack - sp +1
+                            325 ;sloc1                     Allocated to stack - sp +5
+                            326 ;------------------------------------------------------------
+                            327 ;decoders.c:63: static void scheduleIgnitionISR(void) {
+                            328 ;	-----------------------------------------
+                            329 ;	 function scheduleIgnitionISR
+                            330 ;	-----------------------------------------
+                            331 ;	Register assignment might be sub-optimal.
+                            332 ;	Stack space usage: 15 bytes.
+   0140                     333 _scheduleIgnitionISR:
+   0140 A7 F1         [ 2]  334 	ais	#-15
+                            335 ;decoders.c:68: if (triggerState.revolutionTime == 0) return;
+   0142 C6r00r08      [ 4]  336 	lda	(_triggerState + 0x0008)
+   0145 9E E7 01      [ 4]  337 	sta	1,s
+   0148 C6r00r09      [ 4]  338 	lda	((_triggerState + 0x0008) + 1)
+   014B 9E E7 02      [ 4]  339 	sta	2,s
+   014E C6r00r0A      [ 4]  340 	lda	((_triggerState + 0x0008) + 2)
+   0151 9E E7 03      [ 4]  341 	sta	3,s
+   0154 C6r00r0B      [ 4]  342 	lda	((_triggerState + 0x0008) + 3)
+   0157 9E E7 04      [ 4]  343 	sta	4,s
+   015A 95            [ 2]  344 	tsx
+   015B F6            [ 2]  345 	lda	,x
+   015C EA 01         [ 3]  346 	ora	1,x
+   015E EA 02         [ 3]  347 	ora	2,x
+   0160 EA 03         [ 3]  348 	ora	3,x
+   0162 26 03         [ 3]  349 	bne	00102$
+   0164 CCr04r58      [ 3]  350 	jmp	00115$
+   0167                     351 00102$:
+                            352 ;decoders.c:70: advance = currentStatus.advance;
+   0167 C6r00r25      [ 4]  353 	lda	(_currentStatus + 0x0025)
+   016A 9E E7 09      [ 4]  354 	sta	9,s
+                            355 ;decoders.c:71: dwellTime = currentStatus.dwell;
+   016D C6r00r26      [ 4]  356 	lda	(_currentStatus + 0x0026)
+   0170 9E E7 0C      [ 4]  357 	sta	12,s
+   0173 C6r00r27      [ 4]  358 	lda	((_currentStatus + 0x0026) + 1)
+   0176 9E E7 0D      [ 4]  359 	sta	13,s
+                            360 ;decoders.c:72: if (dwellTime < DWELL_MIN) dwellTime = DWELL_MIN;
+   0179 9E E6 0D      [ 4]  361 	lda	13,s
+   017C 9E EE 0C      [ 4]  362 	ldx	12,s
+   017F A0 E8         [ 2]  363 	sub	#0xe8
+   0181 9F            [ 1]  364 	txa
+   0182 A2 03         [ 2]  365 	sbc	#0x03
+   0184 24 09         [ 3]  366 	bcc	00104$
+   0186 95            [ 2]  367 	tsx
+   0187 A6 03         [ 2]  368 	lda	#0x03
+   0189 E7 0B         [ 3]  369 	sta	11,x
+   018B A6 E8         [ 2]  370 	lda	#0xe8
+   018D E7 0C         [ 3]  371 	sta	12,x
+   018F                     372 00104$:
+                            373 ;decoders.c:73: if (dwellTime > DWELL_MAX) dwellTime = DWELL_MAX;
+   018F 9E E6 0C      [ 4]  374 	lda	12,s
+   0192 87            [ 2]  375 	psha
+   0193 8A            [ 2]  376 	pulh
+   0194 9E EE 0D      [ 4]  377 	ldx	13,s
+   0197 65 1F 40      [ 3]  378 	cphx	#0x1f40
+   019A 23 09         [ 3]  379 	bls	00106$
+   019C 95            [ 2]  380 	tsx
+   019D A6 1F         [ 2]  381 	lda	#0x1f
+   019F E7 0B         [ 3]  382 	sta	11,x
+   01A1 A6 40         [ 2]  383 	lda	#0x40
+   01A3 E7 0C         [ 3]  384 	sta	12,x
+   01A5                     385 00106$:
+                            386 ;decoders.c:75: dwellAngle = (uint16_t)(((uint32_t)dwellTime * 360UL) / triggerState.revolutionTime);
+   01A5 95            [ 2]  387 	tsx
+   01A6 E6 0C         [ 3]  388 	lda	12,x
+   01A8 E7 03         [ 3]  389 	sta	3,x
+   01AA E6 0B         [ 3]  390 	lda	11,x
+   01AC E7 02         [ 3]  391 	sta	2,x
+   01AE 4F            [ 1]  392 	clra
+   01AF E7 01         [ 3]  393 	sta	1,x
+   01B1 F7            [ 2]  394 	sta	,x
+   01B2 E6 03         [ 3]  395 	lda	3,x
+   01B4 87            [ 2]  396 	psha
+   01B5 E6 02         [ 3]  397 	lda	2,x
+   01B7 87            [ 2]  398 	psha
+   01B8 E6 01         [ 3]  399 	lda	1,x
+   01BA 87            [ 2]  400 	psha
+   01BB F6            [ 2]  401 	lda	,x
+   01BC 87            [ 2]  402 	psha
+   01BD A6 68         [ 2]  403 	lda	#0x68
+   01BF 87            [ 2]  404 	psha
+   01C0 A6 01         [ 2]  405 	lda	#0x01
+   01C2 87            [ 2]  406 	psha
+   01C3 4A            [ 1]  407 	deca
+   01C4 87            [ 2]  408 	psha
+   01C5 87            [ 2]  409 	psha
+   01C6 CDr00r00      [ 5]  410 	jsr	__mullong
+   01C9 9E E7 0C      [ 4]  411 	sta	12,s
+   01CC 9E EF 0B      [ 4]  412 	stx	11,s
+   01CF B6*00         [ 3]  413 	lda	*___SDCC_hc08_ret2
+   01D1 9E E7 0A      [ 4]  414 	sta	10,s
+   01D4 B6*00         [ 3]  415 	lda	*___SDCC_hc08_ret3
+   01D6 9E E7 09      [ 4]  416 	sta	9,s
+   01D9 A7 08         [ 2]  417 	ais	#8
+   01DB C6r00r08      [ 4]  418 	lda	(_triggerState + 0x0008)
+   01DE 9E E7 05      [ 4]  419 	sta	5,s
+   01E1 C6r00r09      [ 4]  420 	lda	((_triggerState + 0x0008) + 1)
+   01E4 9E E7 06      [ 4]  421 	sta	6,s
+   01E7 C6r00r0A      [ 4]  422 	lda	((_triggerState + 0x0008) + 2)
+   01EA 9E E7 07      [ 4]  423 	sta	7,s
+   01ED C6r00r0B      [ 4]  424 	lda	((_triggerState + 0x0008) + 3)
+   01F0 9E E7 08      [ 4]  425 	sta	8,s
+   01F3 95            [ 2]  426 	tsx
+   01F4 E6 07         [ 3]  427 	lda	7,x
+   01F6 87            [ 2]  428 	psha
+   01F7 E6 06         [ 3]  429 	lda	6,x
+   01F9 87            [ 2]  430 	psha
+   01FA E6 05         [ 3]  431 	lda	5,x
+   01FC 87            [ 2]  432 	psha
+   01FD E6 04         [ 3]  433 	lda	4,x
+   01FF 87            [ 2]  434 	psha
+   0200 E6 03         [ 3]  435 	lda	3,x
+   0202 87            [ 2]  436 	psha
+   0203 E6 02         [ 3]  437 	lda	2,x
+   0205 87            [ 2]  438 	psha
+   0206 E6 01         [ 3]  439 	lda	1,x
+   0208 87            [ 2]  440 	psha
+   0209 F6            [ 2]  441 	lda	,x
+   020A 87            [ 2]  442 	psha
+   020B CDr00r00      [ 5]  443 	jsr	__divulong
+   020E 9E E7 10      [ 4]  444 	sta	16,s
+   0211 9E EF 0F      [ 4]  445 	stx	15,s
+   0214 B6*00         [ 3]  446 	lda	*___SDCC_hc08_ret2
+   0216 9E E7 0E      [ 4]  447 	sta	14,s
+   0219 B6*00         [ 3]  448 	lda	*___SDCC_hc08_ret3
+   021B 9E E7 0D      [ 4]  449 	sta	13,s
+   021E A7 08         [ 2]  450 	ais	#8
+   0220 95            [ 2]  451 	tsx
+   0221 E6 07         [ 3]  452 	lda	7,x
+   0223 E7 0A         [ 3]  453 	sta	10,x
+   0225 E6 06         [ 3]  454 	lda	6,x
+   0227 E7 09         [ 3]  455 	sta	9,x
+                            456 ;decoders.c:77: if (dwellAngle > 180) {
+   0229 E6 09         [ 3]  457 	lda	9,x
+   022B 87            [ 2]  458 	psha
+   022C 8A            [ 2]  459 	pulh
+   022D 9E EE 0B      [ 4]  460 	ldx	11,s
+   0230 65 00 B4      [ 3]  461 	cphx	#0x00b4
+   0233 23 78         [ 3]  462 	bls	00108$
+                            463 ;decoders.c:78: dwellAngle = 180;
+   0235 95            [ 2]  464 	tsx
+   0236 4F            [ 1]  465 	clra
+   0237 E7 09         [ 3]  466 	sta	9,x
+   0239 A6 B4         [ 2]  467 	lda	#0xb4
+   023B E7 0A         [ 3]  468 	sta	10,x
+                            469 ;decoders.c:79: dwellTime = (uint16_t)((180UL * triggerState.revolutionTime) / 360UL);
+   023D C6r00r08      [ 4]  470 	lda	(_triggerState + 0x0008)
+   0240 E7 04         [ 3]  471 	sta	4,x
+   0242 C6r00r09      [ 4]  472 	lda	((_triggerState + 0x0008) + 1)
+   0245 E7 05         [ 3]  473 	sta	5,x
+   0247 C6r00r0A      [ 4]  474 	lda	((_triggerState + 0x0008) + 2)
+   024A E7 06         [ 3]  475 	sta	6,x
+   024C C6r00r0B      [ 4]  476 	lda	((_triggerState + 0x0008) + 3)
+   024F E7 07         [ 3]  477 	sta	7,x
+   0251 E6 07         [ 3]  478 	lda	7,x
+   0253 87            [ 2]  479 	psha
+   0254 E6 06         [ 3]  480 	lda	6,x
+   0256 87            [ 2]  481 	psha
+   0257 E6 05         [ 3]  482 	lda	5,x
+   0259 87            [ 2]  483 	psha
+   025A E6 04         [ 3]  484 	lda	4,x
+   025C 87            [ 2]  485 	psha
+   025D A6 B4         [ 2]  486 	lda	#0xb4
+   025F 87            [ 2]  487 	psha
+   0260 4F            [ 1]  488 	clra
+   0261 87            [ 2]  489 	psha
+   0262 87            [ 2]  490 	psha
+   0263 87            [ 2]  491 	psha
+   0264 CDr00r00      [ 5]  492 	jsr	__mullong
+   0267 9E E7 10      [ 4]  493 	sta	16,s
+   026A 9E EF 0F      [ 4]  494 	stx	15,s
+   026D B6*00         [ 3]  495 	lda	*___SDCC_hc08_ret2
+   026F 9E E7 0E      [ 4]  496 	sta	14,s
+   0272 B6*00         [ 3]  497 	lda	*___SDCC_hc08_ret3
+   0274 9E E7 0D      [ 4]  498 	sta	13,s
+   0277 A7 08         [ 2]  499 	ais	#8
+   0279 A6 68         [ 2]  500 	lda	#0x68
+   027B 87            [ 2]  501 	psha
+   027C A6 01         [ 2]  502 	lda	#0x01
+   027E 87            [ 2]  503 	psha
+   027F 4A            [ 1]  504 	deca
+   0280 87            [ 2]  505 	psha
+   0281 87            [ 2]  506 	psha
+   0282 95            [ 2]  507 	tsx
+   0283 E6 0B         [ 3]  508 	lda	11,x
+   0285 87            [ 2]  509 	psha
+   0286 E6 0A         [ 3]  510 	lda	10,x
+   0288 87            [ 2]  511 	psha
+   0289 E6 09         [ 3]  512 	lda	9,x
+   028B 87            [ 2]  513 	psha
+   028C E6 08         [ 3]  514 	lda	8,x
+   028E 87            [ 2]  515 	psha
+   028F CDr00r00      [ 5]  516 	jsr	__divulong
+   0292 9E E7 10      [ 4]  517 	sta	16,s
+   0295 9E EF 0F      [ 4]  518 	stx	15,s
+   0298 B6*00         [ 3]  519 	lda	*___SDCC_hc08_ret2
+   029A 9E E7 0E      [ 4]  520 	sta	14,s
+   029D B6*00         [ 3]  521 	lda	*___SDCC_hc08_ret3
+   029F 9E E7 0D      [ 4]  522 	sta	13,s
+   02A2 A7 08         [ 2]  523 	ais	#8
+   02A4 95            [ 2]  524 	tsx
+   02A5 E6 07         [ 3]  525 	lda	7,x
+   02A7 E7 0C         [ 3]  526 	sta	12,x
+   02A9 E6 06         [ 3]  527 	lda	6,x
+   02AB E7 0B         [ 3]  528 	sta	11,x
+   02AD                     529 00108$:
+                            530 ;decoders.c:82: sparkAngle = (advance > 0) ? (uint16_t)(360 - advance) : 360;
+   02AD 9E E6 09      [ 4]  531 	lda	9,s
+   02B0 A1 00         [ 2]  532 	cmp	#0x00
+   02B2 93 18         [ 3]  533 	ble	00117$
+   02B4 95            [ 2]  534 	tsx
+   02B5 E6 08         [ 3]  535 	lda	8,x
+   02B7 E7 05         [ 3]  536 	sta	5,x
+   02B9 49            [ 1]  537 	rola	
+   02BA 4F            [ 1]  538 	clra	
+   02BB A2 00         [ 2]  539 	sbc	#0x00
+   02BD E7 04         [ 3]  540 	sta	4,x
+   02BF A6 68         [ 2]  541 	lda	#0x68
+   02C1 E0 05         [ 3]  542 	sub	5,x
+   02C3 87            [ 2]  543 	psha
+   02C4 A6 01         [ 2]  544 	lda	#0x01
+   02C6 E2 04         [ 3]  545 	sbc	4,x
+   02C8 97            [ 1]  546 	tax
+   02C9 86            [ 2]  547 	pula
+   02CA 20 04         [ 3]  548 	bra	00118$
+   02CC                     549 00117$:
+   02CC AE 01         [ 2]  550 	ldx	#0x01
+   02CE A6 68         [ 2]  551 	lda	#0x68
+   02D0                     552 00118$:
+   02D0 9E E7 0F      [ 4]  553 	sta	15,s
+   02D3 9E EF 0E      [ 4]  554 	stx	14,s
+                            555 ;decoders.c:84: if (sparkAngle > dwellAngle) {
+   02D6 95            [ 2]  556 	tsx
+   02D7 E6 0A         [ 3]  557 	lda	10,x
+   02D9 E0 0E         [ 3]  558 	sub	14,x
+   02DB E6 09         [ 3]  559 	lda	9,x
+   02DD E2 0D         [ 3]  560 	sbc	13,x
+   02DF 24 10         [ 3]  561 	bcc	00110$
+                            562 ;decoders.c:85: dwellStartAngle = sparkAngle - dwellAngle;
+   02E1 E6 0E         [ 3]  563 	lda	14,x
+   02E3 E0 0A         [ 3]  564 	sub	10,x
+   02E5 97            [ 1]  565 	tax
+   02E6 9E E6 0E      [ 4]  566 	lda	14,s
+   02E9 9E E2 0A      [ 4]  567 	sbc	10,s
+   02EC 87            [ 2]  568 	psha
+   02ED 8A            [ 2]  569 	pulh
+   02EE CCr03r94      [ 3]  570 	jmp	00111$
+   02F1                     571 00110$:
+                            572 ;decoders.c:87: dwellStartAngle = 0;
+   02F1 8C            [ 1]  573 	clrh
+   02F2 5F            [ 1]  574 	clrx
+                            575 ;decoders.c:89: dwellTime = (uint16_t)(((uint32_t)dwellAngle * triggerState.revolutionTime) / 360UL);
+   02F3 9E E6 0F      [ 4]  576 	lda	15,s
+   02F6 9E E7 08      [ 4]  577 	sta	8,s
+   02F9 9E E6 0E      [ 4]  578 	lda	14,s
+   02FC 9E E7 07      [ 4]  579 	sta	7,s
+   02FF 9E EF 06      [ 4]  580 	stx	6,s
+   0302 9E EF 05      [ 4]  581 	stx	5,s
+   0305 C6r00r08      [ 4]  582 	lda	(_triggerState + 0x0008)
+   0308 9E E7 01      [ 4]  583 	sta	1,s
+   030B C6r00r09      [ 4]  584 	lda	((_triggerState + 0x0008) + 1)
+   030E 9E E7 02      [ 4]  585 	sta	2,s
+   0311 C6r00r0A      [ 4]  586 	lda	((_triggerState + 0x0008) + 2)
+   0314 9E E7 03      [ 4]  587 	sta	3,s
+   0317 C6r00r0B      [ 4]  588 	lda	((_triggerState + 0x0008) + 3)
+   031A 9E E7 04      [ 4]  589 	sta	4,s
+   031D 89            [ 2]  590 	pshx
+   031E 8B            [ 2]  591 	pshh
+   031F 9E E6 06      [ 4]  592 	lda	6,s
+   0322 87            [ 2]  593 	psha
+   0323 9E E6 06      [ 4]  594 	lda	6,s
+   0326 87            [ 2]  595 	psha
+   0327 9E E6 06      [ 4]  596 	lda	6,s
+   032A 87            [ 2]  597 	psha
+   032B 9E E6 06      [ 4]  598 	lda	6,s
+   032E 87            [ 2]  599 	psha
+   032F 9E E6 0E      [ 4]  600 	lda	14,s
+   0332 87            [ 2]  601 	psha
+   0333 9E E6 0E      [ 4]  602 	lda	14,s
+   0336 87            [ 2]  603 	psha
+   0337 9E E6 0E      [ 4]  604 	lda	14,s
+   033A 87            [ 2]  605 	psha
+   033B 9E E6 0E      [ 4]  606 	lda	14,s
+   033E 87            [ 2]  607 	psha
+   033F CDr00r00      [ 5]  608 	jsr	__mullong
+   0342 9E E7 12      [ 4]  609 	sta	18,s
+   0345 9E EF 11      [ 4]  610 	stx	17,s
+   0348 B6*00         [ 3]  611 	lda	*___SDCC_hc08_ret2
+   034A 9E E7 10      [ 4]  612 	sta	16,s
+   034D B6*00         [ 3]  613 	lda	*___SDCC_hc08_ret3
+   034F 9E E7 0F      [ 4]  614 	sta	15,s
+   0352 A7 08         [ 2]  615 	ais	#8
+   0354 8A            [ 2]  616 	pulh
+   0355 88            [ 2]  617 	pulx
+   0356 89            [ 2]  618 	pshx
+   0357 8B            [ 2]  619 	pshh
+   0358 A6 68         [ 2]  620 	lda	#0x68
+   035A 87            [ 2]  621 	psha
+   035B A6 01         [ 2]  622 	lda	#0x01
+   035D 87            [ 2]  623 	psha
+   035E 4A            [ 1]  624 	deca
+   035F 87            [ 2]  625 	psha
+   0360 87            [ 2]  626 	psha
+   0361 9E E6 0E      [ 4]  627 	lda	14,s
+   0364 87            [ 2]  628 	psha
+   0365 9E E6 0E      [ 4]  629 	lda	14,s
+   0368 87            [ 2]  630 	psha
+   0369 9E E6 0E      [ 4]  631 	lda	14,s
+   036C 87            [ 2]  632 	psha
+   036D 9E E6 0E      [ 4]  633 	lda	14,s
+   0370 87            [ 2]  634 	psha
+   0371 CDr00r00      [ 5]  635 	jsr	__divulong
+   0374 9E E7 12      [ 4]  636 	sta	18,s
+   0377 9E EF 11      [ 4]  637 	stx	17,s
+   037A B6*00         [ 3]  638 	lda	*___SDCC_hc08_ret2
+   037C 9E E7 10      [ 4]  639 	sta	16,s
+   037F B6*00         [ 3]  640 	lda	*___SDCC_hc08_ret3
+   0381 9E E7 0F      [ 4]  641 	sta	15,s
+   0384 A7 08         [ 2]  642 	ais	#8
+   0386 8A            [ 2]  643 	pulh
+   0387 88            [ 2]  644 	pulx
+   0388 9E E6 08      [ 4]  645 	lda	8,s
+   038B 9E E7 0D      [ 4]  646 	sta	13,s
+   038E 9E E6 07      [ 4]  647 	lda	7,s
+   0391 9E E7 0C      [ 4]  648 	sta	12,s
+   0394                     649 00111$:
+                            650 ;decoders.c:92: timeToDwell = ((uint32_t)dwellStartAngle * triggerState.revolutionTime) / 360UL;
+   0394 9E EF 08      [ 4]  651 	stx	8,s
+   0397 8B            [ 2]  652 	pshh
+   0398 86            [ 2]  653 	pula
+   0399 9E E7 07      [ 4]  654 	sta	7,s
+   039C 4F            [ 1]  655 	clra
+   039D 9E E7 06      [ 4]  656 	sta	6,s
+   03A0 9E E7 05      [ 4]  657 	sta	5,s
+   03A3 C6r00r08      [ 4]  658 	lda	(_triggerState + 0x0008)
+   03A6 9E E7 01      [ 4]  659 	sta	1,s
+   03A9 C6r00r09      [ 4]  660 	lda	((_triggerState + 0x0008) + 1)
+   03AC 9E E7 02      [ 4]  661 	sta	2,s
+   03AF C6r00r0A      [ 4]  662 	lda	((_triggerState + 0x0008) + 2)
+   03B2 9E E7 03      [ 4]  663 	sta	3,s
+   03B5 C6r00r0B      [ 4]  664 	lda	((_triggerState + 0x0008) + 3)
+   03B8 9E E7 04      [ 4]  665 	sta	4,s
+   03BB 95            [ 2]  666 	tsx
+   03BC E6 03         [ 3]  667 	lda	3,x
+   03BE 87            [ 2]  668 	psha
+   03BF E6 02         [ 3]  669 	lda	2,x
+   03C1 87            [ 2]  670 	psha
+   03C2 E6 01         [ 3]  671 	lda	1,x
+   03C4 87            [ 2]  672 	psha
+   03C5 F6            [ 2]  673 	lda	,x
+   03C6 87            [ 2]  674 	psha
+   03C7 E6 07         [ 3]  675 	lda	7,x
+   03C9 87            [ 2]  676 	psha
+   03CA E6 06         [ 3]  677 	lda	6,x
+   03CC 87            [ 2]  678 	psha
+   03CD E6 05         [ 3]  679 	lda	5,x
+   03CF 87            [ 2]  680 	psha
+   03D0 E6 04         [ 3]  681 	lda	4,x
+   03D2 87            [ 2]  682 	psha
+   03D3 CDr00r00      [ 5]  683 	jsr	__mullong
+   03D6 9E E7 10      [ 4]  684 	sta	16,s
+   03D9 9E EF 0F      [ 4]  685 	stx	15,s
+   03DC B6*00         [ 3]  686 	lda	*___SDCC_hc08_ret2
+   03DE 9E E7 0E      [ 4]  687 	sta	14,s
+   03E1 B6*00         [ 3]  688 	lda	*___SDCC_hc08_ret3
+   03E3 9E E7 0D      [ 4]  689 	sta	13,s
+   03E6 A7 08         [ 2]  690 	ais	#8
+   03E8 A6 68         [ 2]  691 	lda	#0x68
+   03EA 87            [ 2]  692 	psha
+   03EB A6 01         [ 2]  693 	lda	#0x01
+   03ED 87            [ 2]  694 	psha
+   03EE 4A            [ 1]  695 	deca
+   03EF 87            [ 2]  696 	psha
+   03F0 87            [ 2]  697 	psha
+   03F1 95            [ 2]  698 	tsx
+   03F2 E6 0B         [ 3]  699 	lda	11,x
+   03F4 87            [ 2]  700 	psha
+   03F5 E6 0A         [ 3]  701 	lda	10,x
+   03F7 87            [ 2]  702 	psha
+   03F8 E6 09         [ 3]  703 	lda	9,x
+   03FA 87            [ 2]  704 	psha
+   03FB E6 08         [ 3]  705 	lda	8,x
+   03FD 87            [ 2]  706 	psha
+                            707 ;decoders.c:94: if (revolutionCounter == 0) {
+   03FE CDr00r00      [ 5]  708 	jsr	__divulong
+   0401 9E E7 10      [ 4]  709 	sta	16,s
+   0404 9E EF 0F      [ 4]  710 	stx	15,s
+   0407 B6*00         [ 3]  711 	lda	*___SDCC_hc08_ret2
+   0409 9E E7 0E      [ 4]  712 	sta	14,s
+   040C B6*00         [ 3]  713 	lda	*___SDCC_hc08_ret3
+   040E 9E E7 0D      [ 4]  714 	sta	13,s
+   0411 A7 08         [ 2]  715 	ais	#8
+   0413 C6r00r00      [ 4]  716 	lda	_revolutionCounter
+   0416 26 21         [ 3]  717 	bne	00113$
+                            718 ;decoders.c:95: setIgnitionSchedule(&ignitionSchedule1, timeToDwell, dwellTime, 1);
+   0418 A6 01         [ 2]  719 	lda	#0x01
+   041A 87            [ 2]  720 	psha
+   041B 95            [ 2]  721 	tsx
+   041C E6 0D         [ 3]  722 	lda	13,x
+   041E 87            [ 2]  723 	psha
+   041F E6 0C         [ 3]  724 	lda	12,x
+   0421 87            [ 2]  725 	psha
+   0422 E6 08         [ 3]  726 	lda	8,x
+   0424 87            [ 2]  727 	psha
+   0425 E6 07         [ 3]  728 	lda	7,x
+   0427 87            [ 2]  729 	psha
+   0428 E6 06         [ 3]  730 	lda	6,x
+   042A 87            [ 2]  731 	psha
+   042B E6 05         [ 3]  732 	lda	5,x
+   042D 87            [ 2]  733 	psha
+   042E A6r00         [ 2]  734 	lda	#_ignitionSchedule1
+   0430 AEs00         [ 2]  735 	ldx	#>_ignitionSchedule1
+   0432 CDr00r00      [ 5]  736 	jsr	_setIgnitionSchedule
+   0435 A7 07         [ 2]  737 	ais	#7
+   0437 20 1F         [ 3]  738 	bra	00115$
+   0439                     739 00113$:
+                            740 ;decoders.c:97: setIgnitionSchedule(&ignitionSchedule2, timeToDwell, dwellTime, 2);
+   0439 A6 02         [ 2]  741 	lda	#0x02
+   043B 87            [ 2]  742 	psha
+   043C 95            [ 2]  743 	tsx
+   043D E6 0D         [ 3]  744 	lda	13,x
+   043F 87            [ 2]  745 	psha
+   0440 E6 0C         [ 3]  746 	lda	12,x
+   0442 87            [ 2]  747 	psha
+   0443 E6 08         [ 3]  748 	lda	8,x
+   0445 87            [ 2]  749 	psha
+   0446 E6 07         [ 3]  750 	lda	7,x
+   0448 87            [ 2]  751 	psha
+   0449 E6 06         [ 3]  752 	lda	6,x
+   044B 87            [ 2]  753 	psha
+   044C E6 05         [ 3]  754 	lda	5,x
+   044E 87            [ 2]  755 	psha
+   044F A6r00         [ 2]  756 	lda	#_ignitionSchedule2
+   0451 AEs00         [ 2]  757 	ldx	#>_ignitionSchedule2
+   0453 CDr00r00      [ 5]  758 	jsr	_setIgnitionSchedule
+   0456 A7 07         [ 2]  759 	ais	#7
+   0458                     760 00115$:
+                            761 ;decoders.c:99: }
+   0458 A7 0F         [ 2]  762 	ais	#15
+   045A 81            [ 4]  763 	rts
+                            764 ;------------------------------------------------------------
+                            765 ;Allocation info for local variables in function 'triggerPri_MissingTooth'
+                            766 ;------------------------------------------------------------
+                            767 ;curTime                   Allocated to stack - sp +18
+                            768 ;baseGap                   Allocated to stack - sp +14
+                            769 ;dynamicThreshold          Allocated to stack - sp +10
+                            770 ;isCranking                Allocated to stack - sp +21
+                            771 ;isGap                     Allocated to registers 
+                            772 ;expectedPulses            Allocated to stack - sp +19
+                            773 ;toleranceWindow           Allocated to stack - sp +17
+                            774 ;sloc0                     Allocated to stack - sp +9
+                            775 ;sloc1                     Allocated to stack - sp +1
+                            776 ;sloc2                     Allocated to stack - sp +13
+                            777 ;sloc3                     Allocated to stack - sp +5
+                            778 ;------------------------------------------------------------
+                            779 ;decoders.c:104: static void triggerPri_MissingTooth(void) {
+                            780 ;	-----------------------------------------
+                            781 ;	 function triggerPri_MissingTooth
+                            782 ;	-----------------------------------------
+                            783 ;	Register assignment might be sub-optimal.
+                            784 ;	Stack space usage: 21 bytes.
+   045B                     785 _triggerPri_MissingTooth:
+   045B A7 EB         [ 2]  786 	ais	#-21
+                            787 ;decoders.c:105: uint32_t curTime = micros();
+   045D CDr00r00      [ 5]  788 	jsr	_micros
+   0460 9E E7 0C      [ 4]  789 	sta	12,s
+   0463 9E EF 0B      [ 4]  790 	stx	11,s
+   0466 B6*00         [ 3]  791 	lda	*___SDCC_hc08_ret2
+   0468 9E E7 0A      [ 4]  792 	sta	10,s
+   046B B6*00         [ 3]  793 	lda	*___SDCC_hc08_ret3
+   046D 9E E7 09      [ 4]  794 	sta	9,s
+                            795 ;decoders.c:109: triggerState.curGap = curTime - triggerState.toothLastToothTime;
+   0470 C6r00r00      [ 4]  796 	lda	_triggerState
+   0473 9E E7 01      [ 4]  797 	sta	1,s
+   0476 C6r00r01      [ 4]  798 	lda	(_triggerState + 1)
+   0479 9E E7 02      [ 4]  799 	sta	2,s
+   047C C6r00r02      [ 4]  800 	lda	(_triggerState + 2)
+   047F 9E E7 03      [ 4]  801 	sta	3,s
+   0482 C6r00r03      [ 4]  802 	lda	(_triggerState + 3)
+   0485 9E E7 04      [ 4]  803 	sta	4,s
+   0488 95            [ 2]  804 	tsx
+   0489 E6 0B         [ 3]  805 	lda	11,x
+   048B E0 03         [ 3]  806 	sub	3,x
+   048D E7 03         [ 3]  807 	sta	3,x
+   048F E6 0A         [ 3]  808 	lda	10,x
+   0491 E2 02         [ 3]  809 	sbc	2,x
+   0493 E7 02         [ 3]  810 	sta	2,x
+   0495 E6 09         [ 3]  811 	lda	9,x
+   0497 E2 01         [ 3]  812 	sbc	1,x
+   0499 E7 01         [ 3]  813 	sta	1,x
+   049B E6 08         [ 3]  814 	lda	8,x
+   049D F2            [ 2]  815 	sbc	,x
+   049E F7            [ 2]  816 	sta	,x
+   049F F6            [ 2]  817 	lda	,x
+   04A0 C7r00r13      [ 4]  818 	sta	(_triggerState + 0x0013)
+   04A3 E6 01         [ 3]  819 	lda	1,x
+   04A5 C7r00r14      [ 4]  820 	sta	((_triggerState + 0x0013) + 1)
+   04A8 E6 02         [ 3]  821 	lda	2,x
+   04AA C7r00r15      [ 4]  822 	sta	((_triggerState + 0x0013) + 2)
+   04AD E6 03         [ 3]  823 	lda	3,x
+   04AF C7r00r16      [ 4]  824 	sta	((_triggerState + 0x0013) + 3)
+                            825 ;decoders.c:111: if (triggerState.curGap < 50) return;
+   04B2 C6r00r13      [ 4]  826 	lda	(_triggerState + 0x0013)
+   04B5 F7            [ 2]  827 	sta	,x
+   04B6 C6r00r14      [ 4]  828 	lda	((_triggerState + 0x0013) + 1)
+   04B9 E7 01         [ 3]  829 	sta	1,x
+   04BB C6r00r15      [ 4]  830 	lda	((_triggerState + 0x0013) + 2)
+   04BE E7 02         [ 3]  831 	sta	2,x
+   04C0 C6r00r16      [ 4]  832 	lda	((_triggerState + 0x0013) + 3)
+   04C3 E7 03         [ 3]  833 	sta	3,x
+   04C5 E6 03         [ 3]  834 	lda	3,x
+   04C7 A0 32         [ 2]  835 	sub	#0x32
+   04C9 E6 02         [ 3]  836 	lda	2,x
+   04CB A2 00         [ 2]  837 	sbc	#0x00
+   04CD E6 01         [ 3]  838 	lda	1,x
+   04CF A2 00         [ 2]  839 	sbc	#0x00
+   04D1 F6            [ 2]  840 	lda	,x
+   04D2 A2 00         [ 2]  841 	sbc	#0x00
+   04D4 24 03         [ 3]  842 	bcc	00102$
+   04D6 CCr08r87      [ 3]  843 	jmp	00120$
+   04D9                     844 00102$:
+                            845 ;decoders.c:112: if (triggerState.lastGap > 0 && triggerState.curGap < (triggerState.lastGap / 3)) return;
+   04D9 C6r00r17      [ 4]  846 	lda	(_triggerState + 0x0017)
+   04DC 9E E7 01      [ 4]  847 	sta	1,s
+   04DF C6r00r18      [ 4]  848 	lda	((_triggerState + 0x0017) + 1)
+   04E2 9E E7 02      [ 4]  849 	sta	2,s
+   04E5 C6r00r19      [ 4]  850 	lda	((_triggerState + 0x0017) + 2)
+   04E8 9E E7 03      [ 4]  851 	sta	3,s
+   04EB C6r00r1A      [ 4]  852 	lda	((_triggerState + 0x0017) + 3)
+   04EE 9E E7 04      [ 4]  853 	sta	4,s
+   04F1 95            [ 2]  854 	tsx
+   04F2 F6            [ 2]  855 	lda	,x
+   04F3 EA 01         [ 3]  856 	ora	1,x
+   04F5 EA 02         [ 3]  857 	ora	2,x
+   04F7 EA 03         [ 3]  858 	ora	3,x
+   04F9 27 64         [ 3]  859 	beq	00104$
+   04FB C6r00r13      [ 4]  860 	lda	(_triggerState + 0x0013)
+   04FE F7            [ 2]  861 	sta	,x
+   04FF C6r00r14      [ 4]  862 	lda	((_triggerState + 0x0013) + 1)
+   0502 E7 01         [ 3]  863 	sta	1,x
+   0504 C6r00r15      [ 4]  864 	lda	((_triggerState + 0x0013) + 2)
+   0507 E7 02         [ 3]  865 	sta	2,x
+   0509 C6r00r16      [ 4]  866 	lda	((_triggerState + 0x0013) + 3)
+   050C E7 03         [ 3]  867 	sta	3,x
+   050E C6r00r17      [ 4]  868 	lda	(_triggerState + 0x0017)
+   0511 E7 0C         [ 3]  869 	sta	12,x
+   0513 C6r00r18      [ 4]  870 	lda	((_triggerState + 0x0017) + 1)
+   0516 E7 0D         [ 3]  871 	sta	13,x
+   0518 C6r00r19      [ 4]  872 	lda	((_triggerState + 0x0017) + 2)
+   051B E7 0E         [ 3]  873 	sta	14,x
+   051D C6r00r1A      [ 4]  874 	lda	((_triggerState + 0x0017) + 3)
+   0520 E7 0F         [ 3]  875 	sta	15,x
+   0522 A6 03         [ 2]  876 	lda	#0x03
+   0524 87            [ 2]  877 	psha
+   0525 4F            [ 1]  878 	clra
+   0526 87            [ 2]  879 	psha
+   0527 87            [ 2]  880 	psha
+   0528 87            [ 2]  881 	psha
+   0529 E6 0F         [ 3]  882 	lda	15,x
+   052B 87            [ 2]  883 	psha
+   052C E6 0E         [ 3]  884 	lda	14,x
+   052E 87            [ 2]  885 	psha
+   052F E6 0D         [ 3]  886 	lda	13,x
+   0531 87            [ 2]  887 	psha
+   0532 E6 0C         [ 3]  888 	lda	12,x
+   0534 87            [ 2]  889 	psha
+   0535 CDr00r00      [ 5]  890 	jsr	__divulong
+   0538 9E E7 18      [ 4]  891 	sta	24,s
+   053B 9E EF 17      [ 4]  892 	stx	23,s
+   053E B6*00         [ 3]  893 	lda	*___SDCC_hc08_ret2
+   0540 9E E7 16      [ 4]  894 	sta	22,s
+   0543 B6*00         [ 3]  895 	lda	*___SDCC_hc08_ret3
+   0545 9E E7 15      [ 4]  896 	sta	21,s
+   0548 A7 08         [ 2]  897 	ais	#8
+   054A 95            [ 2]  898 	tsx
+   054B E6 03         [ 3]  899 	lda	3,x
+   054D E0 0F         [ 3]  900 	sub	15,x
+   054F E6 02         [ 3]  901 	lda	2,x
+   0551 E2 0E         [ 3]  902 	sbc	14,x
+   0553 E6 01         [ 3]  903 	lda	1,x
+   0555 E2 0D         [ 3]  904 	sbc	13,x
+   0557 F6            [ 2]  905 	lda	,x
+   0558 E2 0C         [ 3]  906 	sbc	12,x
+   055A 24 03         [ 3]  907 	bcc	00104$
+   055C CCr08r87      [ 3]  908 	jmp	00120$
+   055F                     909 00104$:
+                            910 ;decoders.c:114: triggerState.toothLastToothTime = curTime;
+   055F 9E E6 09      [ 4]  911 	lda	9,s
+   0562 C7r00r00      [ 4]  912 	sta	_triggerState
+   0565 9E E6 0A      [ 4]  913 	lda	10,s
+   0568 C7r00r01      [ 4]  914 	sta	(_triggerState + 1)
+   056B 9E E6 0B      [ 4]  915 	lda	11,s
+   056E C7r00r02      [ 4]  916 	sta	(_triggerState + 2)
+   0571 9E E6 0C      [ 4]  917 	lda	12,s
+   0574 C7r00r03      [ 4]  918 	sta	(_triggerState + 3)
+                            919 ;decoders.c:115: triggerState.toothCurrentCount++;
+   0577 C6r00r10      [ 4]  920 	lda	(_triggerState + 0x0010)
+   057A 4C            [ 1]  921 	inca
+   057B C7r00r10      [ 4]  922 	sta	(_triggerState + 0x0010)
+                            923 ;decoders.c:117: if (triggerState.toothCurrentCount > (uint8_t)(triggerState.toothTotalCount * 2)) {
+   057E CEr00r10      [ 4]  924 	ldx	(_triggerState + 0x0010)
+   0581 C6r00r11      [ 4]  925 	lda	(_triggerState + 0x0011)
+   0584 48            [ 1]  926 	lsla	
+   0585 9E E7 0D      [ 4]  927 	sta	13,s
+   0588 9E E3 0D      [ 4]  928 	cpx	13,s
+   058B 23 09         [ 3]  929 	bls	00107$
+                            930 ;decoders.c:118: triggerState.toothCurrentCount = 1;
+   058D A6 01         [ 2]  931 	lda	#0x01
+   058F C7r00r10      [ 4]  932 	sta	(_triggerState + 0x0010)
+                            933 ;decoders.c:119: triggerState.hasSync = false;
+   0592 4A            [ 1]  934 	deca
+   0593 C7r00r1B      [ 4]  935 	sta	(_triggerState + 0x001b)
+   0596                     936 00107$:
+                            937 ;decoders.c:122: isCranking = (currentStatus.RPM > 0) &&
+   0596 C6r00r00      [ 4]  938 	lda	_currentStatus
+   0599 9E E7 0D      [ 4]  939 	sta	13,s
+   059C C6r00r01      [ 4]  940 	lda	(_currentStatus + 1)
+   059F 9E E7 0E      [ 4]  941 	sta	14,s
+   05A2 95            [ 2]  942 	tsx
+   05A3 E6 0D         [ 3]  943 	lda	13,x
+   05A5 EA 0C         [ 3]  944 	ora	12,x
+   05A7 27 22         [ 3]  945 	beq	00122$
+                            946 ;decoders.c:123: (currentStatus.RPM < ((uint16_t)configPage1.crankRPM * 10));
+   05A9 C6r00r1D      [ 4]  947 	lda	(_configPage1 + 0x001d)
+   05AC 5F            [ 1]  948 	clrx
+   05AD 87            [ 2]  949 	psha
+   05AE 89            [ 2]  950 	pshx
+   05AF A6 0A         [ 2]  951 	lda	#0x0a
+   05B1 CDr00r00      [ 5]  952 	jsr	__mulint
+   05B4 9E E7 04      [ 4]  953 	sta	4,s
+   05B7 9E EF 03      [ 4]  954 	stx	3,s
+   05BA A7 02         [ 2]  955 	ais	#2
+   05BC 9E E6 0E      [ 4]  956 	lda	14,s
+   05BF 9E EE 0D      [ 4]  957 	ldx	13,s
+   05C2 9E E0 02      [ 4]  958 	sub	2,s
+   05C5 9F            [ 1]  959 	txa
+   05C6 9E E2 01      [ 4]  960 	sbc	1,s
+   05C9 25 03         [ 3]  961 	bcs	00123$
+   05CB                     962 00122$:
+   05CB 4F            [ 1]  963 	clra
+   05CC 20 02         [ 3]  964 	bra	00124$
+   05CE                     965 00123$:
+   05CE A6 01         [ 2]  966 	lda	#0x01
+   05D0                     967 00124$:
+   05D0 9E E7 15      [ 4]  968 	sta	21,s
+                            969 ;decoders.c:125: baseGap = (triggerState.lastGap > 0) ? triggerState.lastGap : triggerState.curGap;
+   05D3 C6r00r17      [ 4]  970 	lda	(_triggerState + 0x0017)
+   05D6 9E E7 0D      [ 4]  971 	sta	13,s
+   05D9 C6r00r18      [ 4]  972 	lda	((_triggerState + 0x0017) + 1)
+   05DC 9E E7 0E      [ 4]  973 	sta	14,s
+   05DF C6r00r19      [ 4]  974 	lda	((_triggerState + 0x0017) + 2)
+   05E2 9E E7 0F      [ 4]  975 	sta	15,s
+   05E5 C6r00r1A      [ 4]  976 	lda	((_triggerState + 0x0017) + 3)
+   05E8 9E E7 10      [ 4]  977 	sta	16,s
+   05EB 95            [ 2]  978 	tsx
+   05EC E6 0C         [ 3]  979 	lda	12,x
+   05EE EA 0D         [ 3]  980 	ora	13,x
+   05F0 EA 0E         [ 3]  981 	ora	14,x
+   05F2 EA 0F         [ 3]  982 	ora	15,x
+   05F4 27 16         [ 3]  983 	beq	00125$
+   05F6 C6r00r17      [ 4]  984 	lda	(_triggerState + 0x0017)
+   05F9 E7 0C         [ 3]  985 	sta	12,x
+   05FB C6r00r18      [ 4]  986 	lda	((_triggerState + 0x0017) + 1)
+   05FE E7 0D         [ 3]  987 	sta	13,x
+   0600 C6r00r19      [ 4]  988 	lda	((_triggerState + 0x0017) + 2)
+   0603 E7 0E         [ 3]  989 	sta	14,x
+   0605 C6r00r1A      [ 4]  990 	lda	((_triggerState + 0x0017) + 3)
+   0608 E7 0F         [ 3]  991 	sta	15,x
+   060A 20 18         [ 3]  992 	bra	00126$
+   060C                     993 00125$:
+   060C C6r00r13      [ 4]  994 	lda	(_triggerState + 0x0013)
+   060F 9E E7 0D      [ 4]  995 	sta	13,s
+   0612 C6r00r14      [ 4]  996 	lda	((_triggerState + 0x0013) + 1)
+   0615 9E E7 0E      [ 4]  997 	sta	14,s
+   0618 C6r00r15      [ 4]  998 	lda	((_triggerState + 0x0013) + 2)
+   061B 9E E7 0F      [ 4]  999 	sta	15,s
+   061E C6r00r16      [ 4] 1000 	lda	((_triggerState + 0x0013) + 3)
+   0621 9E E7 10      [ 4] 1001 	sta	16,s
+   0624                    1002 00126$:
+                           1003 ;decoders.c:126: dynamicThreshold = isCranking ? (baseGap + ((baseGap * 2) / 5))
+   0624 9E 6D 15      [ 4] 1004 	tst	21,s
+   0627 27 5D         [ 3] 1005 	beq	00127$
+   0629 95            [ 2] 1006 	tsx
+   062A E6 0F         [ 3] 1007 	lda	15,x
+   062C EE 0E         [ 3] 1008 	ldx	14,x
+   062E 48            [ 1] 1009 	lsla
+   062F 59            [ 1] 1010 	rolx
+   0630 9E E7 04      [ 4] 1011 	sta	4,s
+   0633 9E EF 03      [ 4] 1012 	stx	3,s
+   0636 9E E6 0E      [ 4] 1013 	lda	14,s
+   0639 9E EE 0D      [ 4] 1014 	ldx	13,s
+   063C 49            [ 1] 1015 	rola
+   063D 59            [ 1] 1016 	rolx
+   063E 9E E7 02      [ 4] 1017 	sta	2,s
+   0641 9E EF 01      [ 4] 1018 	stx	1,s
+   0644 A6 05         [ 2] 1019 	lda	#0x05
+   0646 87            [ 2] 1020 	psha
+   0647 4F            [ 1] 1021 	clra
+   0648 87            [ 2] 1022 	psha
+   0649 87            [ 2] 1023 	psha
+   064A 87            [ 2] 1024 	psha
+   064B 95            [ 2] 1025 	tsx
+   064C E6 07         [ 3] 1026 	lda	7,x
+   064E 87            [ 2] 1027 	psha
+   064F E6 06         [ 3] 1028 	lda	6,x
+   0651 87            [ 2] 1029 	psha
+   0652 E6 05         [ 3] 1030 	lda	5,x
+   0654 87            [ 2] 1031 	psha
+   0655 E6 04         [ 3] 1032 	lda	4,x
+   0657 87            [ 2] 1033 	psha
+   0658 CDr00r00      [ 5] 1034 	jsr	__divulong
+   065B 9E E7 0C      [ 4] 1035 	sta	12,s
+   065E 9E EF 0B      [ 4] 1036 	stx	11,s
+   0661 B6*00         [ 3] 1037 	lda	*___SDCC_hc08_ret2
+   0663 9E E7 0A      [ 4] 1038 	sta	10,s
+   0666 B6*00         [ 3] 1039 	lda	*___SDCC_hc08_ret3
+   0668 9E E7 09      [ 4] 1040 	sta	9,s
+   066B A7 08         [ 2] 1041 	ais	#8
+   066D 95            [ 2] 1042 	tsx
+   066E E6 0F         [ 3] 1043 	lda	15,x
+   0670 EB 03         [ 3] 1044 	add	3,x
+   0672 E7 03         [ 3] 1045 	sta	3,x
+   0674 E6 0E         [ 3] 1046 	lda	14,x
+   0676 E9 02         [ 3] 1047 	adc	2,x
+   0678 E7 02         [ 3] 1048 	sta	2,x
+   067A E6 0D         [ 3] 1049 	lda	13,x
+   067C E9 01         [ 3] 1050 	adc	1,x
+   067E E7 01         [ 3] 1051 	sta	1,x
+   0680 E6 0C         [ 3] 1052 	lda	12,x
+   0682 F9            [ 2] 1053 	adc	,x
+   0683 F7            [ 2] 1054 	sta	,x
+   0684 20 33         [ 3] 1055 	bra	00128$
+   0686                    1056 00127$:
+                           1057 ;decoders.c:127: : (baseGap + (baseGap >> 1));
+   0686 95            [ 2] 1058 	tsx
+   0687 E6 0D         [ 3] 1059 	lda	13,x
+   0689 EE 0C         [ 3] 1060 	ldx	12,x
+   068B 54            [ 1] 1061 	lsrx
+   068C 46            [ 1] 1062 	rora
+   068D 9E E7 06      [ 4] 1063 	sta	6,s
+   0690 9E EF 05      [ 4] 1064 	stx	5,s
+   0693 9E E6 10      [ 4] 1065 	lda	16,s
+   0696 9E EE 0F      [ 4] 1066 	ldx	15,s
+   0699 56            [ 1] 1067 	rorx
+   069A 46            [ 1] 1068 	rora
+   069B 9E E7 08      [ 4] 1069 	sta	8,s
+   069E 9E EF 07      [ 4] 1070 	stx	7,s
+   06A1 95            [ 2] 1071 	tsx
+   06A2 E6 0F         [ 3] 1072 	lda	15,x
+   06A4 EB 07         [ 3] 1073 	add	7,x
+   06A6 E7 03         [ 3] 1074 	sta	3,x
+   06A8 E6 0E         [ 3] 1075 	lda	14,x
+   06AA E9 06         [ 3] 1076 	adc	6,x
+   06AC E7 02         [ 3] 1077 	sta	2,x
+   06AE E6 0D         [ 3] 1078 	lda	13,x
+   06B0 E9 05         [ 3] 1079 	adc	5,x
+   06B2 E7 01         [ 3] 1080 	sta	1,x
+   06B4 E6 0C         [ 3] 1081 	lda	12,x
+   06B6 E9 04         [ 3] 1082 	adc	4,x
+   06B8 F7            [ 2] 1083 	sta	,x
+   06B9                    1084 00128$:
+                           1085 ;decoders.c:128: isGap = (triggerState.curGap > dynamicThreshold);
+   06B9 C6r00r13      [ 4] 1086 	lda	(_triggerState + 0x0013)
+   06BC 9E E7 05      [ 4] 1087 	sta	5,s
+   06BF C6r00r14      [ 4] 1088 	lda	((_triggerState + 0x0013) + 1)
+   06C2 9E E7 06      [ 4] 1089 	sta	6,s
+   06C5 C6r00r15      [ 4] 1090 	lda	((_triggerState + 0x0013) + 2)
+   06C8 9E E7 07      [ 4] 1091 	sta	7,s
+   06CB C6r00r16      [ 4] 1092 	lda	((_triggerState + 0x0013) + 3)
+   06CE 9E E7 08      [ 4] 1093 	sta	8,s
+   06D1 95            [ 2] 1094 	tsx
+   06D2 E6 03         [ 3] 1095 	lda	3,x
+   06D4 E0 07         [ 3] 1096 	sub	7,x
+   06D6 E6 02         [ 3] 1097 	lda	2,x
+   06D8 E2 06         [ 3] 1098 	sbc	6,x
+   06DA E6 01         [ 3] 1099 	lda	1,x
+   06DC E2 05         [ 3] 1100 	sbc	5,x
+   06DE F6            [ 2] 1101 	lda	,x
+   06DF E2 04         [ 3] 1102 	sbc	4,x
+   06E1 25 03         [ 3] 1103 	bcs	00216$
+   06E3 CCr08r57      [ 3] 1104 	jmp	00119$
+   06E6                    1105 00216$:
+                           1106 ;decoders.c:130: if (isGap) {
+                           1107 ;decoders.c:131: uint16_t expectedPulses = (uint16_t)triggerState.triggerActualTeeth * triggerEdgesPerTooth;
+   06E6 C6r00r12      [ 4] 1108 	lda	(_triggerState + 0x0012)
+   06E9 E7 05         [ 3] 1109 	sta	5,x
+   06EB 5F            [ 1] 1110 	clrx
+   06EC 9E EF 05      [ 4] 1111 	stx	5,s
+   06EF C6r00r01      [ 4] 1112 	lda	_triggerEdgesPerTooth
+   06F2 87            [ 2] 1113 	psha
+   06F3 89            [ 2] 1114 	pshx
+   06F4 95            [ 2] 1115 	tsx
+   06F5 E6 07         [ 3] 1116 	lda	7,x
+   06F7 EE 06         [ 3] 1117 	ldx	6,x
+   06F9 CDr00r00      [ 5] 1118 	jsr	__mulint
+   06FC 9E E7 16      [ 4] 1119 	sta	22,s
+   06FF 9E EF 15      [ 4] 1120 	stx	21,s
+   0702 A7 02         [ 2] 1121 	ais	#2
+                           1122 ;decoders.c:132: uint16_t toleranceWindow = isCranking ? 20 : 10;
+   0704 9E 6D 15      [ 4] 1123 	tst	21,s
+   0707 27 05         [ 3] 1124 	beq	00129$
+   0709 5F            [ 1] 1125 	clrx
+   070A A6 14         [ 2] 1126 	lda	#0x14
+   070C 20 03         [ 3] 1127 	bra	00130$
+   070E                    1128 00129$:
+   070E 5F            [ 1] 1129 	clrx
+   070F A6 0A         [ 2] 1130 	lda	#0x0a
+   0711                    1131 00130$:
+   0711 9E E7 12      [ 4] 1132 	sta	18,s
+   0714 9E EF 11      [ 4] 1133 	stx	17,s
+                           1134 ;decoders.c:134: if (triggerState.toothCurrentCount >= (expectedPulses - toleranceWindow) &&
+   0717 CEr00r10      [ 4] 1135 	ldx	(_triggerState + 0x0010)
+   071A 9E E6 14      [ 4] 1136 	lda	20,s
+   071D 9E E0 12      [ 4] 1137 	sub	18,s
+   0720 9E E7 06      [ 4] 1138 	sta	6,s
+   0723 9E E6 13      [ 4] 1139 	lda	19,s
+   0726 9E E2 11      [ 4] 1140 	sbc	17,s
+   0729 9E E7 05      [ 4] 1141 	sta	5,s
+   072C 9F            [ 1] 1142 	txa
+   072D 5F            [ 1] 1143 	clrx
+   072E 9E E0 06      [ 4] 1144 	sub	6,s
+   0731 9F            [ 1] 1145 	txa
+   0732 9E E2 05      [ 4] 1146 	sbc	5,s
+   0735 24 03         [ 3] 1147 	bcc	00218$
+   0737 CCr08r40      [ 3] 1148 	jmp	00115$
+   073A                    1149 00218$:
+                           1150 ;decoders.c:135: triggerState.toothCurrentCount <= (expectedPulses + toleranceWindow)) {
+   073A C6r00r10      [ 4] 1151 	lda	(_triggerState + 0x0010)
+   073D 87            [ 2] 1152 	psha
+   073E 9E E6 13      [ 4] 1153 	lda	19,s
+   0741 9E EB 15      [ 4] 1154 	add	21,s
+   0744 97            [ 1] 1155 	tax
+   0745 9E E6 12      [ 4] 1156 	lda	18,s
+   0748 9E E9 14      [ 4] 1157 	adc	20,s
+   074B 87            [ 2] 1158 	psha
+   074C 8A            [ 2] 1159 	pulh
+   074D 86            [ 2] 1160 	pula
+   074E 9E E7 06      [ 4] 1161 	sta	6,s
+   0751 87            [ 2] 1162 	psha
+   0752 4F            [ 1] 1163 	clra
+   0753 9E E7 06      [ 4] 1164 	sta	6,s
+   0756 86            [ 2] 1165 	pula
+   0757 9F            [ 1] 1166 	txa
+   0758 9E E0 06      [ 4] 1167 	sub	6,s
+   075B 8B            [ 2] 1168 	pshh
+   075C 86            [ 2] 1169 	pula
+   075D 9E E2 05      [ 4] 1170 	sbc	5,s
+   0760 24 03         [ 3] 1171 	bcc	00219$
+   0762 CCr08r40      [ 3] 1172 	jmp	00115$
+   0765                    1173 00219$:
+                           1174 ;decoders.c:137: triggerState.hasSync = true;
+   0765 A6 01         [ 2] 1175 	lda	#0x01
+   0767 C7r00r1B      [ 4] 1176 	sta	(_triggerState + 0x001b)
+                           1177 ;decoders.c:138: triggerState.syncLossCounter = 0;
+   076A 4A            [ 1] 1178 	deca
+   076B C7r00r1C      [ 4] 1179 	sta	(_triggerState + 0x001c)
+                           1180 ;decoders.c:139: triggerState.toothOneTime = curTime;
+   076E 9E E6 09      [ 4] 1181 	lda	9,s
+   0771 C7r00r0C      [ 4] 1182 	sta	(_triggerState + 0x000c)
+   0774 9E E6 0A      [ 4] 1183 	lda	10,s
+   0777 C7r00r0D      [ 4] 1184 	sta	((_triggerState + 0x000c) + 1)
+   077A 9E E6 0B      [ 4] 1185 	lda	11,s
+   077D C7r00r0E      [ 4] 1186 	sta	((_triggerState + 0x000c) + 2)
+   0780 9E E6 0C      [ 4] 1187 	lda	12,s
+   0783 C7r00r0F      [ 4] 1188 	sta	((_triggerState + 0x000c) + 3)
+                           1189 ;decoders.c:141: if (triggerState.toothLastMinusOneTime > 0) {
+   0786 C6r00r04      [ 4] 1190 	lda	(_triggerState + 0x0004)
+   0789 9E E7 05      [ 4] 1191 	sta	5,s
+   078C C6r00r05      [ 4] 1192 	lda	((_triggerState + 0x0004) + 1)
+   078F 9E E7 06      [ 4] 1193 	sta	6,s
+   0792 C6r00r06      [ 4] 1194 	lda	((_triggerState + 0x0004) + 2)
+   0795 9E E7 07      [ 4] 1195 	sta	7,s
+   0798 C6r00r07      [ 4] 1196 	lda	((_triggerState + 0x0004) + 3)
+   079B 9E E7 08      [ 4] 1197 	sta	8,s
+   079E 95            [ 2] 1198 	tsx
+   079F E6 04         [ 3] 1199 	lda	4,x
+   07A1 EA 05         [ 3] 1200 	ora	5,x
+   07A3 EA 06         [ 3] 1201 	ora	6,x
+   07A5 EA 07         [ 3] 1202 	ora	7,x
+   07A7 27 40         [ 3] 1203 	beq	00109$
+                           1204 ;decoders.c:142: triggerState.revolutionTime = curTime - triggerState.toothLastMinusOneTime;
+   07A9 C6r00r04      [ 4] 1205 	lda	(_triggerState + 0x0004)
+   07AC E7 04         [ 3] 1206 	sta	4,x
+   07AE C6r00r05      [ 4] 1207 	lda	((_triggerState + 0x0004) + 1)
+   07B1 E7 05         [ 3] 1208 	sta	5,x
+   07B3 C6r00r06      [ 4] 1209 	lda	((_triggerState + 0x0004) + 2)
+   07B6 E7 06         [ 3] 1210 	sta	6,x
+   07B8 C6r00r07      [ 4] 1211 	lda	((_triggerState + 0x0004) + 3)
+   07BB E7 07         [ 3] 1212 	sta	7,x
+   07BD E6 0B         [ 3] 1213 	lda	11,x
+   07BF E0 07         [ 3] 1214 	sub	7,x
+   07C1 E7 07         [ 3] 1215 	sta	7,x
+   07C3 E6 0A         [ 3] 1216 	lda	10,x
+   07C5 E2 06         [ 3] 1217 	sbc	6,x
+   07C7 E7 06         [ 3] 1218 	sta	6,x
+   07C9 E6 09         [ 3] 1219 	lda	9,x
+   07CB E2 05         [ 3] 1220 	sbc	5,x
+   07CD E7 05         [ 3] 1221 	sta	5,x
+   07CF E6 08         [ 3] 1222 	lda	8,x
+   07D1 E2 04         [ 3] 1223 	sbc	4,x
+   07D3 E7 04         [ 3] 1224 	sta	4,x
+   07D5 E6 04         [ 3] 1225 	lda	4,x
+   07D7 C7r00r08      [ 4] 1226 	sta	(_triggerState + 0x0008)
+   07DA E6 05         [ 3] 1227 	lda	5,x
+   07DC C7r00r09      [ 4] 1228 	sta	((_triggerState + 0x0008) + 1)
+   07DF E6 06         [ 3] 1229 	lda	6,x
+   07E1 C7r00r0A      [ 4] 1230 	sta	((_triggerState + 0x0008) + 2)
+   07E4 E6 07         [ 3] 1231 	lda	7,x
+   07E6 C7r00r0B      [ 4] 1232 	sta	((_triggerState + 0x0008) + 3)
+   07E9                    1233 00109$:
+                           1234 ;decoders.c:144: triggerState.toothLastMinusOneTime = curTime;
+   07E9 9E E6 09      [ 4] 1235 	lda	9,s
+   07EC C7r00r04      [ 4] 1236 	sta	(_triggerState + 0x0004)
+   07EF 9E E6 0A      [ 4] 1237 	lda	10,s
+   07F2 C7r00r05      [ 4] 1238 	sta	((_triggerState + 0x0004) + 1)
+   07F5 9E E6 0B      [ 4] 1239 	lda	11,s
+   07F8 C7r00r06      [ 4] 1240 	sta	((_triggerState + 0x0004) + 2)
+   07FB 9E E6 0C      [ 4] 1241 	lda	12,s
+   07FE C7r00r07      [ 4] 1242 	sta	((_triggerState + 0x0004) + 3)
+                           1243 ;decoders.c:145: triggerState.toothCurrentCount = 1;
+   0801 A6 01         [ 2] 1244 	lda	#0x01
+   0803 C7r00r10      [ 4] 1245 	sta	(_triggerState + 0x0010)
+                           1246 ;decoders.c:146: revolutionCounter = (revolutionCounter == 0) ? 1 : 0;
+   0806 C6r00r00      [ 4] 1247 	lda	_revolutionCounter
+   0809 26 05         [ 3] 1248 	bne	00131$
+   080B 5F            [ 1] 1249 	clrx
+   080C A6 01         [ 2] 1250 	lda	#0x01
+   080E 20 02         [ 3] 1251 	bra	00132$
+   0810                    1252 00131$:
+   0810 5F            [ 1] 1253 	clrx
+   0811 9F            [ 1] 1254 	txa
+   0812                    1255 00132$:
+   0812 C7r00r00      [ 4] 1256 	sta	_revolutionCounter
+                           1257 ;decoders.c:148: if (triggerState.revolutionTime > 0) {
+   0815 C6r00r08      [ 4] 1258 	lda	(_triggerState + 0x0008)
+   0818 9E E7 05      [ 4] 1259 	sta	5,s
+   081B C6r00r09      [ 4] 1260 	lda	((_triggerState + 0x0008) + 1)
+   081E 9E E7 06      [ 4] 1261 	sta	6,s
+   0821 C6r00r0A      [ 4] 1262 	lda	((_triggerState + 0x0008) + 2)
+   0824 9E E7 07      [ 4] 1263 	sta	7,s
+   0827 C6r00r0B      [ 4] 1264 	lda	((_triggerState + 0x0008) + 3)
+   082A 9E E7 08      [ 4] 1265 	sta	8,s
+   082D 95            [ 2] 1266 	tsx
+   082E E6 04         [ 3] 1267 	lda	4,x
+   0830 EA 05         [ 3] 1268 	ora	5,x
+   0832 EA 06         [ 3] 1269 	ora	6,x
+   0834 EA 07         [ 3] 1270 	ora	7,x
+   0836 27 1F         [ 3] 1271 	beq	00119$
+                           1272 ;decoders.c:149: scheduleInjectionISR();
+   0838 CDr00r1E      [ 5] 1273 	jsr	_scheduleInjectionISR
+                           1274 ;decoders.c:150: scheduleIgnitionISR();
+   083B CDr01r40      [ 5] 1275 	jsr	_scheduleIgnitionISR
+   083E 20 17         [ 3] 1276 	bra	00119$
+   0840                    1277 00115$:
+                           1278 ;decoders.c:153: triggerState.toothCurrentCount = 1;
+   0840 A6 01         [ 2] 1279 	lda	#0x01
+   0842 C7r00r10      [ 4] 1280 	sta	(_triggerState + 0x0010)
+                           1281 ;decoders.c:154: triggerState.syncLossCounter++;
+   0845 C6r00r1C      [ 4] 1282 	lda	(_triggerState + 0x001c)
+   0848 4C            [ 1] 1283 	inca
+   0849 C7r00r1C      [ 4] 1284 	sta	(_triggerState + 0x001c)
+                           1285 ;decoders.c:155: if (triggerState.syncLossCounter > 10) {
+   084C C6r00r1C      [ 4] 1286 	lda	(_triggerState + 0x001c)
+   084F A1 0A         [ 2] 1287 	cmp	#0x0a
+   0851 23 04         [ 3] 1288 	bls	00119$
+                           1289 ;decoders.c:156: triggerState.hasSync = false;
+   0853 4F            [ 1] 1290 	clra
+   0854 C7r00r1B      [ 4] 1291 	sta	(_triggerState + 0x001b)
+   0857                    1292 00119$:
+                           1293 ;decoders.c:161: triggerState.lastGap = triggerState.curGap;
+   0857 C6r00r13      [ 4] 1294 	lda	(_triggerState + 0x0013)
+   085A 9E E7 05      [ 4] 1295 	sta	5,s
+   085D C6r00r14      [ 4] 1296 	lda	((_triggerState + 0x0013) + 1)
+   0860 9E E7 06      [ 4] 1297 	sta	6,s
+   0863 C6r00r15      [ 4] 1298 	lda	((_triggerState + 0x0013) + 2)
+   0866 9E E7 07      [ 4] 1299 	sta	7,s
+   0869 C6r00r16      [ 4] 1300 	lda	((_triggerState + 0x0013) + 3)
+   086C 9E E7 08      [ 4] 1301 	sta	8,s
+   086F 9E E6 05      [ 4] 1302 	lda	5,s
+   0872 C7r00r17      [ 4] 1303 	sta	(_triggerState + 0x0017)
+   0875 9E E6 06      [ 4] 1304 	lda	6,s
+   0878 C7r00r18      [ 4] 1305 	sta	((_triggerState + 0x0017) + 1)
+   087B 9E E6 07      [ 4] 1306 	lda	7,s
+   087E C7r00r19      [ 4] 1307 	sta	((_triggerState + 0x0017) + 2)
+   0881 9E E6 08      [ 4] 1308 	lda	8,s
+   0884 C7r00r1A      [ 4] 1309 	sta	((_triggerState + 0x0017) + 3)
+   0887                    1310 00120$:
+                           1311 ;decoders.c:162: }
+   0887 A7 15         [ 2] 1312 	ais	#21
+   0889 81            [ 4] 1313 	rts
+                           1314 ;------------------------------------------------------------
+                           1315 ;Allocation info for local variables in function 'triggerPri_BasicDistributor'
+                           1316 ;------------------------------------------------------------
+                           1317 ;curTime                   Allocated to stack - sp +9
+                           1318 ;sloc0                     Allocated to stack - sp +9
+                           1319 ;sloc1                     Allocated to stack - sp +1
+                           1320 ;sloc2                     Allocated to stack - sp +5
+                           1321 ;------------------------------------------------------------
+                           1322 ;decoders.c:164: static void triggerPri_BasicDistributor(void) {
+                           1323 ;	-----------------------------------------
+                           1324 ;	 function triggerPri_BasicDistributor
+                           1325 ;	-----------------------------------------
+                           1326 ;	Register assignment is optimal.
+                           1327 ;	Stack space usage: 12 bytes.
+   088A                    1328 _triggerPri_BasicDistributor:
+   088A A7 F4         [ 2] 1329 	ais	#-12
+                           1330 ;decoders.c:165: uint32_t curTime = micros();
+   088C CDr00r00      [ 5] 1331 	jsr	_micros
+   088F 9E E7 0C      [ 4] 1332 	sta	12,s
+   0892 9E EF 0B      [ 4] 1333 	stx	11,s
+   0895 B6*00         [ 3] 1334 	lda	*___SDCC_hc08_ret2
+   0897 9E E7 0A      [ 4] 1335 	sta	10,s
+   089A B6*00         [ 3] 1336 	lda	*___SDCC_hc08_ret3
+   089C 9E E7 09      [ 4] 1337 	sta	9,s
+                           1338 ;decoders.c:167: triggerState.curGap = curTime - triggerState.toothLastToothTime;
+   089F C6r00r00      [ 4] 1339 	lda	_triggerState
+   08A2 9E E7 01      [ 4] 1340 	sta	1,s
+   08A5 C6r00r01      [ 4] 1341 	lda	(_triggerState + 1)
+   08A8 9E E7 02      [ 4] 1342 	sta	2,s
+   08AB C6r00r02      [ 4] 1343 	lda	(_triggerState + 2)
+   08AE 9E E7 03      [ 4] 1344 	sta	3,s
+   08B1 C6r00r03      [ 4] 1345 	lda	(_triggerState + 3)
+   08B4 9E E7 04      [ 4] 1346 	sta	4,s
+   08B7 95            [ 2] 1347 	tsx
+   08B8 E6 0B         [ 3] 1348 	lda	11,x
+   08BA E0 03         [ 3] 1349 	sub	3,x
+   08BC E7 03         [ 3] 1350 	sta	3,x
+   08BE E6 0A         [ 3] 1351 	lda	10,x
+   08C0 E2 02         [ 3] 1352 	sbc	2,x
+   08C2 E7 02         [ 3] 1353 	sta	2,x
+   08C4 E6 09         [ 3] 1354 	lda	9,x
+   08C6 E2 01         [ 3] 1355 	sbc	1,x
+   08C8 E7 01         [ 3] 1356 	sta	1,x
+   08CA E6 08         [ 3] 1357 	lda	8,x
+   08CC F2            [ 2] 1358 	sbc	,x
+   08CD F7            [ 2] 1359 	sta	,x
+   08CE F6            [ 2] 1360 	lda	,x
+   08CF C7r00r13      [ 4] 1361 	sta	(_triggerState + 0x0013)
+   08D2 E6 01         [ 3] 1362 	lda	1,x
+   08D4 C7r00r14      [ 4] 1363 	sta	((_triggerState + 0x0013) + 1)
+   08D7 E6 02         [ 3] 1364 	lda	2,x
+   08D9 C7r00r15      [ 4] 1365 	sta	((_triggerState + 0x0013) + 2)
+   08DC E6 03         [ 3] 1366 	lda	3,x
+   08DE C7r00r16      [ 4] 1367 	sta	((_triggerState + 0x0013) + 3)
+                           1368 ;decoders.c:168: if (triggerState.curGap < triggerState.triggerFilterTime) return;
+   08E1 C6r00r13      [ 4] 1369 	lda	(_triggerState + 0x0013)
+   08E4 F7            [ 2] 1370 	sta	,x
+   08E5 C6r00r14      [ 4] 1371 	lda	((_triggerState + 0x0013) + 1)
+   08E8 E7 01         [ 3] 1372 	sta	1,x
+   08EA C6r00r15      [ 4] 1373 	lda	((_triggerState + 0x0013) + 2)
+   08ED E7 02         [ 3] 1374 	sta	2,x
+   08EF C6r00r16      [ 4] 1375 	lda	((_triggerState + 0x0013) + 3)
+   08F2 E7 03         [ 3] 1376 	sta	3,x
+   08F4 C6r00r25      [ 4] 1377 	lda	(_triggerState + 0x0025)
+   08F7 87            [ 2] 1378 	psha
+   08F8 8A            [ 2] 1379 	pulh
+   08F9 CEr00r26      [ 4] 1380 	ldx	((_triggerState + 0x0025) + 1)
+   08FC 9E EF 08      [ 4] 1381 	stx	8,s
+   08FF 8B            [ 2] 1382 	pshh
+   0900 86            [ 2] 1383 	pula
+   0901 9E E7 07      [ 4] 1384 	sta	7,s
+   0904 4F            [ 1] 1385 	clra
+   0905 9E E7 06      [ 4] 1386 	sta	6,s
+   0908 9E E7 05      [ 4] 1387 	sta	5,s
+   090B 95            [ 2] 1388 	tsx
+   090C E6 03         [ 3] 1389 	lda	3,x
+   090E E0 07         [ 3] 1390 	sub	7,x
+   0910 E6 02         [ 3] 1391 	lda	2,x
+   0912 E2 06         [ 3] 1392 	sbc	6,x
+   0914 E6 01         [ 3] 1393 	lda	1,x
+   0916 E2 05         [ 3] 1394 	sbc	5,x
+   0918 F6            [ 2] 1395 	lda	,x
+   0919 E2 04         [ 3] 1396 	sbc	4,x
+   091B 24 03         [ 3] 1397 	bcc	00102$
+   091D CCr09rB5      [ 3] 1398 	jmp	00103$
+   0920                    1399 00102$:
+                           1400 ;decoders.c:170: triggerState.hasSync = true;
+   0920 A6 01         [ 2] 1401 	lda	#0x01
+   0922 C7r00r1B      [ 4] 1402 	sta	(_triggerState + 0x001b)
+                           1403 ;decoders.c:171: triggerState.toothCurrentCount = 1;
+   0925 C7r00r10      [ 4] 1404 	sta	(_triggerState + 0x0010)
+                           1405 ;decoders.c:172: triggerState.toothOneTime = curTime;
+   0928 9E E6 09      [ 4] 1406 	lda	9,s
+   092B C7r00r0C      [ 4] 1407 	sta	(_triggerState + 0x000c)
+   092E 9E E6 0A      [ 4] 1408 	lda	10,s
+   0931 C7r00r0D      [ 4] 1409 	sta	((_triggerState + 0x000c) + 1)
+   0934 9E E6 0B      [ 4] 1410 	lda	11,s
+   0937 C7r00r0E      [ 4] 1411 	sta	((_triggerState + 0x000c) + 2)
+   093A 9E E6 0C      [ 4] 1412 	lda	12,s
+   093D C7r00r0F      [ 4] 1413 	sta	((_triggerState + 0x000c) + 3)
+                           1414 ;decoders.c:173: triggerState.revolutionTime = triggerState.curGap;
+   0940 C6r00r13      [ 4] 1415 	lda	(_triggerState + 0x0013)
+   0943 9E E7 05      [ 4] 1416 	sta	5,s
+   0946 C6r00r14      [ 4] 1417 	lda	((_triggerState + 0x0013) + 1)
+   0949 9E E7 06      [ 4] 1418 	sta	6,s
+   094C C6r00r15      [ 4] 1419 	lda	((_triggerState + 0x0013) + 2)
+   094F 9E E7 07      [ 4] 1420 	sta	7,s
+   0952 C6r00r16      [ 4] 1421 	lda	((_triggerState + 0x0013) + 3)
+   0955 9E E7 08      [ 4] 1422 	sta	8,s
+   0958 9E E6 05      [ 4] 1423 	lda	5,s
+   095B C7r00r08      [ 4] 1424 	sta	(_triggerState + 0x0008)
+   095E 9E E6 06      [ 4] 1425 	lda	6,s
+   0961 C7r00r09      [ 4] 1426 	sta	((_triggerState + 0x0008) + 1)
+   0964 9E E6 07      [ 4] 1427 	lda	7,s
+   0967 C7r00r0A      [ 4] 1428 	sta	((_triggerState + 0x0008) + 2)
+   096A 9E E6 08      [ 4] 1429 	lda	8,s
+   096D C7r00r0B      [ 4] 1430 	sta	((_triggerState + 0x0008) + 3)
+                           1431 ;decoders.c:174: triggerState.toothLastToothTime = curTime;
+   0970 9E E6 09      [ 4] 1432 	lda	9,s
+   0973 C7r00r00      [ 4] 1433 	sta	_triggerState
+   0976 9E E6 0A      [ 4] 1434 	lda	10,s
+   0979 C7r00r01      [ 4] 1435 	sta	(_triggerState + 1)
+   097C 9E E6 0B      [ 4] 1436 	lda	11,s
+   097F C7r00r02      [ 4] 1437 	sta	(_triggerState + 2)
+   0982 9E E6 0C      [ 4] 1438 	lda	12,s
+   0985 C7r00r03      [ 4] 1439 	sta	(_triggerState + 3)
+                           1440 ;decoders.c:175: triggerState.toothLastMinusOneTime = curTime;
+   0988 9E E6 09      [ 4] 1441 	lda	9,s
+   098B C7r00r04      [ 4] 1442 	sta	(_triggerState + 0x0004)
+   098E 9E E6 0A      [ 4] 1443 	lda	10,s
+   0991 C7r00r05      [ 4] 1444 	sta	((_triggerState + 0x0004) + 1)
+   0994 9E E6 0B      [ 4] 1445 	lda	11,s
+   0997 C7r00r06      [ 4] 1446 	sta	((_triggerState + 0x0004) + 2)
+   099A 9E E6 0C      [ 4] 1447 	lda	12,s
+   099D C7r00r07      [ 4] 1448 	sta	((_triggerState + 0x0004) + 3)
+                           1449 ;decoders.c:176: revolutionCounter = (revolutionCounter == 0) ? 1 : 0;
+   09A0 C6r00r00      [ 4] 1450 	lda	_revolutionCounter
+   09A3 26 05         [ 3] 1451 	bne	00105$
+   09A5 5F            [ 1] 1452 	clrx
+   09A6 A6 01         [ 2] 1453 	lda	#0x01
+   09A8 20 02         [ 3] 1454 	bra	00106$
+   09AA                    1455 00105$:
+   09AA 5F            [ 1] 1456 	clrx
+   09AB 9F            [ 1] 1457 	txa
+   09AC                    1458 00106$:
+   09AC C7r00r00      [ 4] 1459 	sta	_revolutionCounter
+                           1460 ;decoders.c:178: scheduleInjectionISR();
+   09AF CDr00r1E      [ 5] 1461 	jsr	_scheduleInjectionISR
+                           1462 ;decoders.c:179: scheduleIgnitionISR();
+   09B2 CDr01r40      [ 5] 1463 	jsr	_scheduleIgnitionISR
+   09B5                    1464 00103$:
+                           1465 ;decoders.c:180: }
+   09B5 A7 0C         [ 2] 1466 	ais	#12
+   09B7 81            [ 4] 1467 	rts
+                           1468 ;------------------------------------------------------------
+                           1469 ;Allocation info for local variables in function 'triggerSetup_MissingTooth'
+                           1470 ;------------------------------------------------------------
+                           1471 ;decoders.c:185: void triggerSetup_MissingTooth(void) {
+                           1472 ;	-----------------------------------------
+                           1473 ;	 function triggerSetup_MissingTooth
+                           1474 ;	-----------------------------------------
+                           1475 ;	Register assignment is optimal.
+                           1476 ;	Stack space usage: 0 bytes.
+   09B8                    1477 _triggerSetup_MissingTooth:
+                           1478 ;decoders.c:186: triggerState.triggerTeeth = configPage2.triggerTeeth;
+   09B8 C6r00r01      [ 4] 1479 	lda	(_configPage2 + 0x0001)
+   09BB C7r00r23      [ 4] 1480 	sta	(_triggerState + 0x0023)
+                           1481 ;decoders.c:187: triggerState.triggerMissing = configPage2.triggerMissing;
+   09BE C6r00r02      [ 4] 1482 	lda	(_configPage2 + 0x0002)
+   09C1 C7r00r24      [ 4] 1483 	sta	(_triggerState + 0x0024)
+                           1484 ;decoders.c:194: if (triggerState.triggerTeeth == 0) {
+   09C4 C6r00r23      [ 4] 1485 	lda	(_triggerState + 0x0023)
+   09C7 26 0A         [ 3] 1486 	bne	00102$
+                           1487 ;decoders.c:195: triggerState.triggerTeeth = 36;
+   09C9 A6 24         [ 2] 1488 	lda	#0x24
+   09CB C7r00r23      [ 4] 1489 	sta	(_triggerState + 0x0023)
+                           1490 ;decoders.c:196: triggerState.triggerMissing = 1;
+   09CE A6 01         [ 2] 1491 	lda	#0x01
+   09D0 C7r00r24      [ 4] 1492 	sta	(_triggerState + 0x0024)
+   09D3                    1493 00102$:
+                           1494 ;decoders.c:198: triggerState.triggerActualTeeth = triggerState.triggerTeeth - triggerState.triggerMissing;
+   09D3 C6r00r23      [ 4] 1495 	lda	(_triggerState + 0x0023)
+   09D6 CEr00r24      [ 4] 1496 	ldx	(_triggerState + 0x0024)
+   09D9 89            [ 2] 1497 	pshx
+   09DA 9E E0 01      [ 4] 1498 	sub	1,s
+   09DD A7 01         [ 2] 1499 	ais	#1
+   09DF C7r00r12      [ 4] 1500 	sta	(_triggerState + 0x0012)
+                           1501 ;decoders.c:199: triggerState.toothAngle = (uint16_t)(3600 / triggerState.triggerTeeth);
+   09E2 C6r00r23      [ 4] 1502 	lda	(_triggerState + 0x0023)
+   09E5 5F            [ 1] 1503 	clrx
+   09E6 87            [ 2] 1504 	psha
+   09E7 89            [ 2] 1505 	pshx
+   09E8 A6 10         [ 2] 1506 	lda	#0x10
+   09EA AE 0E         [ 2] 1507 	ldx	#0x0e
+   09EC CDr00r00      [ 5] 1508 	jsr	__divsint
+   09EF A7 02         [ 2] 1509 	ais	#2
+   09F1 CFr00r27      [ 4] 1510 	stx	(_triggerState + 0x0027)
+   09F4 C7r00r28      [ 4] 1511 	sta	((_triggerState + 0x0027) + 1)
+                           1512 ;decoders.c:200: triggerState.triggerFilterTime = 50;
+   09F7 4F            [ 1] 1513 	clra
+   09F8 C7r00r25      [ 4] 1514 	sta	(_triggerState + 0x0025)
+   09FB A6 32         [ 2] 1515 	lda	#0x32
+   09FD C7r00r26      [ 4] 1516 	sta	((_triggerState + 0x0025) + 1)
+                           1517 ;decoders.c:201: triggerState.toothTotalCount = triggerState.triggerTeeth;
+   0A00 C6r00r23      [ 4] 1518 	lda	(_triggerState + 0x0023)
+   0A03 C7r00r11      [ 4] 1519 	sta	(_triggerState + 0x0011)
+                           1520 ;decoders.c:203: currentTriggerISR = triggerPri_MissingTooth;
+   0A06 A6s04         [ 2] 1521 	lda	#>_triggerPri_MissingTooth
+   0A08 C7r00r29      [ 4] 1522 	sta	_currentTriggerISR
+   0A0B A6r5B         [ 2] 1523 	lda	#_triggerPri_MissingTooth
+   0A0D C7r00r2A      [ 4] 1524 	sta	(_currentTriggerISR + 1)
+                           1525 ;decoders.c:204: }
+   0A10 81            [ 4] 1526 	rts
+                           1527 ;------------------------------------------------------------
+                           1528 ;Allocation info for local variables in function 'triggerSetup_BasicDistributor'
+                           1529 ;------------------------------------------------------------
+                           1530 ;decoders.c:206: void triggerSetup_BasicDistributor(void) {
+                           1531 ;	-----------------------------------------
+                           1532 ;	 function triggerSetup_BasicDistributor
+                           1533 ;	-----------------------------------------
+                           1534 ;	Register assignment is optimal.
+                           1535 ;	Stack space usage: 0 bytes.
+   0A11                    1536 _triggerSetup_BasicDistributor:
+                           1537 ;decoders.c:207: triggerState.triggerTeeth = 1;
+   0A11 A6 01         [ 2] 1538 	lda	#0x01
+   0A13 C7r00r23      [ 4] 1539 	sta	(_triggerState + 0x0023)
+                           1540 ;decoders.c:208: triggerState.triggerMissing = 0;
+   0A16 4A            [ 1] 1541 	deca
+   0A17 C7r00r24      [ 4] 1542 	sta	(_triggerState + 0x0024)
+                           1543 ;decoders.c:209: triggerState.triggerActualTeeth = 1;
+   0A1A 4C            [ 1] 1544 	inca
+   0A1B C7r00r12      [ 4] 1545 	sta	(_triggerState + 0x0012)
+                           1546 ;decoders.c:210: triggerState.toothAngle = 3600;
+   0A1E A6 0E         [ 2] 1547 	lda	#0x0e
+   0A20 C7r00r27      [ 4] 1548 	sta	(_triggerState + 0x0027)
+   0A23 A6 10         [ 2] 1549 	lda	#0x10
+   0A25 C7r00r28      [ 4] 1550 	sta	((_triggerState + 0x0027) + 1)
+                           1551 ;decoders.c:211: triggerState.triggerFilterTime = 500;
+   0A28 A6 01         [ 2] 1552 	lda	#0x01
+   0A2A C7r00r25      [ 4] 1553 	sta	(_triggerState + 0x0025)
+   0A2D A6 F4         [ 2] 1554 	lda	#0xf4
+   0A2F C7r00r26      [ 4] 1555 	sta	((_triggerState + 0x0025) + 1)
+                           1556 ;decoders.c:212: triggerState.toothTotalCount = 1;
+   0A32 A6 01         [ 2] 1557 	lda	#0x01
+   0A34 C7r00r11      [ 4] 1558 	sta	(_triggerState + 0x0011)
+                           1559 ;decoders.c:214: currentTriggerISR = triggerPri_BasicDistributor;
+   0A37 A6s08         [ 2] 1560 	lda	#>_triggerPri_BasicDistributor
+   0A39 C7r00r29      [ 4] 1561 	sta	_currentTriggerISR
+   0A3C A6r8A         [ 2] 1562 	lda	#_triggerPri_BasicDistributor
+   0A3E C7r00r2A      [ 4] 1563 	sta	(_currentTriggerISR + 1)
+                           1564 ;decoders.c:215: }
+   0A41 81            [ 4] 1565 	rts
+                           1566 ;------------------------------------------------------------
+                           1567 ;Allocation info for local variables in function 'triggerInit'
+                           1568 ;------------------------------------------------------------
+                           1569 ;decoders.c:217: void triggerInit(void) {
+                           1570 ;	-----------------------------------------
+                           1571 ;	 function triggerInit
+                           1572 ;	-----------------------------------------
+                           1573 ;	Register assignment is optimal.
+                           1574 ;	Stack space usage: 0 bytes.
+   0A42                    1575 _triggerInit:
+                           1576 ;decoders.c:218: resetTriggerState();
+   0A42 CDr0Er79      [ 5] 1577 	jsr	_resetTriggerState
+                           1578 ;decoders.c:220: if (configPage2.triggerPattern == TRIGGER_BASIC_DIST) {
+   0A45 C6r00r00      [ 4] 1579 	lda	_configPage2
+   0A48 A1 01         [ 2] 1580 	cmp	#0x01
+   0A4A 26 05         [ 3] 1581 	bne	00102$
+                           1582 ;decoders.c:221: triggerSetup_BasicDistributor();
+   0A4C CDr0Ar11      [ 5] 1583 	jsr	_triggerSetup_BasicDistributor
+   0A4F 20 03         [ 3] 1584 	bra	00103$
+   0A51                    1585 00102$:
+                           1586 ;decoders.c:223: triggerSetup_MissingTooth();
+   0A51 CDr09rB8      [ 5] 1587 	jsr	_triggerSetup_MissingTooth
+   0A54                    1588 00103$:
+                           1589 ;decoders.c:226: attachTriggerInterrupt();
+                           1590 ;decoders.c:227: }
+   0A54 CCr0Er6C      [ 3] 1591 	jmp	_attachTriggerInterrupt
+                           1592 ;------------------------------------------------------------
+                           1593 ;Allocation info for local variables in function 'calculateRPM'
+                           1594 ;------------------------------------------------------------
+                           1595 ;rpm                       Allocated to stack - sp +1
+                           1596 ;sloc0                     Allocated to stack - sp +5
+                           1597 ;------------------------------------------------------------
+                           1598 ;decoders.c:229: void calculateRPM(void) {
+                           1599 ;	-----------------------------------------
+                           1600 ;	 function calculateRPM
+                           1601 ;	-----------------------------------------
+                           1602 ;	Register assignment is optimal.
+                           1603 ;	Stack space usage: 8 bytes.
+   0A57                    1604 _calculateRPM:
+   0A57 A7 F8         [ 2] 1605 	ais	#-8
+                           1606 ;decoders.c:230: if (!triggerState.hasSync) {
+   0A59 C6r00r1B      [ 4] 1607 	lda	(_triggerState + 0x001b)
+   0A5C 26 13         [ 3] 1608 	bne	00102$
+                           1609 ;decoders.c:231: triggerState.RPM = 0;
+   0A5E 4F            [ 1] 1610 	clra
+   0A5F C7r00r1D      [ 4] 1611 	sta	(_triggerState + 0x001d)
+   0A62 C7r00r1E      [ 4] 1612 	sta	((_triggerState + 0x001d) + 1)
+                           1613 ;decoders.c:232: currentStatus.RPM = 0;
+   0A65 C7r00r00      [ 4] 1614 	sta	_currentStatus
+   0A68 C7r00r01      [ 4] 1615 	sta	(_currentStatus + 1)
+                           1616 ;decoders.c:233: currentStatus.hasSync = false;
+   0A6B C7r00r02      [ 4] 1617 	sta	(_currentStatus + 0x0002)
+                           1618 ;decoders.c:234: return;
+   0A6E CCr0Br4E      [ 3] 1619 	jmp	00110$
+   0A71                    1620 00102$:
+                           1621 ;decoders.c:237: if (triggerState.revolutionTime > 0) {
+   0A71 C6r00r08      [ 4] 1622 	lda	(_triggerState + 0x0008)
+   0A74 9E E7 05      [ 4] 1623 	sta	5,s
+   0A77 C6r00r09      [ 4] 1624 	lda	((_triggerState + 0x0008) + 1)
+   0A7A 9E E7 06      [ 4] 1625 	sta	6,s
+   0A7D C6r00r0A      [ 4] 1626 	lda	((_triggerState + 0x0008) + 2)
+   0A80 9E E7 07      [ 4] 1627 	sta	7,s
+   0A83 C6r00r0B      [ 4] 1628 	lda	((_triggerState + 0x0008) + 3)
+   0A86 9E E7 08      [ 4] 1629 	sta	8,s
+   0A89 95            [ 2] 1630 	tsx
+   0A8A E6 04         [ 3] 1631 	lda	4,x
+   0A8C EA 05         [ 3] 1632 	ora	5,x
+   0A8E EA 06         [ 3] 1633 	ora	6,x
+   0A90 EA 07         [ 3] 1634 	ora	7,x
+   0A92 26 03         [ 3] 1635 	bne	00133$
+   0A94 CCr0Br41      [ 3] 1636 	jmp	00108$
+   0A97                    1637 00133$:
+                           1638 ;decoders.c:238: uint32_t rpm = MICROS_PER_SEC * 60UL / triggerState.revolutionTime;
+   0A97 C6r00r08      [ 4] 1639 	lda	(_triggerState + 0x0008)
+   0A9A E7 04         [ 3] 1640 	sta	4,x
+   0A9C C6r00r09      [ 4] 1641 	lda	((_triggerState + 0x0008) + 1)
+   0A9F E7 05         [ 3] 1642 	sta	5,x
+   0AA1 C6r00r0A      [ 4] 1643 	lda	((_triggerState + 0x0008) + 2)
+   0AA4 E7 06         [ 3] 1644 	sta	6,x
+   0AA6 C6r00r0B      [ 4] 1645 	lda	((_triggerState + 0x0008) + 3)
+   0AA9 E7 07         [ 3] 1646 	sta	7,x
+   0AAB E6 07         [ 3] 1647 	lda	7,x
+   0AAD 87            [ 2] 1648 	psha
+   0AAE E6 06         [ 3] 1649 	lda	6,x
+   0AB0 87            [ 2] 1650 	psha
+   0AB1 E6 05         [ 3] 1651 	lda	5,x
+   0AB3 87            [ 2] 1652 	psha
+   0AB4 E6 04         [ 3] 1653 	lda	4,x
+   0AB6 87            [ 2] 1654 	psha
+   0AB7 4F            [ 1] 1655 	clra
+   0AB8 87            [ 2] 1656 	psha
+   0AB9 A6 87         [ 2] 1657 	lda	#0x87
+   0ABB 87            [ 2] 1658 	psha
+   0ABC A6 93         [ 2] 1659 	lda	#0x93
+   0ABE 87            [ 2] 1660 	psha
+   0ABF A6 03         [ 2] 1661 	lda	#0x03
+   0AC1 87            [ 2] 1662 	psha
+   0AC2 CDr00r00      [ 5] 1663 	jsr	__divulong
+   0AC5 9E E7 10      [ 4] 1664 	sta	16,s
+   0AC8 9E EF 0F      [ 4] 1665 	stx	15,s
+   0ACB B6*00         [ 3] 1666 	lda	*___SDCC_hc08_ret2
+   0ACD 9E E7 0E      [ 4] 1667 	sta	14,s
+   0AD0 B6*00         [ 3] 1668 	lda	*___SDCC_hc08_ret3
+   0AD2 9E E7 0D      [ 4] 1669 	sta	13,s
+   0AD5 A7 08         [ 2] 1670 	ais	#8
+   0AD7 95            [ 2] 1671 	tsx
+   0AD8 E6 04         [ 3] 1672 	lda	4,x
+   0ADA F7            [ 2] 1673 	sta	,x
+   0ADB E6 05         [ 3] 1674 	lda	5,x
+   0ADD E7 01         [ 3] 1675 	sta	1,x
+   0ADF E6 06         [ 3] 1676 	lda	6,x
+   0AE1 E7 02         [ 3] 1677 	sta	2,x
+   0AE3 E6 07         [ 3] 1678 	lda	7,x
+   0AE5 E7 03         [ 3] 1679 	sta	3,x
+                           1680 ;decoders.c:239: if (rpm > 15000) rpm = 15000;
+   0AE7 A6 98         [ 2] 1681 	lda	#0x98
+   0AE9 E0 07         [ 3] 1682 	sub	7,x
+   0AEB A6 3A         [ 2] 1683 	lda	#0x3a
+   0AED E2 06         [ 3] 1684 	sbc	6,x
+   0AEF 4F            [ 1] 1685 	clra
+   0AF0 E2 05         [ 3] 1686 	sbc	5,x
+   0AF2 4F            [ 1] 1687 	clra
+   0AF3 E2 04         [ 3] 1688 	sbc	4,x
+   0AF5 24 0C         [ 3] 1689 	bcc	00104$
+   0AF7 4F            [ 1] 1690 	clra
+   0AF8 F7            [ 2] 1691 	sta	,x
+   0AF9 E7 01         [ 3] 1692 	sta	1,x
+   0AFB A6 3A         [ 2] 1693 	lda	#0x3a
+   0AFD E7 02         [ 3] 1694 	sta	2,x
+   0AFF A6 98         [ 2] 1695 	lda	#0x98
+   0B01 E7 03         [ 3] 1696 	sta	3,x
+   0B03                    1697 00104$:
+                           1698 ;decoders.c:240: if (rpm < 100) rpm = 0;
+   0B03 95            [ 2] 1699 	tsx
+   0B04 E6 03         [ 3] 1700 	lda	3,x
+   0B06 A0 64         [ 2] 1701 	sub	#0x64
+   0B08 E6 02         [ 3] 1702 	lda	2,x
+   0B0A A2 00         [ 2] 1703 	sbc	#0x00
+   0B0C E6 01         [ 3] 1704 	lda	1,x
+   0B0E A2 00         [ 2] 1705 	sbc	#0x00
+   0B10 F6            [ 2] 1706 	lda	,x
+   0B11 A2 00         [ 2] 1707 	sbc	#0x00
+   0B13 24 08         [ 3] 1708 	bcc	00106$
+   0B15 4F            [ 1] 1709 	clra
+   0B16 F7            [ 2] 1710 	sta	,x
+   0B17 E7 01         [ 3] 1711 	sta	1,x
+   0B19 E7 02         [ 3] 1712 	sta	2,x
+   0B1B E7 03         [ 3] 1713 	sta	3,x
+   0B1D                    1714 00106$:
+                           1715 ;decoders.c:242: triggerState.RPM = (uint16_t)rpm;
+   0B1D 9E E6 04      [ 4] 1716 	lda	4,s
+   0B20 9E EE 03      [ 4] 1717 	ldx	3,s
+   0B23 CFr00r1D      [ 4] 1718 	stx	(_triggerState + 0x001d)
+   0B26 C7r00r1E      [ 4] 1719 	sta	((_triggerState + 0x001d) + 1)
+                           1720 ;decoders.c:247: }
+   0B29 85            [ 1] 1721 	tpa
+   0B2A 9B            [ 2] 1722 	sei
+   0B2B 87            [ 2] 1723 	psha
+                           1724 ;decoders.c:245: currentStatus.RPM = triggerState.RPM;
+   0B2C CEr00r1D      [ 4] 1725 	ldx	(_triggerState + 0x001d)
+   0B2F C6r00r1E      [ 4] 1726 	lda	((_triggerState + 0x001d) + 1)
+   0B32 CFr00r00      [ 4] 1727 	stx	_currentStatus
+   0B35 C7r00r01      [ 4] 1728 	sta	(_currentStatus + 1)
+                           1729 ;decoders.c:246: currentStatus.hasSync = true;
+   0B38 A6 01         [ 2] 1730 	lda	#0x01
+   0B3A C7r00r02      [ 4] 1731 	sta	(_currentStatus + 0x0002)
+   0B3D 86            [ 2] 1732 	pula
+   0B3E 84            [ 2] 1733 	tap
+   0B3F 20 0D         [ 3] 1734 	bra	00110$
+   0B41                    1735 00108$:
+                           1736 ;decoders.c:249: triggerState.RPM = 0;
+   0B41 4F            [ 1] 1737 	clra
+   0B42 C7r00r1D      [ 4] 1738 	sta	(_triggerState + 0x001d)
+   0B45 C7r00r1E      [ 4] 1739 	sta	((_triggerState + 0x001d) + 1)
+                           1740 ;decoders.c:250: currentStatus.RPM = 0;
+   0B48 C7r00r00      [ 4] 1741 	sta	_currentStatus
+   0B4B C7r00r01      [ 4] 1742 	sta	(_currentStatus + 1)
+   0B4E                    1743 00110$:
+                           1744 ;decoders.c:252: }
+   0B4E A7 08         [ 2] 1745 	ais	#8
+   0B50 81            [ 4] 1746 	rts
+                           1747 ;------------------------------------------------------------
+                           1748 ;Allocation info for local variables in function 'checkSyncLoss'
+                           1749 ;------------------------------------------------------------
+                           1750 ;timeSinceLastTooth        Allocated to stack - sp +5
+                           1751 ;sloc0                     Allocated to stack - sp +5
+                           1752 ;sloc1                     Allocated to stack - sp +1
+                           1753 ;------------------------------------------------------------
+                           1754 ;decoders.c:254: void checkSyncLoss(void) {
+                           1755 ;	-----------------------------------------
+                           1756 ;	 function checkSyncLoss
+                           1757 ;	-----------------------------------------
+                           1758 ;	Register assignment is optimal.
+                           1759 ;	Stack space usage: 8 bytes.
+   0B51                    1760 _checkSyncLoss:
+   0B51 A7 F8         [ 2] 1761 	ais	#-8
+                           1762 ;decoders.c:255: uint32_t timeSinceLastTooth = micros() - triggerState.toothLastToothTime;
+   0B53 CDr00r00      [ 5] 1763 	jsr	_micros
+   0B56 9E E7 08      [ 4] 1764 	sta	8,s
+   0B59 9E EF 07      [ 4] 1765 	stx	7,s
+   0B5C B6*00         [ 3] 1766 	lda	*___SDCC_hc08_ret2
+   0B5E 9E E7 06      [ 4] 1767 	sta	6,s
+   0B61 B6*00         [ 3] 1768 	lda	*___SDCC_hc08_ret3
+   0B63 9E E7 05      [ 4] 1769 	sta	5,s
+   0B66 C6r00r00      [ 4] 1770 	lda	_triggerState
+   0B69 9E E7 01      [ 4] 1771 	sta	1,s
+   0B6C C6r00r01      [ 4] 1772 	lda	(_triggerState + 1)
+   0B6F 9E E7 02      [ 4] 1773 	sta	2,s
+   0B72 C6r00r02      [ 4] 1774 	lda	(_triggerState + 2)
+   0B75 9E E7 03      [ 4] 1775 	sta	3,s
+   0B78 C6r00r03      [ 4] 1776 	lda	(_triggerState + 3)
+   0B7B 9E E7 04      [ 4] 1777 	sta	4,s
+   0B7E 95            [ 2] 1778 	tsx
+   0B7F E6 07         [ 3] 1779 	lda	7,x
+   0B81 E0 03         [ 3] 1780 	sub	3,x
+   0B83 E7 03         [ 3] 1781 	sta	3,x
+   0B85 E6 06         [ 3] 1782 	lda	6,x
+   0B87 E2 02         [ 3] 1783 	sbc	2,x
+   0B89 E7 02         [ 3] 1784 	sta	2,x
+   0B8B E6 05         [ 3] 1785 	lda	5,x
+   0B8D E2 01         [ 3] 1786 	sbc	1,x
+   0B8F E7 01         [ 3] 1787 	sta	1,x
+   0B91 E6 04         [ 3] 1788 	lda	4,x
+   0B93 F2            [ 2] 1789 	sbc	,x
+   0B94 F7            [ 2] 1790 	sta	,x
+                           1791 ;decoders.c:257: if (timeSinceLastTooth > (SYNC_TIMEOUT * 1000UL)) {
+   0B95 A6 40         [ 2] 1792 	lda	#0x40
+   0B97 E0 03         [ 3] 1793 	sub	3,x
+   0B99 A6 42         [ 2] 1794 	lda	#0x42
+   0B9B E2 02         [ 3] 1795 	sbc	2,x
+   0B9D A6 0F         [ 2] 1796 	lda	#0x0f
+   0B9F E2 01         [ 3] 1797 	sbc	1,x
+   0BA1 4F            [ 1] 1798 	clra
+   0BA2 F2            [ 2] 1799 	sbc	,x
+   0BA3 24 12         [ 3] 1800 	bcc	00103$
+                           1801 ;decoders.c:262: }
+   0BA5 85            [ 1] 1802 	tpa
+   0BA6 9B            [ 2] 1803 	sei
+   0BA7 87            [ 2] 1804 	psha
+                           1805 ;decoders.c:259: triggerState.hasSync = false;
+   0BA8 4F            [ 1] 1806 	clra
+   0BA9 C7r00r1B      [ 4] 1807 	sta	(_triggerState + 0x001b)
+                           1808 ;decoders.c:260: currentStatus.hasSync = false;
+   0BAC C7r00r02      [ 4] 1809 	sta	(_currentStatus + 0x0002)
+                           1810 ;decoders.c:261: currentStatus.RPM = 0;
+   0BAF C7r00r00      [ 4] 1811 	sta	_currentStatus
+   0BB2 C7r00r01      [ 4] 1812 	sta	(_currentStatus + 1)
+   0BB5 86            [ 2] 1813 	pula
+   0BB6 84            [ 2] 1814 	tap
+   0BB7                    1815 00103$:
+                           1816 ;decoders.c:264: }
+   0BB7 A7 08         [ 2] 1817 	ais	#8
+   0BB9 81            [ 4] 1818 	rts
+                           1819 ;------------------------------------------------------------
+                           1820 ;Allocation info for local variables in function 'angleToTime'
+                           1821 ;------------------------------------------------------------
+                           1822 ;angle                     Allocated to registers x h 
+                           1823 ;sloc0                     Allocated to stack - sp +1
+                           1824 ;sloc1                     Allocated to stack - sp +5
+                           1825 ;------------------------------------------------------------
+                           1826 ;decoders.c:266: uint32_t angleToTime(uint16_t angle) {
+                           1827 ;	-----------------------------------------
+                           1828 ;	 function angleToTime
+                           1829 ;	-----------------------------------------
+                           1830 ;	Register assignment is optimal.
+                           1831 ;	Stack space usage: 8 bytes.
+   0BBA                    1832 _angleToTime:
+   0BBA A7 F8         [ 2] 1833 	ais	#-8
+   0BBC 89            [ 2] 1834 	pshx
+   0BBD 97            [ 1] 1835 	tax
+   0BBE 8A            [ 2] 1836 	pulh
+                           1837 ;decoders.c:267: if (triggerState.revolutionTime == 0) return 0;
+   0BBF C6r00r08      [ 4] 1838 	lda	(_triggerState + 0x0008)
+   0BC2 9E E7 01      [ 4] 1839 	sta	1,s
+   0BC5 C6r00r09      [ 4] 1840 	lda	((_triggerState + 0x0008) + 1)
+   0BC8 9E E7 02      [ 4] 1841 	sta	2,s
+   0BCB C6r00r0A      [ 4] 1842 	lda	((_triggerState + 0x0008) + 2)
+   0BCE 9E E7 03      [ 4] 1843 	sta	3,s
+   0BD1 C6r00r0B      [ 4] 1844 	lda	((_triggerState + 0x0008) + 3)
+   0BD4 9E E7 04      [ 4] 1845 	sta	4,s
+   0BD7 9E E6 01      [ 4] 1846 	lda	1,s
+   0BDA 9E EA 02      [ 4] 1847 	ora	2,s
+   0BDD 9E EA 03      [ 4] 1848 	ora	3,s
+   0BE0 9E EA 04      [ 4] 1849 	ora	4,s
+   0BE3 26 09         [ 3] 1850 	bne	00102$
+   0BE5 4F            [ 1] 1851 	clra
+   0BE6 97            [ 1] 1852 	tax
+   0BE7 B7*00         [ 3] 1853 	sta	*___SDCC_hc08_ret2
+   0BE9 B7*00         [ 3] 1854 	sta	*___SDCC_hc08_ret3
+   0BEB CCr0Cr7B      [ 3] 1855 	jmp	00103$
+   0BEE                    1856 00102$:
+                           1857 ;decoders.c:268: return ((uint32_t)angle * triggerState.revolutionTime) / 360UL;
+   0BEE 9E EF 04      [ 4] 1858 	stx	4,s
+   0BF1 8B            [ 2] 1859 	pshh
+   0BF2 86            [ 2] 1860 	pula
+   0BF3 9E E7 03      [ 4] 1861 	sta	3,s
+   0BF6 4F            [ 1] 1862 	clra
+   0BF7 9E E7 02      [ 4] 1863 	sta	2,s
+   0BFA 9E E7 01      [ 4] 1864 	sta	1,s
+   0BFD C6r00r08      [ 4] 1865 	lda	(_triggerState + 0x0008)
+   0C00 9E E7 05      [ 4] 1866 	sta	5,s
+   0C03 C6r00r09      [ 4] 1867 	lda	((_triggerState + 0x0008) + 1)
+   0C06 9E E7 06      [ 4] 1868 	sta	6,s
+   0C09 C6r00r0A      [ 4] 1869 	lda	((_triggerState + 0x0008) + 2)
+   0C0C 9E E7 07      [ 4] 1870 	sta	7,s
+   0C0F C6r00r0B      [ 4] 1871 	lda	((_triggerState + 0x0008) + 3)
+   0C12 9E E7 08      [ 4] 1872 	sta	8,s
+   0C15 95            [ 2] 1873 	tsx
+   0C16 E6 07         [ 3] 1874 	lda	7,x
+   0C18 87            [ 2] 1875 	psha
+   0C19 E6 06         [ 3] 1876 	lda	6,x
+   0C1B 87            [ 2] 1877 	psha
+   0C1C E6 05         [ 3] 1878 	lda	5,x
+   0C1E 87            [ 2] 1879 	psha
+   0C1F E6 04         [ 3] 1880 	lda	4,x
+   0C21 87            [ 2] 1881 	psha
+   0C22 E6 03         [ 3] 1882 	lda	3,x
+   0C24 87            [ 2] 1883 	psha
+   0C25 E6 02         [ 3] 1884 	lda	2,x
+   0C27 87            [ 2] 1885 	psha
+   0C28 E6 01         [ 3] 1886 	lda	1,x
+   0C2A 87            [ 2] 1887 	psha
+   0C2B F6            [ 2] 1888 	lda	,x
+   0C2C 87            [ 2] 1889 	psha
+   0C2D CDr00r00      [ 5] 1890 	jsr	__mullong
+   0C30 9E E7 10      [ 4] 1891 	sta	16,s
+   0C33 9E EF 0F      [ 4] 1892 	stx	15,s
+   0C36 B6*00         [ 3] 1893 	lda	*___SDCC_hc08_ret2
+   0C38 9E E7 0E      [ 4] 1894 	sta	14,s
+   0C3B B6*00         [ 3] 1895 	lda	*___SDCC_hc08_ret3
+   0C3D 9E E7 0D      [ 4] 1896 	sta	13,s
+   0C40 A7 08         [ 2] 1897 	ais	#8
+   0C42 A6 68         [ 2] 1898 	lda	#0x68
+   0C44 87            [ 2] 1899 	psha
+   0C45 A6 01         [ 2] 1900 	lda	#0x01
+   0C47 87            [ 2] 1901 	psha
+   0C48 4A            [ 1] 1902 	deca
+   0C49 87            [ 2] 1903 	psha
+   0C4A 87            [ 2] 1904 	psha
+   0C4B 95            [ 2] 1905 	tsx
+   0C4C E6 0B         [ 3] 1906 	lda	11,x
+   0C4E 87            [ 2] 1907 	psha
+   0C4F E6 0A         [ 3] 1908 	lda	10,x
+   0C51 87            [ 2] 1909 	psha
+   0C52 E6 09         [ 3] 1910 	lda	9,x
+   0C54 87            [ 2] 1911 	psha
+   0C55 E6 08         [ 3] 1912 	lda	8,x
+   0C57 87            [ 2] 1913 	psha
+   0C58 CDr00r00      [ 5] 1914 	jsr	__divulong
+   0C5B 9E E7 10      [ 4] 1915 	sta	16,s
+   0C5E 9E EF 0F      [ 4] 1916 	stx	15,s
+   0C61 B6*00         [ 3] 1917 	lda	*___SDCC_hc08_ret2
+   0C63 9E E7 0E      [ 4] 1918 	sta	14,s
+   0C66 B6*00         [ 3] 1919 	lda	*___SDCC_hc08_ret3
+   0C68 9E E7 0D      [ 4] 1920 	sta	13,s
+   0C6B A7 08         [ 2] 1921 	ais	#8
+   0C6D 95            [ 2] 1922 	tsx
+   0C6E E6 04         [ 3] 1923 	lda	4,x
+   0C70 B7*00         [ 3] 1924 	sta	*___SDCC_hc08_ret3
+   0C72 E6 05         [ 3] 1925 	lda	5,x
+   0C74 B7*00         [ 3] 1926 	sta	*___SDCC_hc08_ret2
+   0C76 EE 06         [ 3] 1927 	ldx	6,x
+   0C78 9E E6 08      [ 4] 1928 	lda	8,s
+   0C7B                    1929 00103$:
+                           1930 ;decoders.c:269: }
+   0C7B A7 08         [ 2] 1931 	ais	#8
+   0C7D 81            [ 4] 1932 	rts
+                           1933 ;------------------------------------------------------------
+                           1934 ;Allocation info for local variables in function 'timeToAngle'
+                           1935 ;------------------------------------------------------------
+                           1936 ;time                      Allocated to stack - sp +11
+                           1937 ;sloc0                     Allocated to stack - sp +5
+                           1938 ;sloc1                     Allocated to stack - sp +1
+                           1939 ;------------------------------------------------------------
+                           1940 ;decoders.c:271: uint16_t timeToAngle(uint32_t time) {
+                           1941 ;	-----------------------------------------
+                           1942 ;	 function timeToAngle
+                           1943 ;	-----------------------------------------
+                           1944 ;	Register assignment is optimal.
+                           1945 ;	Stack space usage: 8 bytes.
+   0C7E                    1946 _timeToAngle:
+   0C7E A7 F8         [ 2] 1947 	ais	#-8
+                           1948 ;decoders.c:272: if (triggerState.revolutionTime == 0) return 0;
+   0C80 C6r00r08      [ 4] 1949 	lda	(_triggerState + 0x0008)
+   0C83 9E E7 05      [ 4] 1950 	sta	5,s
+   0C86 C6r00r09      [ 4] 1951 	lda	((_triggerState + 0x0008) + 1)
+   0C89 9E E7 06      [ 4] 1952 	sta	6,s
+   0C8C C6r00r0A      [ 4] 1953 	lda	((_triggerState + 0x0008) + 2)
+   0C8F 9E E7 07      [ 4] 1954 	sta	7,s
+   0C92 C6r00r0B      [ 4] 1955 	lda	((_triggerState + 0x0008) + 3)
+   0C95 9E E7 08      [ 4] 1956 	sta	8,s
+   0C98 95            [ 2] 1957 	tsx
+   0C99 E6 04         [ 3] 1958 	lda	4,x
+   0C9B EA 05         [ 3] 1959 	ora	5,x
+   0C9D EA 06         [ 3] 1960 	ora	6,x
+   0C9F EA 07         [ 3] 1961 	ora	7,x
+   0CA1 26 04         [ 3] 1962 	bne	00102$
+   0CA3 4F            [ 1] 1963 	clra
+   0CA4 97            [ 1] 1964 	tax
+   0CA5 20 76         [ 3] 1965 	bra	00103$
+   0CA7                    1966 00102$:
+                           1967 ;decoders.c:273: return (uint16_t)((time * 360UL) / triggerState.revolutionTime);
+   0CA7 95            [ 2] 1968 	tsx
+   0CA8 E6 0D         [ 3] 1969 	lda	13,x
+   0CAA 87            [ 2] 1970 	psha
+   0CAB E6 0C         [ 3] 1971 	lda	12,x
+   0CAD 87            [ 2] 1972 	psha
+   0CAE E6 0B         [ 3] 1973 	lda	11,x
+   0CB0 87            [ 2] 1974 	psha
+   0CB1 E6 0A         [ 3] 1975 	lda	10,x
+   0CB3 87            [ 2] 1976 	psha
+   0CB4 A6 68         [ 2] 1977 	lda	#0x68
+   0CB6 87            [ 2] 1978 	psha
+   0CB7 A6 01         [ 2] 1979 	lda	#0x01
+   0CB9 87            [ 2] 1980 	psha
+   0CBA 4A            [ 1] 1981 	deca
+   0CBB 87            [ 2] 1982 	psha
+   0CBC 87            [ 2] 1983 	psha
+   0CBD CDr00r00      [ 5] 1984 	jsr	__mullong
+   0CC0 9E E7 10      [ 4] 1985 	sta	16,s
+   0CC3 9E EF 0F      [ 4] 1986 	stx	15,s
+   0CC6 B6*00         [ 3] 1987 	lda	*___SDCC_hc08_ret2
+   0CC8 9E E7 0E      [ 4] 1988 	sta	14,s
+   0CCB B6*00         [ 3] 1989 	lda	*___SDCC_hc08_ret3
+   0CCD 9E E7 0D      [ 4] 1990 	sta	13,s
+   0CD0 A7 08         [ 2] 1991 	ais	#8
+   0CD2 C6r00r08      [ 4] 1992 	lda	(_triggerState + 0x0008)
+   0CD5 9E E7 01      [ 4] 1993 	sta	1,s
+   0CD8 C6r00r09      [ 4] 1994 	lda	((_triggerState + 0x0008) + 1)
+   0CDB 9E E7 02      [ 4] 1995 	sta	2,s
+   0CDE C6r00r0A      [ 4] 1996 	lda	((_triggerState + 0x0008) + 2)
+   0CE1 9E E7 03      [ 4] 1997 	sta	3,s
+   0CE4 C6r00r0B      [ 4] 1998 	lda	((_triggerState + 0x0008) + 3)
+   0CE7 9E E7 04      [ 4] 1999 	sta	4,s
+   0CEA 95            [ 2] 2000 	tsx
+   0CEB E6 03         [ 3] 2001 	lda	3,x
+   0CED 87            [ 2] 2002 	psha
+   0CEE E6 02         [ 3] 2003 	lda	2,x
+   0CF0 87            [ 2] 2004 	psha
+   0CF1 E6 01         [ 3] 2005 	lda	1,x
+   0CF3 87            [ 2] 2006 	psha
+   0CF4 F6            [ 2] 2007 	lda	,x
+   0CF5 87            [ 2] 2008 	psha
+   0CF6 E6 07         [ 3] 2009 	lda	7,x
+   0CF8 87            [ 2] 2010 	psha
+   0CF9 E6 06         [ 3] 2011 	lda	6,x
+   0CFB 87            [ 2] 2012 	psha
+   0CFC E6 05         [ 3] 2013 	lda	5,x
+   0CFE 87            [ 2] 2014 	psha
+   0CFF E6 04         [ 3] 2015 	lda	4,x
+   0D01 87            [ 2] 2016 	psha
+   0D02 CDr00r00      [ 5] 2017 	jsr	__divulong
+   0D05 9E E7 0C      [ 4] 2018 	sta	12,s
+   0D08 9E EF 0B      [ 4] 2019 	stx	11,s
+   0D0B B6*00         [ 3] 2020 	lda	*___SDCC_hc08_ret2
+   0D0D 9E E7 0A      [ 4] 2021 	sta	10,s
+   0D10 B6*00         [ 3] 2022 	lda	*___SDCC_hc08_ret3
+   0D12 9E E7 09      [ 4] 2023 	sta	9,s
+   0D15 A7 08         [ 2] 2024 	ais	#8
+   0D17 9E E6 04      [ 4] 2025 	lda	4,s
+   0D1A 9E EE 03      [ 4] 2026 	ldx	3,s
+   0D1D                    2027 00103$:
+                           2028 ;decoders.c:274: }
+   0D1D A7 08         [ 2] 2029 	ais	#8
+   0D1F 81            [ 4] 2030 	rts
+                           2031 ;------------------------------------------------------------
+                           2032 ;Allocation info for local variables in function 'getCrankAngle'
+                           2033 ;------------------------------------------------------------
+                           2034 ;timeSinceToothOne         Allocated to stack - sp +1
+                           2035 ;angle                     Allocated to registers a x 
+                           2036 ;sloc0                     Allocated to stack - sp +5
+                           2037 ;sloc1                     Allocated to stack - sp +9
+                           2038 ;------------------------------------------------------------
+                           2039 ;decoders.c:276: uint16_t getCrankAngle(void) {
+                           2040 ;	-----------------------------------------
+                           2041 ;	 function getCrankAngle
+                           2042 ;	-----------------------------------------
+                           2043 ;	Register assignment is optimal.
+                           2044 ;	Stack space usage: 12 bytes.
+   0D20                    2045 _getCrankAngle:
+   0D20 A7 F4         [ 2] 2046 	ais	#-12
+                           2047 ;decoders.c:280: if (!triggerState.hasSync || triggerState.revolutionTime == 0) return 0;
+   0D22 C6r00r1B      [ 4] 2048 	lda	(_triggerState + 0x001b)
+   0D25 27 23         [ 3] 2049 	beq	00101$
+   0D27 C6r00r08      [ 4] 2050 	lda	(_triggerState + 0x0008)
+   0D2A 9E E7 05      [ 4] 2051 	sta	5,s
+   0D2D C6r00r09      [ 4] 2052 	lda	((_triggerState + 0x0008) + 1)
+   0D30 9E E7 06      [ 4] 2053 	sta	6,s
+   0D33 C6r00r0A      [ 4] 2054 	lda	((_triggerState + 0x0008) + 2)
+   0D36 9E E7 07      [ 4] 2055 	sta	7,s
+   0D39 C6r00r0B      [ 4] 2056 	lda	((_triggerState + 0x0008) + 3)
+   0D3C 9E E7 08      [ 4] 2057 	sta	8,s
+   0D3F 95            [ 2] 2058 	tsx
+   0D40 E6 04         [ 3] 2059 	lda	4,x
+   0D42 EA 05         [ 3] 2060 	ora	5,x
+   0D44 EA 06         [ 3] 2061 	ora	6,x
+   0D46 EA 07         [ 3] 2062 	ora	7,x
+   0D48 26 05         [ 3] 2063 	bne	00102$
+   0D4A                    2064 00101$:
+   0D4A 4F            [ 1] 2065 	clra
+   0D4B 97            [ 1] 2066 	tax
+   0D4C CCr0Er69      [ 3] 2067 	jmp	00106$
+   0D4F                    2068 00102$:
+                           2069 ;decoders.c:282: timeSinceToothOne = micros() - triggerState.toothOneTime;
+   0D4F CDr00r00      [ 5] 2070 	jsr	_micros
+   0D52 9E E7 08      [ 4] 2071 	sta	8,s
+   0D55 9E EF 07      [ 4] 2072 	stx	7,s
+   0D58 B6*00         [ 3] 2073 	lda	*___SDCC_hc08_ret2
+   0D5A 9E E7 06      [ 4] 2074 	sta	6,s
+   0D5D B6*00         [ 3] 2075 	lda	*___SDCC_hc08_ret3
+   0D5F 9E E7 05      [ 4] 2076 	sta	5,s
+   0D62 C6r00r0C      [ 4] 2077 	lda	(_triggerState + 0x000c)
+   0D65 9E E7 09      [ 4] 2078 	sta	9,s
+   0D68 C6r00r0D      [ 4] 2079 	lda	((_triggerState + 0x000c) + 1)
+   0D6B 9E E7 0A      [ 4] 2080 	sta	10,s
+   0D6E C6r00r0E      [ 4] 2081 	lda	((_triggerState + 0x000c) + 2)
+   0D71 9E E7 0B      [ 4] 2082 	sta	11,s
+   0D74 C6r00r0F      [ 4] 2083 	lda	((_triggerState + 0x000c) + 3)
+   0D77 9E E7 0C      [ 4] 2084 	sta	12,s
+   0D7A 95            [ 2] 2085 	tsx
+   0D7B E6 07         [ 3] 2086 	lda	7,x
+   0D7D E0 0B         [ 3] 2087 	sub	11,x
+   0D7F E7 0B         [ 3] 2088 	sta	11,x
+   0D81 E6 06         [ 3] 2089 	lda	6,x
+   0D83 E2 0A         [ 3] 2090 	sbc	10,x
+   0D85 E7 0A         [ 3] 2091 	sta	10,x
+   0D87 E6 05         [ 3] 2092 	lda	5,x
+   0D89 E2 09         [ 3] 2093 	sbc	9,x
+   0D8B E7 09         [ 3] 2094 	sta	9,x
+   0D8D E6 04         [ 3] 2095 	lda	4,x
+   0D8F E2 08         [ 3] 2096 	sbc	8,x
+   0D91 E7 08         [ 3] 2097 	sta	8,x
+   0D93 E6 08         [ 3] 2098 	lda	8,x
+   0D95 F7            [ 2] 2099 	sta	,x
+   0D96 E6 09         [ 3] 2100 	lda	9,x
+   0D98 E7 01         [ 3] 2101 	sta	1,x
+   0D9A E6 0A         [ 3] 2102 	lda	10,x
+   0D9C E7 02         [ 3] 2103 	sta	2,x
+   0D9E E6 0B         [ 3] 2104 	lda	11,x
+   0DA0 E7 03         [ 3] 2105 	sta	3,x
+                           2106 ;decoders.c:283: if (timeSinceToothOne >= triggerState.revolutionTime) {
+   0DA2 C6r00r08      [ 4] 2107 	lda	(_triggerState + 0x0008)
+   0DA5 E7 04         [ 3] 2108 	sta	4,x
+   0DA7 C6r00r09      [ 4] 2109 	lda	((_triggerState + 0x0008) + 1)
+   0DAA E7 05         [ 3] 2110 	sta	5,x
+   0DAC C6r00r0A      [ 4] 2111 	lda	((_triggerState + 0x0008) + 2)
+   0DAF E7 06         [ 3] 2112 	sta	6,x
+   0DB1 C6r00r0B      [ 4] 2113 	lda	((_triggerState + 0x0008) + 3)
+   0DB4 E7 07         [ 3] 2114 	sta	7,x
+   0DB6 E6 0B         [ 3] 2115 	lda	11,x
+   0DB8 E0 07         [ 3] 2116 	sub	7,x
+   0DBA E6 0A         [ 3] 2117 	lda	10,x
+   0DBC E2 06         [ 3] 2118 	sbc	6,x
+   0DBE E6 09         [ 3] 2119 	lda	9,x
+   0DC0 E2 05         [ 3] 2120 	sbc	5,x
+   0DC2 E6 08         [ 3] 2121 	lda	8,x
+   0DC4 E2 04         [ 3] 2122 	sbc	4,x
+   0DC6 25 2B         [ 3] 2123 	bcs	00105$
+                           2124 ;decoders.c:284: timeSinceToothOne = triggerState.revolutionTime - 1;
+   0DC8 C6r00r08      [ 4] 2125 	lda	(_triggerState + 0x0008)
+   0DCB E7 08         [ 3] 2126 	sta	8,x
+   0DCD C6r00r09      [ 4] 2127 	lda	((_triggerState + 0x0008) + 1)
+   0DD0 E7 09         [ 3] 2128 	sta	9,x
+   0DD2 C6r00r0A      [ 4] 2129 	lda	((_triggerState + 0x0008) + 2)
+   0DD5 E7 0A         [ 3] 2130 	sta	10,x
+   0DD7 C6r00r0B      [ 4] 2131 	lda	((_triggerState + 0x0008) + 3)
+   0DDA E7 0B         [ 3] 2132 	sta	11,x
+   0DDC E6 0B         [ 3] 2133 	lda	11,x
+   0DDE A0 01         [ 2] 2134 	sub	#0x01
+   0DE0 E7 03         [ 3] 2135 	sta	3,x
+   0DE2 E6 0A         [ 3] 2136 	lda	10,x
+   0DE4 A2 00         [ 2] 2137 	sbc	#0x00
+   0DE6 E7 02         [ 3] 2138 	sta	2,x
+   0DE8 E6 09         [ 3] 2139 	lda	9,x
+   0DEA A2 00         [ 2] 2140 	sbc	#0x00
+   0DEC E7 01         [ 3] 2141 	sta	1,x
+   0DEE E6 08         [ 3] 2142 	lda	8,x
+   0DF0 A2 00         [ 2] 2143 	sbc	#0x00
+   0DF2 F7            [ 2] 2144 	sta	,x
+   0DF3                    2145 00105$:
+                           2146 ;decoders.c:287: angle = (uint16_t)((timeSinceToothOne * 360UL) / triggerState.revolutionTime);
+   0DF3 95            [ 2] 2147 	tsx
+   0DF4 E6 03         [ 3] 2148 	lda	3,x
+   0DF6 87            [ 2] 2149 	psha
+   0DF7 E6 02         [ 3] 2150 	lda	2,x
+   0DF9 87            [ 2] 2151 	psha
+   0DFA E6 01         [ 3] 2152 	lda	1,x
+   0DFC 87            [ 2] 2153 	psha
+   0DFD F6            [ 2] 2154 	lda	,x
+   0DFE 87            [ 2] 2155 	psha
+   0DFF A6 68         [ 2] 2156 	lda	#0x68
+   0E01 87            [ 2] 2157 	psha
+   0E02 A6 01         [ 2] 2158 	lda	#0x01
+   0E04 87            [ 2] 2159 	psha
+   0E05 4A            [ 1] 2160 	deca
+   0E06 87            [ 2] 2161 	psha
+   0E07 87            [ 2] 2162 	psha
+   0E08 CDr00r00      [ 5] 2163 	jsr	__mullong
+   0E0B 9E E7 14      [ 4] 2164 	sta	20,s
+   0E0E 9E EF 13      [ 4] 2165 	stx	19,s
+   0E11 B6*00         [ 3] 2166 	lda	*___SDCC_hc08_ret2
+   0E13 9E E7 12      [ 4] 2167 	sta	18,s
+   0E16 B6*00         [ 3] 2168 	lda	*___SDCC_hc08_ret3
+   0E18 9E E7 11      [ 4] 2169 	sta	17,s
+   0E1B A7 08         [ 2] 2170 	ais	#8
+   0E1D C6r00r08      [ 4] 2171 	lda	(_triggerState + 0x0008)
+   0E20 9E E7 05      [ 4] 2172 	sta	5,s
+   0E23 C6r00r09      [ 4] 2173 	lda	((_triggerState + 0x0008) + 1)
+   0E26 9E E7 06      [ 4] 2174 	sta	6,s
+   0E29 C6r00r0A      [ 4] 2175 	lda	((_triggerState + 0x0008) + 2)
+   0E2C 9E E7 07      [ 4] 2176 	sta	7,s
+   0E2F C6r00r0B      [ 4] 2177 	lda	((_triggerState + 0x0008) + 3)
+   0E32 9E E7 08      [ 4] 2178 	sta	8,s
+   0E35 95            [ 2] 2179 	tsx
+   0E36 E6 07         [ 3] 2180 	lda	7,x
+   0E38 87            [ 2] 2181 	psha
+   0E39 E6 06         [ 3] 2182 	lda	6,x
+   0E3B 87            [ 2] 2183 	psha
+   0E3C E6 05         [ 3] 2184 	lda	5,x
+   0E3E 87            [ 2] 2185 	psha
+   0E3F E6 04         [ 3] 2186 	lda	4,x
+   0E41 87            [ 2] 2187 	psha
+   0E42 E6 0B         [ 3] 2188 	lda	11,x
+   0E44 87            [ 2] 2189 	psha
+   0E45 E6 0A         [ 3] 2190 	lda	10,x
+   0E47 87            [ 2] 2191 	psha
+   0E48 E6 09         [ 3] 2192 	lda	9,x
+   0E4A 87            [ 2] 2193 	psha
+   0E4B E6 08         [ 3] 2194 	lda	8,x
+   0E4D 87            [ 2] 2195 	psha
+   0E4E CDr00r00      [ 5] 2196 	jsr	__divulong
+   0E51 9E E7 14      [ 4] 2197 	sta	20,s
+   0E54 9E EF 13      [ 4] 2198 	stx	19,s
+   0E57 B6*00         [ 3] 2199 	lda	*___SDCC_hc08_ret2
+   0E59 9E E7 12      [ 4] 2200 	sta	18,s
+   0E5C B6*00         [ 3] 2201 	lda	*___SDCC_hc08_ret3
+   0E5E 9E E7 11      [ 4] 2202 	sta	17,s
+   0E61 A7 08         [ 2] 2203 	ais	#8
+   0E63 9E E6 0C      [ 4] 2204 	lda	12,s
+   0E66 9E EE 0B      [ 4] 2205 	ldx	11,s
+                           2206 ;decoders.c:288: return angle;
+   0E69                    2207 00106$:
+                           2208 ;decoders.c:289: }
+   0E69 A7 0C         [ 2] 2209 	ais	#12
+   0E6B 81            [ 4] 2210 	rts
+                           2211 ;------------------------------------------------------------
+                           2212 ;Allocation info for local variables in function 'attachTriggerInterrupt'
+                           2213 ;------------------------------------------------------------
+                           2214 ;decoders.c:294: void attachTriggerInterrupt(void) {
+                           2215 ;	-----------------------------------------
+                           2216 ;	 function attachTriggerInterrupt
+                           2217 ;	-----------------------------------------
+                           2218 ;	Register assignment is optimal.
+                           2219 ;	Stack space usage: 0 bytes.
+   0E6C                    2220 _attachTriggerInterrupt:
+                           2221 ;decoders.c:298: INTSCR &= (uint8_t)~(1 << INTSCR_MODE);
+   0E6C B6 1D         [ 3] 2222 	lda	*0x1d
+   0E6E A4 FE         [ 2] 2223 	and	#0xfe
+   0E70 B7 1D         [ 3] 2224 	sta	*0x1d
+                           2225 ;decoders.c:301: INTSCR &= (uint8_t)~(1 << INTSCR_IMASK);
+   0E72 B6 1D         [ 3] 2226 	lda	*0x1d
+   0E74 A4 FD         [ 2] 2227 	and	#0xfd
+   0E76 B7 1D         [ 3] 2228 	sta	*0x1d
+                           2229 ;decoders.c:302: }
+   0E78 81            [ 4] 2230 	rts
+                           2231 ;------------------------------------------------------------
+                           2232 ;Allocation info for local variables in function 'resetTriggerState'
+                           2233 ;------------------------------------------------------------
+                           2234 ;decoders.c:304: void resetTriggerState(void) {
+                           2235 ;	-----------------------------------------
+                           2236 ;	 function resetTriggerState
+                           2237 ;	-----------------------------------------
+                           2238 ;	Register assignment is optimal.
+                           2239 ;	Stack space usage: 0 bytes.
+   0E79                    2240 _resetTriggerState:
+                           2241 ;decoders.c:327: }
+   0E79 85            [ 1] 2242 	tpa
+   0E7A 9B            [ 2] 2243 	sei
+   0E7B 87            [ 2] 2244 	psha
+                           2245 ;decoders.c:306: triggerState.toothLastToothTime = 0;
+   0E7C 4F            [ 1] 2246 	clra
+   0E7D C7r00r00      [ 4] 2247 	sta	_triggerState
+   0E80 C7r00r01      [ 4] 2248 	sta	(_triggerState + 1)
+   0E83 C7r00r02      [ 4] 2249 	sta	(_triggerState + 2)
+   0E86 C7r00r03      [ 4] 2250 	sta	(_triggerState + 3)
+                           2251 ;decoders.c:307: triggerState.toothLastMinusOneTime = 0;
+   0E89 C7r00r04      [ 4] 2252 	sta	(_triggerState + 0x0004)
+   0E8C C7r00r05      [ 4] 2253 	sta	((_triggerState + 0x0004) + 1)
+   0E8F C7r00r06      [ 4] 2254 	sta	((_triggerState + 0x0004) + 2)
+   0E92 C7r00r07      [ 4] 2255 	sta	((_triggerState + 0x0004) + 3)
+                           2256 ;decoders.c:308: triggerState.revolutionTime = 0;
+   0E95 C7r00r08      [ 4] 2257 	sta	(_triggerState + 0x0008)
+   0E98 C7r00r09      [ 4] 2258 	sta	((_triggerState + 0x0008) + 1)
+   0E9B C7r00r0A      [ 4] 2259 	sta	((_triggerState + 0x0008) + 2)
+   0E9E C7r00r0B      [ 4] 2260 	sta	((_triggerState + 0x0008) + 3)
+                           2261 ;decoders.c:309: triggerState.toothOneTime = 0;
+   0EA1 C7r00r0C      [ 4] 2262 	sta	(_triggerState + 0x000c)
+   0EA4 C7r00r0D      [ 4] 2263 	sta	((_triggerState + 0x000c) + 1)
+   0EA7 C7r00r0E      [ 4] 2264 	sta	((_triggerState + 0x000c) + 2)
+   0EAA C7r00r0F      [ 4] 2265 	sta	((_triggerState + 0x000c) + 3)
+                           2266 ;decoders.c:311: triggerState.toothCurrentCount = 0;
+   0EAD C7r00r10      [ 4] 2267 	sta	(_triggerState + 0x0010)
+                           2268 ;decoders.c:312: triggerState.toothTotalCount = 0;
+   0EB0 C7r00r11      [ 4] 2269 	sta	(_triggerState + 0x0011)
+                           2270 ;decoders.c:313: triggerState.triggerActualTeeth = 0;
+   0EB3 C7r00r12      [ 4] 2271 	sta	(_triggerState + 0x0012)
+                           2272 ;decoders.c:315: triggerState.curGap = 0;
+   0EB6 C7r00r13      [ 4] 2273 	sta	(_triggerState + 0x0013)
+   0EB9 C7r00r14      [ 4] 2274 	sta	((_triggerState + 0x0013) + 1)
+   0EBC C7r00r15      [ 4] 2275 	sta	((_triggerState + 0x0013) + 2)
+   0EBF C7r00r16      [ 4] 2276 	sta	((_triggerState + 0x0013) + 3)
+                           2277 ;decoders.c:316: triggerState.lastGap = 0;
+   0EC2 C7r00r17      [ 4] 2278 	sta	(_triggerState + 0x0017)
+   0EC5 C7r00r18      [ 4] 2279 	sta	((_triggerState + 0x0017) + 1)
+   0EC8 C7r00r19      [ 4] 2280 	sta	((_triggerState + 0x0017) + 2)
+   0ECB C7r00r1A      [ 4] 2281 	sta	((_triggerState + 0x0017) + 3)
+                           2282 ;decoders.c:317: triggerState.hasSync = false;
+   0ECE C7r00r1B      [ 4] 2283 	sta	(_triggerState + 0x001b)
+                           2284 ;decoders.c:318: triggerState.syncLossCounter = 0;
+   0ED1 C7r00r1C      [ 4] 2285 	sta	(_triggerState + 0x001c)
+                           2286 ;decoders.c:320: triggerState.RPM = 0;
+   0ED4 C7r00r1D      [ 4] 2287 	sta	(_triggerState + 0x001d)
+   0ED7 C7r00r1E      [ 4] 2288 	sta	((_triggerState + 0x001d) + 1)
+                           2289 ;decoders.c:321: triggerState.toothPeriod = 0;
+   0EDA C7r00r1F      [ 4] 2290 	sta	(_triggerState + 0x001f)
+   0EDD C7r00r20      [ 4] 2291 	sta	((_triggerState + 0x001f) + 1)
+   0EE0 C7r00r21      [ 4] 2292 	sta	((_triggerState + 0x001f) + 2)
+   0EE3 C7r00r22      [ 4] 2293 	sta	((_triggerState + 0x001f) + 3)
+                           2294 ;decoders.c:323: currentStatus.hasSync = false;
+   0EE6 C7r00r02      [ 4] 2295 	sta	(_currentStatus + 0x0002)
+                           2296 ;decoders.c:324: currentStatus.RPM = 0;
+   0EE9 C7r00r00      [ 4] 2297 	sta	_currentStatus
+   0EEC C7r00r01      [ 4] 2298 	sta	(_currentStatus + 1)
+                           2299 ;decoders.c:326: revolutionCounter = 0;
+   0EEF C7r00r00      [ 4] 2300 	sta	_revolutionCounter
+   0EF2 86            [ 2] 2301 	pula
+   0EF3 84            [ 2] 2302 	tap
+                           2303 ;decoders.c:328: }
+   0EF4 81            [ 4] 2304 	rts
+                           2305 ;------------------------------------------------------------
+                           2306 ;Allocation info for local variables in function 'isr_irq'
+                           2307 ;------------------------------------------------------------
+                           2308 ;decoders.c:334: void isr_irq(void) __interrupt(2) {
+                           2309 ;	-----------------------------------------
+                           2310 ;	 function isr_irq
+                           2311 ;	-----------------------------------------
+                           2312 ;	Register assignment is optimal.
+                           2313 ;	Stack space usage: 0 bytes.
+   0EF5                    2314 _isr_irq:
+   0EF5 8B            [ 2] 2315 	pshh
+                           2316 ;decoders.c:335: if (currentTriggerISR != 0) {
+   0EF6 C6r00r29      [ 4] 2317 	lda	_currentTriggerISR
+   0EF9 CAr00r2A      [ 4] 2318 	ora	(_currentTriggerISR + 1)
+   0EFC 27 0D         [ 3] 2319 	beq	00103$
+                           2320 ;decoders.c:336: currentTriggerISR();
+   0EFE AD 02         [ 4] 2321 	bsr	00112$
+   0F00 20 09         [ 3] 2322 	bra	00111$
+   0F02                    2323 00112$:
+   0F02 C6r00r2A      [ 4] 2324 	lda	(_currentTriggerISR + 1)
+   0F05 87            [ 2] 2325 	psha
+   0F06 C6r00r29      [ 4] 2326 	lda	_currentTriggerISR
+   0F09 87            [ 2] 2327 	psha
+   0F0A 81            [ 4] 2328 	rts
+   0F0B                    2329 00111$:
+   0F0B                    2330 00103$:
+                           2331 ;decoders.c:338: }
+   0F0B 8A            [ 2] 2332 	pulh
+   0F0C 80            [ 7] 2333 	rti
+                           2334 	.area CSEG    (CODE)
+                           2335 	.area CONST   (CODE)
+                           2336 	.area XINIT   (CODE)
+   0000                    2337 __xinit__revolutionCounter:
+   0000 00                 2338 	.db #0x00	; 0
+   0001                    2339 __xinit__triggerEdgesPerTooth:
+   0001 01                 2340 	.db #0x01	; 1
+                           2341 	.area CABS    (ABS,CODE)

@@ -1,0 +1,464 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module main
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 	.area	CODEIVT (ABS)
+   FFFE                      20 	.org	0xfffe
+   FFFEr00r00                21 	.dw	__sdcc_gs_init_startup
+                             22 
+                             23 	.area GSINIT0
+   0000                      24 __sdcc_gs_init_startup:
+   0000 45 02 40      [ 3]   25 	ldhx	#0x0240
+   0003 94            [ 2]   26 	txs
+   0004 CDr00r00      [ 5]   27 	jsr	__sdcc_external_startup
+   0007 27 03         [ 3]   28 	beq	__sdcc_init_data
+   0009 CCr00r00      [ 3]   29 	jmp	__sdcc_program_startup
+   000C                      30 __sdcc_init_data:
+                             31 ; _hc08_genXINIT() start
+   000C 45 00 00      [ 3]   32         ldhx #0
+   000F                      33 00001$:
+   000F 65r00r00      [ 3]   34         cphx #l_XINIT
+   0012 27 0A         [ 3]   35         beq  00002$
+   0014 D6r00r00      [ 4]   36         lda  s_XINIT,x
+   0017 D7r00r00      [ 4]   37         sta  s_XISEG,x
+   001A AF 01         [ 2]   38         aix  #1
+   001C 20 F1         [ 3]   39         bra  00001$
+   001E                      40 00002$:
+                             41 ; _hc08_genXINIT() end
+                             42 	.area GSFINAL
+   0000 CCr00r00      [ 3]   43 	jmp	__sdcc_program_startup
+                             44 
+                             45 	.area CSEG
+   0000                      46 __sdcc_program_startup:
+   0000 CDr01r0C      [ 5]   47 	jsr	_main
+   0003 20 FE         [ 3]   48 	bra	.
+                             49 ;--------------------------------------------------------
+                             50 ; Public variables in this module
+                             51 ;--------------------------------------------------------
+                             52 	.globl _main
+                             53 	.globl _commsProcess
+                             54 	.globl _commsInit
+                             55 	.globl _calculateDwell
+                             56 	.globl _calculateAdvance
+                             57 	.globl _updateEngineStatus
+                             58 	.globl _calculateInjection
+                             59 	.globl _initTables
+                             60 	.globl _micros
+                             61 	.globl _timebaseInit
+                             62 	.globl _checkSyncLoss
+                             63 	.globl _calculateRPM
+                             64 	.globl _triggerInit
+                             65 	.globl _processInjectorPolling
+                             66 	.globl _schedulerInit
+                             67 ;--------------------------------------------------------
+                             68 ; ram data
+                             69 ;--------------------------------------------------------
+                             70 	.area DSEG    (PAG)
+                             71 ;--------------------------------------------------------
+                             72 ; overlayable items in ram
+                             73 ;--------------------------------------------------------
+                             74 ;--------------------------------------------------------
+                             75 ; absolute ram data
+                             76 ;--------------------------------------------------------
+                             77 	.area IABS    (ABS)
+                             78 	.area IABS    (ABS)
+                             79 ;--------------------------------------------------------
+                             80 ; absolute external ram data
+                             81 ;--------------------------------------------------------
+                             82 	.area XABS    (ABS)
+                             83 ;--------------------------------------------------------
+                             84 ; external initialized ram data
+                             85 ;--------------------------------------------------------
+                             86 	.area XISEG
+                             87 ;--------------------------------------------------------
+                             88 ; extended address mode data
+                             89 ;--------------------------------------------------------
+                             90 	.area XSEG
+   0000                      91 _main_lastLoop67Hz_196608_76:
+   0000                      92 	.ds 4
+                             93 ;--------------------------------------------------------
+                             94 ; global & static initialisations
+                             95 ;--------------------------------------------------------
+                             96 	.area HOME    (CODE)
+                             97 	.area GSINIT  (CODE)
+                             98 	.area GSFINAL (CODE)
+                             99 	.area GSINIT  (CODE)
+                            100 ;------------------------------------------------------------
+                            101 ;Allocation info for local variables in function 'main'
+                            102 ;------------------------------------------------------------
+                            103 ;now                       Allocated to stack - sp +2
+                            104 ;newPW1                    Allocated to stack - sp +4
+                            105 ;newAdvance                Allocated to stack - sp +3
+                            106 ;newDwell                  Allocated to registers x h 
+                            107 ;sloc0                     Allocated to stack - sp -5
+                            108 ;sloc1                     Allocated to stack - sp -1
+                            109 ;lastLoop67Hz              Allocated with name '_main_lastLoop67Hz_196608_76'
+                            110 ;------------------------------------------------------------
+                            111 ;main.c:29: static uint32_t lastLoop67Hz = 0;
+   0000 45r00r00      [ 3]  112 	ldhx	#_main_lastLoop67Hz_196608_76
+   0003 4F            [ 1]  113 	clra
+   0004 F7            [ 2]  114 	sta	,x
+   0005 E7 01         [ 3]  115 	sta	1,x
+   0007 E7 02         [ 3]  116 	sta	2,x
+   0009 E7 03         [ 3]  117 	sta	3,x
+                            118 ;--------------------------------------------------------
+                            119 ; Home
+                            120 ;--------------------------------------------------------
+                            121 	.area HOME    (CODE)
+                            122 	.area HOME    (CODE)
+                            123 ;--------------------------------------------------------
+                            124 ; code
+                            125 ;--------------------------------------------------------
+                            126 	.area CSEG    (CODE)
+                            127 ;------------------------------------------------------------
+                            128 ;Allocation info for local variables in function 'noInterrupts'
+                            129 ;------------------------------------------------------------
+                            130 ;globals.h:100: static inline void noInterrupts(void) { __asm sei __endasm; }
+                            131 ;	-----------------------------------------
+                            132 ;	 function noInterrupts
+                            133 ;	-----------------------------------------
+                            134 ;	Register assignment is optimal.
+                            135 ;	Stack space usage: 0 bytes.
+   0005                     136 _noInterrupts:
+   0005 9B            [ 2]  137 	 sei	
+   0006 81            [ 4]  138 	rts
+                            139 ;------------------------------------------------------------
+                            140 ;Allocation info for local variables in function 'interrupts'
+                            141 ;------------------------------------------------------------
+                            142 ;globals.h:101: static inline void interrupts(void)   { __asm cli __endasm; }
+                            143 ;	-----------------------------------------
+                            144 ;	 function interrupts
+                            145 ;	-----------------------------------------
+                            146 ;	Register assignment is optimal.
+                            147 ;	Stack space usage: 0 bytes.
+   0007                     148 _interrupts:
+   0007 9A            [ 2]  149 	 cli	
+   0008 81            [ 4]  150 	rts
+                            151 ;------------------------------------------------------------
+                            152 ;Allocation info for local variables in function 'getTimer1Count'
+                            153 ;------------------------------------------------------------
+                            154 ;sloc0                     Allocated to stack - sp +1
+                            155 ;------------------------------------------------------------
+                            156 ;scheduler.h:55: static inline uint16_t getTimer1Count(void) {
+                            157 ;	-----------------------------------------
+                            158 ;	 function getTimer1Count
+                            159 ;	-----------------------------------------
+                            160 ;	Register assignment is optimal.
+                            161 ;	Stack space usage: 2 bytes.
+   0009                     162 _getTimer1Count:
+   0009 A7 FE         [ 2]  163 	ais	#-2
+                            164 ;scheduler.h:56: return (uint16_t)((T1CNTH << 8) | T1CNTL);
+   000B B6 21         [ 3]  165 	lda	*0x21
+   000D 5F            [ 1]  166 	clrx
+   000E 9E E7 01      [ 4]  167 	sta	1,s
+   0011 9E EF 02      [ 4]  168 	stx	2,s
+   0014 B6 22         [ 3]  169 	lda	*0x22
+   0016 9E EA 02      [ 4]  170 	ora	2,s
+   0019 87            [ 2]  171 	psha
+   001A 9F            [ 1]  172 	txa
+   001B 9E EA 02      [ 4]  173 	ora	2,s
+   001E 97            [ 1]  174 	tax
+   001F 86            [ 2]  175 	pula
+                            176 ;scheduler.h:57: }
+   0020 A7 02         [ 2]  177 	ais	#2
+   0022 81            [ 4]  178 	rts
+                            179 ;------------------------------------------------------------
+                            180 ;Allocation info for local variables in function 'interpolate'
+                            181 ;------------------------------------------------------------
+                            182 ;x1                        Allocated to stack - sp +11
+                            183 ;x2                        Allocated to stack - sp +13
+                            184 ;y1                        Allocated to stack - sp +15
+                            185 ;y2                        Allocated to stack - sp +17
+                            186 ;x                         Allocated to registers a x 
+                            187 ;sloc0                     Allocated to stack - sp +5
+                            188 ;sloc1                     Allocated to stack - sp +1
+                            189 ;------------------------------------------------------------
+                            190 ;tables.h:33: static inline int16_t interpolate(int16_t x, int16_t x1, int16_t x2, int16_t y1, int16_t y2) {
+                            191 ;	-----------------------------------------
+                            192 ;	 function interpolate
+                            193 ;	-----------------------------------------
+                            194 ;	Register assignment might be sub-optimal.
+                            195 ;	Stack space usage: 8 bytes.
+   0023                     196 _interpolate:
+   0023 A7 F8         [ 2]  197 	ais	#-8
+                            198 ;tables.h:34: if (x2 == x1) return y1;
+   0025 87            [ 2]  199 	psha
+   0026 9E E6 0F      [ 4]  200 	lda	15,s
+   0029 9E E1 0D      [ 4]  201 	cmp	13,s
+   002C 86            [ 2]  202 	pula
+   002D 26 0A         [ 3]  203 	bne	00110$
+   002F 87            [ 2]  204 	psha
+   0030 9E E6 0E      [ 4]  205 	lda	14,s
+   0033 9E E1 0C      [ 4]  206 	cmp	12,s
+   0036 86            [ 2]  207 	pula
+   0037 27 02         [ 3]  208 	beq	00111$
+   0039                     209 00110$:
+   0039 20 09         [ 3]  210 	bra	00102$
+   003B                     211 00111$:
+   003B 95            [ 2]  212 	tsx
+   003C EE 0E         [ 3]  213 	ldx	14,x
+   003E 9E E6 10      [ 4]  214 	lda	16,s
+   0041 CCr01r09      [ 3]  215 	jmp	00103$
+   0044                     216 00102$:
+                            217 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0044 9E E0 0C      [ 4]  218 	sub	12,s
+   0047 87            [ 2]  219 	psha
+   0048 9F            [ 1]  220 	txa
+   0049 9E E2 0C      [ 4]  221 	sbc	12,s
+   004C 97            [ 1]  222 	tax
+   004D 86            [ 2]  223 	pula
+   004E 9E E7 08      [ 4]  224 	sta	8,s
+   0051 9F            [ 1]  225 	txa
+   0052 9E E7 07      [ 4]  226 	sta	7,s
+   0055 49            [ 1]  227 	rola	
+   0056 4F            [ 1]  228 	clra	
+   0057 A2 00         [ 2]  229 	sbc	#0x00
+   0059 9E E7 06      [ 4]  230 	sta	6,s
+   005C 9E E7 05      [ 4]  231 	sta	5,s
+   005F 9E E6 12      [ 4]  232 	lda	18,s
+   0062 9E E0 10      [ 4]  233 	sub	16,s
+   0065 87            [ 2]  234 	psha
+   0066 9E E6 12      [ 4]  235 	lda	18,s
+   0069 9E E2 10      [ 4]  236 	sbc	16,s
+   006C 97            [ 1]  237 	tax
+   006D 86            [ 2]  238 	pula
+   006E 9E E7 04      [ 4]  239 	sta	4,s
+   0071 9F            [ 1]  240 	txa
+   0072 9E E7 03      [ 4]  241 	sta	3,s
+   0075 49            [ 1]  242 	rola	
+   0076 4F            [ 1]  243 	clra	
+   0077 A2 00         [ 2]  244 	sbc	#0x00
+   0079 9E E7 02      [ 4]  245 	sta	2,s
+   007C 9E E7 01      [ 4]  246 	sta	1,s
+   007F 95            [ 2]  247 	tsx
+   0080 E6 03         [ 3]  248 	lda	3,x
+   0082 87            [ 2]  249 	psha
+   0083 E6 02         [ 3]  250 	lda	2,x
+   0085 87            [ 2]  251 	psha
+   0086 E6 01         [ 3]  252 	lda	1,x
+   0088 87            [ 2]  253 	psha
+   0089 F6            [ 2]  254 	lda	,x
+   008A 87            [ 2]  255 	psha
+   008B E6 07         [ 3]  256 	lda	7,x
+   008D 87            [ 2]  257 	psha
+   008E E6 06         [ 3]  258 	lda	6,x
+   0090 87            [ 2]  259 	psha
+   0091 E6 05         [ 3]  260 	lda	5,x
+   0093 87            [ 2]  261 	psha
+   0094 E6 04         [ 3]  262 	lda	4,x
+   0096 87            [ 2]  263 	psha
+   0097 CDr00r00      [ 5]  264 	jsr	__mullong
+   009A 9E E7 0C      [ 4]  265 	sta	12,s
+   009D 9E EF 0B      [ 4]  266 	stx	11,s
+   00A0 B6*00         [ 3]  267 	lda	*___SDCC_hc08_ret2
+   00A2 9E E7 0A      [ 4]  268 	sta	10,s
+   00A5 B6*00         [ 3]  269 	lda	*___SDCC_hc08_ret3
+   00A7 9E E7 09      [ 4]  270 	sta	9,s
+   00AA A7 08         [ 2]  271 	ais	#8
+   00AC 9E E6 0E      [ 4]  272 	lda	14,s
+   00AF 9E E0 0C      [ 4]  273 	sub	12,s
+   00B2 87            [ 2]  274 	psha
+   00B3 9E E6 0E      [ 4]  275 	lda	14,s
+   00B6 9E E2 0C      [ 4]  276 	sbc	12,s
+   00B9 97            [ 1]  277 	tax
+   00BA 86            [ 2]  278 	pula
+   00BB 9E E7 08      [ 4]  279 	sta	8,s
+   00BE 9F            [ 1]  280 	txa
+   00BF 9E E7 07      [ 4]  281 	sta	7,s
+   00C2 49            [ 1]  282 	rola	
+   00C3 4F            [ 1]  283 	clra	
+   00C4 A2 00         [ 2]  284 	sbc	#0x00
+   00C6 9E E7 06      [ 4]  285 	sta	6,s
+   00C9 9E E7 05      [ 4]  286 	sta	5,s
+   00CC 95            [ 2]  287 	tsx
+   00CD E6 07         [ 3]  288 	lda	7,x
+   00CF 87            [ 2]  289 	psha
+   00D0 E6 06         [ 3]  290 	lda	6,x
+   00D2 87            [ 2]  291 	psha
+   00D3 E6 05         [ 3]  292 	lda	5,x
+   00D5 87            [ 2]  293 	psha
+   00D6 E6 04         [ 3]  294 	lda	4,x
+   00D8 87            [ 2]  295 	psha
+   00D9 E6 03         [ 3]  296 	lda	3,x
+   00DB 87            [ 2]  297 	psha
+   00DC E6 02         [ 3]  298 	lda	2,x
+   00DE 87            [ 2]  299 	psha
+   00DF E6 01         [ 3]  300 	lda	1,x
+   00E1 87            [ 2]  301 	psha
+   00E2 F6            [ 2]  302 	lda	,x
+   00E3 87            [ 2]  303 	psha
+   00E4 CDr00r00      [ 5]  304 	jsr	__divslong
+   00E7 9E E7 0C      [ 4]  305 	sta	12,s
+   00EA 9E EF 0B      [ 4]  306 	stx	11,s
+   00ED B6*00         [ 3]  307 	lda	*___SDCC_hc08_ret2
+   00EF 9E E7 0A      [ 4]  308 	sta	10,s
+   00F2 B6*00         [ 3]  309 	lda	*___SDCC_hc08_ret3
+   00F4 9E E7 09      [ 4]  310 	sta	9,s
+   00F7 A7 08         [ 2]  311 	ais	#8
+   00F9 9E E6 04      [ 4]  312 	lda	4,s
+   00FC 9E EE 03      [ 4]  313 	ldx	3,s
+   00FF 9E EB 10      [ 4]  314 	add	16,s
+   0102 87            [ 2]  315 	psha
+   0103 9F            [ 1]  316 	txa
+   0104 9E E9 10      [ 4]  317 	adc	16,s
+   0107 97            [ 1]  318 	tax
+   0108 86            [ 2]  319 	pula
+   0109                     320 00103$:
+                            321 ;tables.h:36: }
+   0109 A7 08         [ 2]  322 	ais	#8
+   010B 81            [ 4]  323 	rts
+                            324 ;------------------------------------------------------------
+                            325 ;Allocation info for local variables in function 'main'
+                            326 ;------------------------------------------------------------
+                            327 ;now                       Allocated to stack - sp +8
+                            328 ;newPW1                    Allocated to stack - sp +10
+                            329 ;newAdvance                Allocated to stack - sp +9
+                            330 ;newDwell                  Allocated to registers x h 
+                            331 ;sloc0                     Allocated to stack - sp +1
+                            332 ;sloc1                     Allocated to stack - sp +5
+                            333 ;lastLoop67Hz              Allocated with name '_main_lastLoop67Hz_196608_76'
+                            334 ;------------------------------------------------------------
+                            335 ;main.c:19: int main(void) {
+                            336 ;	-----------------------------------------
+                            337 ;	 function main
+                            338 ;	-----------------------------------------
+                            339 ;	Register assignment is optimal.
+                            340 ;	Stack space usage: 11 bytes.
+   010C                     341 _main:
+   010C A7 F5         [ 2]  342 	ais	#-11
+                            343 ;main.c:20: timebaseInit();
+   010E CDr00r00      [ 5]  344 	jsr	_timebaseInit
+                            345 ;main.c:21: schedulerInit();
+   0111 CDr00r00      [ 5]  346 	jsr	_schedulerInit
+                            347 ;main.c:22: initTables();
+   0114 CDr00r00      [ 5]  348 	jsr	_initTables
+                            349 ;main.c:23: triggerInit();
+   0117 CDr00r00      [ 5]  350 	jsr	_triggerInit
+                            351 ;main.c:24: commsInit();
+   011A CDr00r00      [ 5]  352 	jsr	_commsInit
+                            353 ;globals.h:101: static inline void interrupts(void)   { __asm cli __endasm; }
+   011D 9A            [ 2]  354 	 cli	
+                            355 ;main.c:26: interrupts();
+   011E                     356 00108$:
+                            357 ;main.c:30: uint32_t now = micros();
+   011E CDr00r00      [ 5]  358 	jsr	_micros
+   0121 9E E7 04      [ 4]  359 	sta	4,s
+   0124 9E EF 03      [ 4]  360 	stx	3,s
+   0127 B6*00         [ 3]  361 	lda	*___SDCC_hc08_ret2
+   0129 9E E7 02      [ 4]  362 	sta	2,s
+   012C B6*00         [ 3]  363 	lda	*___SDCC_hc08_ret3
+   012E 9E E7 01      [ 4]  364 	sta	1,s
+                            365 ;main.c:33: commsProcess();
+   0131 CDr00r00      [ 5]  366 	jsr	_commsProcess
+                            367 ;main.c:36: processInjectorPolling();
+   0134 CDr00r00      [ 5]  368 	jsr	_processInjectorPolling
+                            369 ;main.c:38: if ((uint32_t)(now - lastLoop67Hz) >= 67000UL) {
+   0137 95            [ 2]  370 	tsx
+   0138 45r00r00      [ 3]  371 	ldhx	#_main_lastLoop67Hz_196608_76
+   013B 9E E6 04      [ 4]  372 	lda	4,s
+   013E E0 03         [ 3]  373 	sub	3,x
+   0140 9E E7 08      [ 4]  374 	sta	8,s
+   0143 9E E6 03      [ 4]  375 	lda	3,s
+   0146 E2 02         [ 3]  376 	sbc	2,x
+   0148 9E E7 07      [ 4]  377 	sta	7,s
+   014B 9E E6 02      [ 4]  378 	lda	2,s
+   014E E2 01         [ 3]  379 	sbc	1,x
+   0150 9E E7 06      [ 4]  380 	sta	6,s
+   0153 9E E6 01      [ 4]  381 	lda	1,s
+   0156 F2            [ 2]  382 	sbc	,x
+   0157 9E E7 05      [ 4]  383 	sta	5,s
+   015A 95            [ 2]  384 	tsx
+   015B E6 07         [ 3]  385 	lda	7,x
+   015D A0 B8         [ 2]  386 	sub	#0xb8
+   015F E6 06         [ 3]  387 	lda	6,x
+   0161 A2 05         [ 2]  388 	sbc	#0x05
+   0163 E6 05         [ 3]  389 	lda	5,x
+   0165 A2 01         [ 2]  390 	sbc	#0x01
+   0167 E6 04         [ 3]  391 	lda	4,x
+   0169 A2 00         [ 2]  392 	sbc	#0x00
+   016B 25 B1         [ 3]  393 	bcs	00108$
+                            394 ;main.c:39: lastLoop67Hz = now;
+   016D 45r00r00      [ 3]  395 	ldhx	#_main_lastLoop67Hz_196608_76
+   0170 9E E6 01      [ 4]  396 	lda	1,s
+   0173 F7            [ 2]  397 	sta	,x
+   0174 9E E6 02      [ 4]  398 	lda	2,s
+   0177 E7 01         [ 3]  399 	sta	1,x
+   0179 9E E6 03      [ 4]  400 	lda	3,s
+   017C E7 02         [ 3]  401 	sta	2,x
+   017E 9E E6 04      [ 4]  402 	lda	4,s
+   0181 E7 03         [ 3]  403 	sta	3,x
+                            404 ;main.c:40: calculateRPM();
+   0183 CDr00r00      [ 5]  405 	jsr	_calculateRPM
+                            406 ;main.c:41: checkSyncLoss();
+   0186 CDr00r00      [ 5]  407 	jsr	_checkSyncLoss
+                            408 ;main.c:42: updateEngineStatus();
+   0189 CDr00r00      [ 5]  409 	jsr	_updateEngineStatus
+                            410 ;main.c:44: if (currentStatus.hasSync && currentStatus.RPM > 0) {
+   018C C6r00r02      [ 4]  411 	lda	(_currentStatus + 0x0002)
+   018F 27 8D         [ 3]  412 	beq	00108$
+   0191 CEr00r00      [ 4]  413 	ldx	_currentStatus
+   0194 C6r00r01      [ 4]  414 	lda	(_currentStatus + 1)
+   0197 26 01         [ 3]  415 	bne	00134$
+   0199 5D            [ 1]  416 	tstx
+   019A                     417 00134$:
+   019A 27 82         [ 3]  418 	beq	00108$
+                            419 ;main.c:49: uint16_t newPW1 = calculateInjection();
+   019C CDr00r00      [ 5]  420 	jsr	_calculateInjection
+   019F 9E E7 0B      [ 4]  421 	sta	11,s
+   01A2 9E EF 0A      [ 4]  422 	stx	10,s
+                            423 ;main.c:50: int8_t newAdvance = calculateAdvance();
+   01A5 CDr00r00      [ 5]  424 	jsr	_calculateAdvance
+   01A8 9E E7 09      [ 4]  425 	sta	9,s
+                            426 ;main.c:51: uint16_t newDwell = calculateDwell();
+   01AB CDr00r00      [ 5]  427 	jsr	_calculateDwell
+   01AE 87            [ 2]  428 	psha
+   01AF 89            [ 2]  429 	pshx
+   01B0 8A            [ 2]  430 	pulh
+   01B1 88            [ 2]  431 	pulx
+                            432 ;main.c:58: }
+   01B2 85            [ 1]  433 	tpa
+   01B3 9B            [ 2]  434 	sei
+   01B4 87            [ 2]  435 	psha
+                            436 ;main.c:54: currentStatus.PW1 = newPW1;
+   01B5 9E E6 0B      [ 4]  437 	lda	11,s
+   01B8 C7r00r1C      [ 4]  438 	sta	(_currentStatus + 0x001c)
+   01BB 9E E6 0C      [ 4]  439 	lda	12,s
+   01BE C7r00r1D      [ 4]  440 	sta	((_currentStatus + 0x001c) + 1)
+                            441 ;main.c:55: currentStatus.PW2 = newPW1;
+   01C1 9E E6 0B      [ 4]  442 	lda	11,s
+   01C4 C7r00r1E      [ 4]  443 	sta	(_currentStatus + 0x001e)
+   01C7 9E E6 0C      [ 4]  444 	lda	12,s
+   01CA C7r00r1F      [ 4]  445 	sta	((_currentStatus + 0x001e) + 1)
+                            446 ;main.c:56: currentStatus.advance = newAdvance;
+   01CD 9E E6 0A      [ 4]  447 	lda	10,s
+   01D0 C7r00r25      [ 4]  448 	sta	(_currentStatus + 0x0025)
+                            449 ;main.c:57: currentStatus.dwell = newDwell;
+   01D3 8B            [ 2]  450 	pshh
+   01D4 86            [ 2]  451 	pula
+   01D5 C7r00r26      [ 4]  452 	sta	(_currentStatus + 0x0026)
+   01D8 CFr00r27      [ 4]  453 	stx	((_currentStatus + 0x0026) + 1)
+   01DB 86            [ 2]  454 	pula
+   01DC 84            [ 2]  455 	tap
+   01DD CCr01r1E      [ 3]  456 	jmp	00108$
+                            457 ;main.c:63: return 0;
+                            458 ;main.c:64: }
+   01E0 A7 0B         [ 2]  459 	ais	#11
+   01E2 81            [ 4]  460 	rts
+                            461 	.area CSEG    (CODE)
+                            462 	.area CONST   (CODE)
+                            463 	.area XINIT   (CODE)
+                            464 	.area CABS    (ABS,CODE)

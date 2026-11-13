@@ -1,0 +1,116 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  2710 L
+    .__.ABS.                                                    =  0000 G
+    .__.CPU.                                                    =  0000 L
+    .__.H$L.                                                    =  0001 L
+    ___SDCC_hc08_ret2                                              **** GX
+    ___SDCC_hc08_ret3                                              **** GX
+    ___memcpy                                                      **** GX
+  7 ___str_0                                                       0420 R
+  7 ___str_1                                                       0431 R
+  7 ___str_2                                                       0434 R
+  7 ___str_3                                                       0445 R
+  7 ___str_4                                                       0449 R
+  7 ___str_5                                                       045A R
+    __divslong                                                     **** GX
+    __divuint                                                      **** GX
+    __mulint                                                       **** GX
+    __mullong                                                      **** GX
+  6 __xinit__expectedLength                                        0002 R
+  6 __xinit__modernProtocol                                        0001 R
+  6 __xinit__serialBytesReceived                                   0000 R
+  5 _burnEEPROM                                                    174D GR
+  5 _calculateCRC32                                                01AA GR
+  5 _clampU8                                                       014C R
+  5 _commsInit                                                     019C GR
+  5 _commsProcess                                                  027F GR
+    _configPage1                                                   **** GX
+    _configPage2                                                   **** GX
+  5 _crc32Update                                                   00ED R
+  7 _crc32_table                                                   0000 R
+    _currentStatus                                                 **** GX
+  5 _decodeIgnitionValue                                           0178 R
+  5 _decodeRpmBin                                                  018E R
+    _eepromReadByte                                                **** GX
+    _eepromReadI8                                                  **** GX
+    _eepromWriteByte                                               **** GX
+    _eepromWriteI8                                                 **** GX
+  5 _encodeIgnitionValue                                           0169 R
+  5 _encodeRpmBin                                                  017B R
+  B _expectedLength                                                0002 R
+  5 _getFreeRam                                                    0199 R
+  5 _getPageSize                                                   0D80 GR
+    _ignTable                                                      **** GX
+  5 _interpolate                                                   0004 R
+  5 _interrupts                                                    0002 R
+  B _modernProtocol                                                0001 R
+  5 _noInterrupts                                                  0000 R
+  7 _pageSize                                                      0400 GR
+  5 _processLegacyCommand                                          0355 GR
+  5 _processModernCommand                                          03D9 GR
+  5 _readIgnTablePageByte                                          0F07 R
+  5 _readPageByte                                                  1005 R
+  5 _readStructPageByte                                            0D94 R
+  5 _readStubPageByte                                              0DF3 R
+  5 _readVeTablePageByte                                           0E17 R
+  5 _realtimeByte                                                  1750 GR
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 2.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    _saveAllConfig                                                 **** GX
+    _sciAvailable                                                  **** GX
+    _sciInit                                                       **** GX
+    _sciPrintString                                                **** GX
+    _sciReadByte                                                   **** GX
+    _sciWriteByte                                                  **** GX
+    _sciWriteBytes                                                 **** GX
+  5 _sendByte                                                      0233 GR
+  5 _sendBytes                                                     0236 GR
+  5 _sendFirmwareVersion                                           03BB GR
+  5 _sendOutputChannels                                            161D GR
+  5 _sendPageCRC32                                                 13D3 GR
+  5 _sendPageValues                                                112F GR
+  5 _sendProductString                                             03C2 GR
+  5 _sendProtocolVersion                                           03C9 GR
+  5 _sendRealtimeData                                              03A4 GR
+  5 _sendTestComm                                                  03D0 GR
+  5 _sendU16                                                       024A GR
+  5 _sendU16BE                                                     0259 GR
+  5 _sendU32BE                                                     0267 GR
+  A _serialBuffer                                                  0000 R
+  B _serialBytesReceived                                           0000 R
+    _strlen                                                        **** GX
+    _veTable                                                       **** GX
+  5 _writeIgnTablePageByte                                         0F86 R
+  5 _writePageByte                                                 1098 R
+  5 _writePageValues                                               1356 GR
+  5 _writeStructPageByte                                           0DCD R
+  5 _writeVeTablePageByte                                          0E93 R
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 3.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE                                      size    0   flags    0
+   1 HOME                                       size    0   flags   20
+   2 GSINIT0                                    size    0   flags   20
+   3 GSINIT                                     size    0   flags   20
+   4 GSFINAL                                    size    0   flags   20
+   5 CSEG                                       size 1905   flags   20
+   6 XINIT                                      size    3   flags   20
+   7 CONST                                      size  46E   flags   20
+   8 DSEG                                       size    0   flags   10
+   9 OSEG                                       size    0   flags   14
+   A XSEG                                       size   18   flags    0
+   B XISEG                                      size    3   flags    0
+   C IABS                                       size    0   flags    8
+   D XABS                                       size    0   flags    8
+   E CABS                                       size    0   flags   28
+

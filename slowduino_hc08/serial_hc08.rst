@@ -1,0 +1,236 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module serial_hc08
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 ;--------------------------------------------------------
+                             20 ; Public variables in this module
+                             21 ;--------------------------------------------------------
+                             22 	.globl _sciInit
+                             23 	.globl _sciAvailable
+                             24 	.globl _sciReadByte
+                             25 	.globl _sciWriteByte
+                             26 	.globl _sciWriteBytes
+                             27 	.globl _sciPrintString
+                             28 ;--------------------------------------------------------
+                             29 ; ram data
+                             30 ;--------------------------------------------------------
+                             31 	.area DSEG    (PAG)
+                             32 ;--------------------------------------------------------
+                             33 ; overlayable items in ram
+                             34 ;--------------------------------------------------------
+                             35 ;--------------------------------------------------------
+                             36 ; absolute ram data
+                             37 ;--------------------------------------------------------
+                             38 	.area IABS    (ABS)
+                             39 	.area IABS    (ABS)
+                             40 ;--------------------------------------------------------
+                             41 ; absolute external ram data
+                             42 ;--------------------------------------------------------
+                             43 	.area XABS    (ABS)
+                             44 ;--------------------------------------------------------
+                             45 ; external initialized ram data
+                             46 ;--------------------------------------------------------
+                             47 	.area XISEG
+                             48 ;--------------------------------------------------------
+                             49 ; extended address mode data
+                             50 ;--------------------------------------------------------
+                             51 	.area XSEG
+                             52 ;--------------------------------------------------------
+                             53 ; global & static initialisations
+                             54 ;--------------------------------------------------------
+                             55 	.area HOME    (CODE)
+                             56 	.area GSINIT  (CODE)
+                             57 	.area GSFINAL (CODE)
+                             58 	.area GSINIT  (CODE)
+                             59 ;--------------------------------------------------------
+                             60 ; Home
+                             61 ;--------------------------------------------------------
+                             62 	.area HOME    (CODE)
+                             63 	.area HOME    (CODE)
+                             64 ;--------------------------------------------------------
+                             65 ; code
+                             66 ;--------------------------------------------------------
+                             67 	.area CSEG    (CODE)
+                             68 ;------------------------------------------------------------
+                             69 ;Allocation info for local variables in function 'sciInit'
+                             70 ;------------------------------------------------------------
+                             71 ;serial_hc08.c:9: void sciInit(void) {
+                             72 ;	-----------------------------------------
+                             73 ;	 function sciInit
+                             74 ;	-----------------------------------------
+                             75 ;	Register assignment is optimal.
+                             76 ;	Stack space usage: 0 bytes.
+   B2A8                      77 _sciInit:
+                             78 ;serial_hc08.c:16: SCBR = 0x00;
+   B2A8 6E 00 19      [ 4]   79 	mov	#0x00,*0x19
+                             80 ;serial_hc08.c:19: SCC2 |= (1 << SCC2_TE) | (1 << SCC2_RE);
+   B2AB B6 14         [ 3]   81 	lda	*0x14
+   B2AD AA 0C         [ 2]   82 	ora	#0x0c
+   B2AF B7 14         [ 3]   83 	sta	*0x14
+                             84 ;serial_hc08.c:22: SCC1 |= (1 << SCC1_ENSCI);
+   B2B1 B6 13         [ 3]   85 	lda	*0x13
+   B2B3 AA 40         [ 2]   86 	ora	#0x40
+   B2B5 B7 13         [ 3]   87 	sta	*0x13
+                             88 ;serial_hc08.c:23: }
+   B2B7 81            [ 4]   89 	rts
+                             90 ;------------------------------------------------------------
+                             91 ;Allocation info for local variables in function 'sciAvailable'
+                             92 ;------------------------------------------------------------
+                             93 ;serial_hc08.c:25: bool sciAvailable(void) {
+                             94 ;	-----------------------------------------
+                             95 ;	 function sciAvailable
+                             96 ;	-----------------------------------------
+                             97 ;	Register assignment is optimal.
+                             98 ;	Stack space usage: 0 bytes.
+   B2B8                      99 _sciAvailable:
+                            100 ;serial_hc08.c:26: return (SCS1 & (1 << SCS1_SCRF)) != 0;
+   B2B8 B6 16         [ 3]  101 	lda	*0x16
+   B2BA A4 20         [ 2]  102 	and	#0x20
+   B2BC 40            [ 1]  103 	nega
+   B2BD 4F            [ 1]  104 	clra
+   B2BE 49            [ 1]  105 	rola
+   B2BF A8 01         [ 2]  106 	eor	#0x01
+   B2C1 A8 01         [ 2]  107 	eor	#0x01
+                            108 ;serial_hc08.c:27: }
+   B2C3 81            [ 4]  109 	rts
+                            110 ;------------------------------------------------------------
+                            111 ;Allocation info for local variables in function 'sciReadByte'
+                            112 ;------------------------------------------------------------
+                            113 ;serial_hc08.c:29: uint8_t sciReadByte(void) {
+                            114 ;	-----------------------------------------
+                            115 ;	 function sciReadByte
+                            116 ;	-----------------------------------------
+                            117 ;	Register assignment is optimal.
+                            118 ;	Stack space usage: 0 bytes.
+   B2C4                     119 _sciReadByte:
+                            120 ;serial_hc08.c:33: return SCDR;
+   B2C4 B6 18         [ 3]  121 	lda	*0x18
+                            122 ;serial_hc08.c:34: }
+   B2C6 81            [ 4]  123 	rts
+                            124 ;------------------------------------------------------------
+                            125 ;Allocation info for local variables in function 'sciWriteByte'
+                            126 ;------------------------------------------------------------
+                            127 ;data                      Allocated to registers a 
+                            128 ;------------------------------------------------------------
+                            129 ;serial_hc08.c:36: void sciWriteByte(uint8_t data) {
+                            130 ;	-----------------------------------------
+                            131 ;	 function sciWriteByte
+                            132 ;	-----------------------------------------
+                            133 ;	Register assignment is optimal.
+                            134 ;	Stack space usage: 0 bytes.
+   B2C7                     135 _sciWriteByte:
+                            136 ;serial_hc08.c:39: while ((SCS1 & (1 << SCS1_SCTE)) == 0) {
+   B2C7                     137 00101$:
+   B2C7 BE 16         [ 3]  138 	ldx	*0x16
+   B2C9 2A FC         [ 3]  139 	bpl     00101$
+                            140 ;serial_hc08.c:42: SCDR = data;
+   B2CB B7 18         [ 3]  141 	sta	*0x18
+                            142 ;serial_hc08.c:43: }
+   B2CD 81            [ 4]  143 	rts
+                            144 ;------------------------------------------------------------
+                            145 ;Allocation info for local variables in function 'sciWriteBytes'
+                            146 ;------------------------------------------------------------
+                            147 ;length                    Allocated to stack - sp +7
+                            148 ;data                      Allocated to stack - sp +3
+                            149 ;i                         Allocated to registers x h 
+                            150 ;sloc0                     Allocated to stack - sp +1
+                            151 ;------------------------------------------------------------
+                            152 ;serial_hc08.c:45: void sciWriteBytes(const uint8_t *data, uint16_t length) {
+                            153 ;	-----------------------------------------
+                            154 ;	 function sciWriteBytes
+                            155 ;	-----------------------------------------
+                            156 ;	Register assignment is optimal.
+                            157 ;	Stack space usage: 4 bytes.
+   B2CE                     158 _sciWriteBytes:
+   B2CE 87            [ 2]  159 	psha
+   B2CF 89            [ 2]  160 	pshx
+   B2D0 A7 FE         [ 2]  161 	ais	#-2
+                            162 ;serial_hc08.c:47: for (i = 0; i < length; i++) {
+   B2D2 8C            [ 1]  163 	clrh
+   B2D3 5F            [ 1]  164 	clrx
+   B2D4                     165 00103$:
+   B2D4 9F            [ 1]  166 	txa
+   B2D5 9E E0 08      [ 4]  167 	sub	8,s
+   B2D8 8B            [ 2]  168 	pshh
+   B2D9 86            [ 2]  169 	pula
+   B2DA 9E E2 07      [ 4]  170 	sbc	7,s
+   B2DD 24 27         [ 3]  171 	bcc	00105$
+                            172 ;serial_hc08.c:48: sciWriteByte(data[i]);
+   B2DF 9F            [ 1]  173 	txa
+   B2E0 9E EB 04      [ 4]  174 	add	4,s
+   B2E3 9E E7 02      [ 4]  175 	sta	2,s
+   B2E6 8B            [ 2]  176 	pshh
+   B2E7 86            [ 2]  177 	pula
+   B2E8 9E E9 03      [ 4]  178 	adc	3,s
+   B2EB 9E E7 01      [ 4]  179 	sta	1,s
+   B2EE 89            [ 2]  180 	pshx
+   B2EF 8B            [ 2]  181 	pshh
+   B2F0 9E E6 03      [ 4]  182 	lda	3,s
+   B2F3 87            [ 2]  183 	psha
+   B2F4 8A            [ 2]  184 	pulh
+   B2F5 9E EE 04      [ 4]  185 	ldx	4,s
+   B2F8 F6            [ 2]  186 	lda	,x
+   B2F9 8A            [ 2]  187 	pulh
+   B2FA 88            [ 2]  188 	pulx
+   B2FB 89            [ 2]  189 	pshx
+   B2FC 8B            [ 2]  190 	pshh
+   B2FD CD B2 C7      [ 5]  191 	jsr	_sciWriteByte
+   B300 8A            [ 2]  192 	pulh
+   B301 88            [ 2]  193 	pulx
+                            194 ;serial_hc08.c:47: for (i = 0; i < length; i++) {
+   B302 AF 01         [ 2]  195 	aix	#1
+   B304 20 CE         [ 3]  196 	bra	00103$
+   B306                     197 00105$:
+                            198 ;serial_hc08.c:50: }
+   B306 A7 04         [ 2]  199 	ais	#4
+   B308 81            [ 4]  200 	rts
+                            201 ;------------------------------------------------------------
+                            202 ;Allocation info for local variables in function 'sciPrintString'
+                            203 ;------------------------------------------------------------
+                            204 ;str                       Allocated to registers 
+                            205 ;------------------------------------------------------------
+                            206 ;serial_hc08.c:52: void sciPrintString(const char *str) {
+                            207 ;	-----------------------------------------
+                            208 ;	 function sciPrintString
+                            209 ;	-----------------------------------------
+                            210 ;	Register assignment is optimal.
+                            211 ;	Stack space usage: 0 bytes.
+   B309                     212 _sciPrintString:
+   B309 89            [ 2]  213 	pshx
+   B30A 97            [ 1]  214 	tax
+   B30B 8A            [ 2]  215 	pulh
+                            216 ;serial_hc08.c:53: while (*str != '\0') {
+   B30C                     217 00101$:
+   B30C F6            [ 2]  218 	lda	,x
+   B30D 4D            [ 1]  219 	tsta
+   B30E 27 0B         [ 3]  220 	beq	00104$
+                            221 ;serial_hc08.c:54: sciWriteByte((uint8_t)*str);
+   B310 89            [ 2]  222 	pshx
+   B311 8B            [ 2]  223 	pshh
+   B312 CD B2 C7      [ 5]  224 	jsr	_sciWriteByte
+   B315 8A            [ 2]  225 	pulh
+   B316 88            [ 2]  226 	pulx
+                            227 ;serial_hc08.c:55: str++;
+   B317 AF 01         [ 2]  228 	aix	#1
+   B319 20 F1         [ 3]  229 	bra	00101$
+   B31B                     230 00104$:
+                            231 ;serial_hc08.c:57: }
+   B31B 81            [ 4]  232 	rts
+                            233 	.area CSEG    (CODE)
+                            234 	.area CONST   (CODE)
+                            235 	.area XINIT   (CODE)
+                            236 	.area CABS    (ABS,CODE)

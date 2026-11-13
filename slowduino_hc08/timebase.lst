@@ -1,0 +1,286 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module timebase
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 ;--------------------------------------------------------
+                             20 ; Public variables in this module
+                             21 ;--------------------------------------------------------
+                             22 	.globl _isr_tim2_overflow
+                             23 	.globl _timebaseInit
+                             24 	.globl _micros
+                             25 ;--------------------------------------------------------
+                             26 ; ram data
+                             27 ;--------------------------------------------------------
+                             28 	.area DSEG    (PAG)
+                             29 ;--------------------------------------------------------
+                             30 ; overlayable items in ram
+                             31 ;--------------------------------------------------------
+                             32 ;--------------------------------------------------------
+                             33 ; absolute ram data
+                             34 ;--------------------------------------------------------
+                             35 	.area IABS    (ABS)
+                             36 	.area IABS    (ABS)
+                             37 ;--------------------------------------------------------
+                             38 ; absolute external ram data
+                             39 ;--------------------------------------------------------
+                             40 	.area XABS    (ABS)
+                             41 ;--------------------------------------------------------
+                             42 ; external initialized ram data
+                             43 ;--------------------------------------------------------
+                             44 	.area XISEG
+                             45 ;--------------------------------------------------------
+                             46 ; extended address mode data
+                             47 ;--------------------------------------------------------
+                             48 	.area XSEG
+   0000                      49 _tim2OverflowCount:
+   0000                      50 	.ds 4
+                             51 ;--------------------------------------------------------
+                             52 ; global & static initialisations
+                             53 ;--------------------------------------------------------
+                             54 	.area HOME    (CODE)
+                             55 	.area GSINIT  (CODE)
+                             56 	.area GSFINAL (CODE)
+                             57 	.area GSINIT  (CODE)
+                             58 ;--------------------------------------------------------
+                             59 ; Home
+                             60 ;--------------------------------------------------------
+                             61 	.area HOME    (CODE)
+                             62 	.area HOME    (CODE)
+                             63 ;--------------------------------------------------------
+                             64 ; code
+                             65 ;--------------------------------------------------------
+                             66 	.area CSEG    (CODE)
+                             67 ;------------------------------------------------------------
+                             68 ;Allocation info for local variables in function 'noInterrupts'
+                             69 ;------------------------------------------------------------
+                             70 ;globals.h:100: static inline void noInterrupts(void) { __asm sei __endasm; }
+                             71 ;	-----------------------------------------
+                             72 ;	 function noInterrupts
+                             73 ;	-----------------------------------------
+                             74 ;	Register assignment is optimal.
+                             75 ;	Stack space usage: 0 bytes.
+   0000                      76 _noInterrupts:
+   0000 9B            [ 2]   77 	 sei	
+   0001 81            [ 4]   78 	rts
+                             79 ;------------------------------------------------------------
+                             80 ;Allocation info for local variables in function 'interrupts'
+                             81 ;------------------------------------------------------------
+                             82 ;globals.h:101: static inline void interrupts(void)   { __asm cli __endasm; }
+                             83 ;	-----------------------------------------
+                             84 ;	 function interrupts
+                             85 ;	-----------------------------------------
+                             86 ;	Register assignment is optimal.
+                             87 ;	Stack space usage: 0 bytes.
+   0002                      88 _interrupts:
+   0002 9A            [ 2]   89 	 cli	
+   0003 81            [ 4]   90 	rts
+                             91 ;------------------------------------------------------------
+                             92 ;Allocation info for local variables in function 'timebaseInit'
+                             93 ;------------------------------------------------------------
+                             94 ;timebase.c:15: void timebaseInit(void) {
+                             95 ;	-----------------------------------------
+                             96 ;	 function timebaseInit
+                             97 ;	-----------------------------------------
+                             98 ;	Register assignment is optimal.
+                             99 ;	Stack space usage: 0 bytes.
+   0004                     100 _timebaseInit:
+                            101 ;timebase.c:16: T2SC = (1 << T2SC_TRST);  /* reset do contador */
+   0004 6E 10 2B      [ 4]  102 	mov	#0x10,*0x2b
+                            103 ;timebase.c:17: T2SC = (1 << T2SC_TOIE);  /* liga overflow interrupt, prescaler /1, roda */
+   0007 6E 40 2B      [ 4]  104 	mov	#0x40,*0x2b
+                            105 ;timebase.c:18: tim2OverflowCount = 0;
+   000A 45r00r00      [ 3]  106 	ldhx	#_tim2OverflowCount
+   000D 4F            [ 1]  107 	clra
+   000E F7            [ 2]  108 	sta	,x
+   000F E7 01         [ 3]  109 	sta	1,x
+   0011 E7 02         [ 3]  110 	sta	2,x
+   0013 E7 03         [ 3]  111 	sta	3,x
+                            112 ;timebase.c:19: }
+   0015 81            [ 4]  113 	rts
+                            114 ;------------------------------------------------------------
+                            115 ;Allocation info for local variables in function 'micros'
+                            116 ;------------------------------------------------------------
+                            117 ;overflows                 Allocated to stack - sp +1
+                            118 ;count                     Allocated to registers x h 
+                            119 ;sloc0                     Allocated to stack - sp +13
+                            120 ;sloc1                     Allocated to stack - sp +9
+                            121 ;sloc2                     Allocated to stack - sp +5
+                            122 ;------------------------------------------------------------
+                            123 ;timebase.c:21: uint32_t micros(void) {
+                            124 ;	-----------------------------------------
+                            125 ;	 function micros
+                            126 ;	-----------------------------------------
+                            127 ;	Register assignment is optimal.
+                            128 ;	Stack space usage: 14 bytes.
+   0016                     129 _micros:
+   0016 A7 F2         [ 2]  130 	ais	#-14
+                            131 ;timebase.c:30: }
+   0018 85            [ 1]  132 	tpa
+   0019 9B            [ 2]  133 	sei
+   001A 87            [ 2]  134 	psha
+                            135 ;timebase.c:28: overflows = tim2OverflowCount;
+   001B 95            [ 2]  136 	tsx
+   001C 45r00r00      [ 3]  137 	ldhx	#_tim2OverflowCount
+   001F F6            [ 2]  138 	lda	,x
+   0020 9E E7 02      [ 4]  139 	sta	2,s
+   0023 E6 01         [ 3]  140 	lda	1,x
+   0025 9E E7 03      [ 4]  141 	sta	3,s
+   0028 E6 02         [ 3]  142 	lda	2,x
+   002A 9E E7 04      [ 4]  143 	sta	4,s
+   002D E6 03         [ 3]  144 	lda	3,x
+   002F 9E E7 05      [ 4]  145 	sta	5,s
+                            146 ;timebase.c:29: count = (uint16_t)((T2CNTH << 8) | T2CNTL);
+   0032 B6 2C         [ 3]  147 	lda	*0x2c
+   0034 5F            [ 1]  148 	clrx
+   0035 9E E7 0E      [ 4]  149 	sta	14,s
+   0038 9E EF 0F      [ 4]  150 	stx	15,s
+   003B BE 2D         [ 3]  151 	ldx	*0x2d
+   003D 8C            [ 1]  152 	clrh
+   003E 9F            [ 1]  153 	txa
+   003F 9E EA 0F      [ 4]  154 	ora	15,s
+   0042 97            [ 1]  155 	tax
+   0043 8B            [ 2]  156 	pshh
+   0044 86            [ 2]  157 	pula
+   0045 9E EA 0E      [ 4]  158 	ora	14,s
+   0048 87            [ 2]  159 	psha
+   0049 8A            [ 2]  160 	pulh
+   004A 86            [ 2]  161 	pula
+   004B 84            [ 2]  162 	tap
+                            163 ;timebase.c:33: return (overflows << 13) + (count >> 3);
+   004C 89            [ 2]  164 	pshx
+   004D 9E E6 04      [ 4]  165 	lda	4,s
+   0050 9E EE 03      [ 4]  166 	ldx	3,s
+   0053 48            [ 1]  167 	lsla
+   0054 59            [ 1]  168 	rolx
+   0055 48            [ 1]  169 	lsla
+   0056 59            [ 1]  170 	rolx
+   0057 48            [ 1]  171 	lsla
+   0058 59            [ 1]  172 	rolx
+   0059 48            [ 1]  173 	lsla
+   005A 59            [ 1]  174 	rolx
+   005B 48            [ 1]  175 	lsla
+   005C 59            [ 1]  176 	rolx
+   005D 9E E7 0B      [ 4]  177 	sta	11,s
+   0060 9E EF 0A      [ 4]  178 	stx	10,s
+   0063 88            [ 2]  179 	pulx
+   0064 9E E6 04      [ 4]  180 	lda	4,s
+   0067 62            [ 3]  181 	nsa	
+   0068 A4 F0         [ 2]  182 	and	#0xf0
+   006A 48            [ 1]  183 	lsla	
+   006B 9E E7 0B      [ 4]  184 	sta	11,s
+   006E 9E E6 04      [ 4]  185 	lda	4,s
+   0071 44            [ 1]  186 	lsra	
+   0072 44            [ 1]  187 	lsra	
+   0073 44            [ 1]  188 	lsra	
+   0074 9E EA 0A      [ 4]  189 	ora	10,s
+   0077 9E E7 0A      [ 4]  190 	sta	10,s
+   007A 4F            [ 1]  191 	clra
+   007B 9E E7 0C      [ 4]  192 	sta	12,s
+   007E 9F            [ 1]  193 	txa
+   007F 8B            [ 2]  194 	pshh
+   0080 88            [ 2]  195 	pulx
+   0081 54            [ 1]  196 	lsrx
+   0082 46            [ 1]  197 	rora
+   0083 54            [ 1]  198 	lsrx
+   0084 46            [ 1]  199 	rora
+   0085 54            [ 1]  200 	lsrx
+   0086 46            [ 1]  201 	rora
+   0087 9E E7 08      [ 4]  202 	sta	8,s
+   008A 9E EF 07      [ 4]  203 	stx	7,s
+   008D 87            [ 2]  204 	psha
+   008E 4F            [ 1]  205 	clra
+   008F 9E E7 07      [ 4]  206 	sta	7,s
+   0092 4F            [ 1]  207 	clra
+   0093 9E E7 06      [ 4]  208 	sta	6,s
+   0096 86            [ 2]  209 	pula
+   0097 95            [ 2]  210 	tsx
+   0098 E6 0B         [ 3]  211 	lda	11,x
+   009A EB 07         [ 3]  212 	add	7,x
+   009C E7 07         [ 3]  213 	sta	7,x
+   009E E6 0A         [ 3]  214 	lda	10,x
+   00A0 E9 06         [ 3]  215 	adc	6,x
+   00A2 E7 06         [ 3]  216 	sta	6,x
+   00A4 E6 09         [ 3]  217 	lda	9,x
+   00A6 E9 05         [ 3]  218 	adc	5,x
+   00A8 E7 05         [ 3]  219 	sta	5,x
+   00AA E6 08         [ 3]  220 	lda	8,x
+   00AC E9 04         [ 3]  221 	adc	4,x
+   00AE E7 04         [ 3]  222 	sta	4,x
+   00B0 E6 04         [ 3]  223 	lda	4,x
+   00B2 B7*00         [ 3]  224 	sta	*___SDCC_hc08_ret3
+   00B4 E6 05         [ 3]  225 	lda	5,x
+   00B6 B7*00         [ 3]  226 	sta	*___SDCC_hc08_ret2
+   00B8 EE 06         [ 3]  227 	ldx	6,x
+   00BA 9E E6 08      [ 4]  228 	lda	8,s
+                            229 ;timebase.c:34: }
+   00BD A7 0E         [ 2]  230 	ais	#14
+   00BF 81            [ 4]  231 	rts
+                            232 ;------------------------------------------------------------
+                            233 ;Allocation info for local variables in function 'isr_tim2_overflow'
+                            234 ;------------------------------------------------------------
+                            235 ;sloc0                     Allocated to stack - sp +1
+                            236 ;------------------------------------------------------------
+                            237 ;timebase.c:36: void isr_tim2_overflow(void) __interrupt(9) {
+                            238 ;	-----------------------------------------
+                            239 ;	 function isr_tim2_overflow
+                            240 ;	-----------------------------------------
+                            241 ;	Register assignment is optimal.
+                            242 ;	Stack space usage: 4 bytes.
+   00C0                     243 _isr_tim2_overflow:
+   00C0 8B            [ 2]  244 	pshh
+   00C1 A7 FC         [ 2]  245 	ais	#-4
+                            246 ;timebase.c:37: if (T2SC & (1 << T2SC_TOF)) {
+   00C3 B6 2B         [ 3]  247 	lda	*0x2b
+   00C5 2A 3C         [ 3]  248 	bpl     00103$
+                            249 ;timebase.c:38: tim2OverflowCount++;
+   00C7 95            [ 2]  250 	tsx
+   00C8 45r00r00      [ 3]  251 	ldhx	#_tim2OverflowCount
+   00CB F6            [ 2]  252 	lda	,x
+   00CC 9E E7 01      [ 4]  253 	sta	1,s
+   00CF E6 01         [ 3]  254 	lda	1,x
+   00D1 9E E7 02      [ 4]  255 	sta	2,s
+   00D4 E6 02         [ 3]  256 	lda	2,x
+   00D6 9E E7 03      [ 4]  257 	sta	3,s
+   00D9 E6 03         [ 3]  258 	lda	3,x
+   00DB 9E E7 04      [ 4]  259 	sta	4,s
+   00DE 95            [ 2]  260 	tsx
+   00DF 45r00r00      [ 3]  261 	ldhx	#_tim2OverflowCount
+   00E2 9E E6 04      [ 4]  262 	lda	4,s
+   00E5 AB 01         [ 2]  263 	add	#0x01
+   00E7 E7 03         [ 3]  264 	sta	3,x
+   00E9 9E E6 03      [ 4]  265 	lda	3,s
+   00EC A9 00         [ 2]  266 	adc	#0
+   00EE E7 02         [ 3]  267 	sta	2,x
+   00F0 9E E6 02      [ 4]  268 	lda	2,s
+   00F3 A9 00         [ 2]  269 	adc	#0
+   00F5 E7 01         [ 3]  270 	sta	1,x
+   00F7 9E E6 01      [ 4]  271 	lda	1,s
+   00FA A9 00         [ 2]  272 	adc	#0
+   00FC F7            [ 2]  273 	sta	,x
+                            274 ;timebase.c:39: T2SC &= (uint8_t)~(1 << T2SC_TOF);  /* limpa flag (write 0 apos leitura) */
+   00FD B6 2B         [ 3]  275 	lda	*0x2b
+   00FF A4 7F         [ 2]  276 	and	#0x7f
+   0101 B7 2B         [ 3]  277 	sta	*0x2b
+   0103                     278 00103$:
+                            279 ;timebase.c:41: }
+   0103 A7 04         [ 2]  280 	ais	#4
+   0105 8A            [ 2]  281 	pulh
+   0106 80            [ 7]  282 	rti
+                            283 	.area CSEG    (CODE)
+                            284 	.area CONST   (CODE)
+                            285 	.area XINIT   (CODE)
+                            286 	.area CABS    (ABS,CODE)

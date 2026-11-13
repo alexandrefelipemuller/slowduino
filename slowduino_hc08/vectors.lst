@@ -1,0 +1,32 @@
+                              1 ; Interrupt vector table for the MC68HC908GP32.
+                              2 ;
+                              3 ; SDCC's hc08 backend only auto-generates the RESET vector at 0xFFFE
+                              4 ; (emitted into main.asm's own "CODEIVT (ABS)" area, pointing at its
+                              5 ; startup code) - it does NOT wire up any other vector just because a
+                              6 ; function is declared __interrupt(N). Every other vector below is
+                              7 ; unprogrammed (left as whatever the flash image's default is) unless
+                              8 ; something explicitly places the handler's address there, which is
+                              9 ; what this file does.
+                             10 ;
+                             11 ; Vector address formula (see mc68hc908gp32_sfr.h / the README):
+                             12 ;   address = 0xFFFE - 2*N, where N is the __interrupt(N) argument.
+                             13 ;
+                             14 ; Only vectors with an actual handler defined in this port are filled
+                             15 ; in; anything else stays unprogrammed since we never enable those
+                             16 ; interrupt sources.
+                             17 
+                             18 	.area CODEIVT (ABS)
+                             19 
+   FFEC                      20 	.org 0xFFEC		; N=9: TIM2 overflow (timebase.c)
+   FFECr00r00                21 	.dw _isr_tim2_overflow
+                             22 
+   FFF4                      23 	.org 0xFFF4		; N=5: TIM1 channel 1 (scheduler.c)
+   FFF4r00r00                24 	.dw _isr_tim1_ch1
+                             25 
+   FFF6                      26 	.org 0xFFF6		; N=4: TIM1 channel 0 (scheduler.c)
+   FFF6r00r00                27 	.dw _isr_tim1_ch0
+                             28 
+   FFFA                      29 	.org 0xFFFA		; N=2: IRQ pin, crank trigger (decoders.c)
+   FFFAr00r00                30 	.dw _isr_irq
+                             31 
+                             32 ; End of vectors.s

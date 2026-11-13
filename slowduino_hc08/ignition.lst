@@ -1,0 +1,857 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module ignition
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 ;--------------------------------------------------------
+                             20 ; Public variables in this module
+                             21 ;--------------------------------------------------------
+                             22 	.globl _lookupCurveI8
+                             23 	.globl _getTableValue
+                             24 	.globl _calculateAdvance
+                             25 	.globl _getBaseAdvance
+                             26 	.globl _applyAdvanceCorrections
+                             27 	.globl _isIdleAdvanceActive
+                             28 	.globl _correctionCLTAdvance
+                             29 	.globl _correctionIdleAdvance
+                             30 	.globl _applyRevLimiter
+                             31 	.globl _calculateDwell
+                             32 ;--------------------------------------------------------
+                             33 ; ram data
+                             34 ;--------------------------------------------------------
+                             35 	.area DSEG    (PAG)
+                             36 ;--------------------------------------------------------
+                             37 ; overlayable items in ram
+                             38 ;--------------------------------------------------------
+                             39 ;--------------------------------------------------------
+                             40 ; absolute ram data
+                             41 ;--------------------------------------------------------
+                             42 	.area IABS    (ABS)
+                             43 	.area IABS    (ABS)
+                             44 ;--------------------------------------------------------
+                             45 ; absolute external ram data
+                             46 ;--------------------------------------------------------
+                             47 	.area XABS    (ABS)
+                             48 ;--------------------------------------------------------
+                             49 ; external initialized ram data
+                             50 ;--------------------------------------------------------
+                             51 	.area XISEG
+                             52 ;--------------------------------------------------------
+                             53 ; extended address mode data
+                             54 ;--------------------------------------------------------
+                             55 	.area XSEG
+   0000                      56 _applyRevLimiter_cutState_131072_43:
+   0000                      57 	.ds 1
+                             58 ;--------------------------------------------------------
+                             59 ; global & static initialisations
+                             60 ;--------------------------------------------------------
+                             61 	.area HOME    (CODE)
+                             62 	.area GSINIT  (CODE)
+                             63 	.area GSFINAL (CODE)
+                             64 	.area GSINIT  (CODE)
+                             65 ;------------------------------------------------------------
+                             66 ;Allocation info for local variables in function 'applyRevLimiter'
+                             67 ;------------------------------------------------------------
+                             68 ;advance                   Allocated to registers h 
+                             69 ;limitRPM                  Allocated to stack - sp +0
+                             70 ;cutState                  Allocated with name '_applyRevLimiter_cutState_131072_43'
+                             71 ;------------------------------------------------------------
+                             72 ;ignition.c:91: static bool cutState = false;
+   0000 4F            [ 1]   73 	clra
+   0001 C7r00r00      [ 4]   74 	sta	_applyRevLimiter_cutState_131072_43
+                             75 ;--------------------------------------------------------
+                             76 ; Home
+                             77 ;--------------------------------------------------------
+                             78 	.area HOME    (CODE)
+                             79 	.area HOME    (CODE)
+                             80 ;--------------------------------------------------------
+                             81 ; code
+                             82 ;--------------------------------------------------------
+                             83 	.area CSEG    (CODE)
+                             84 ;------------------------------------------------------------
+                             85 ;Allocation info for local variables in function 'noInterrupts'
+                             86 ;------------------------------------------------------------
+                             87 ;globals.h:100: static inline void noInterrupts(void) { __asm sei __endasm; }
+                             88 ;	-----------------------------------------
+                             89 ;	 function noInterrupts
+                             90 ;	-----------------------------------------
+                             91 ;	Register assignment is optimal.
+                             92 ;	Stack space usage: 0 bytes.
+   0000                      93 _noInterrupts:
+   0000 9B            [ 2]   94 	 sei	
+   0001 81            [ 4]   95 	rts
+                             96 ;------------------------------------------------------------
+                             97 ;Allocation info for local variables in function 'interrupts'
+                             98 ;------------------------------------------------------------
+                             99 ;globals.h:101: static inline void interrupts(void)   { __asm cli __endasm; }
+                            100 ;	-----------------------------------------
+                            101 ;	 function interrupts
+                            102 ;	-----------------------------------------
+                            103 ;	Register assignment is optimal.
+                            104 ;	Stack space usage: 0 bytes.
+   0002                     105 _interrupts:
+   0002 9A            [ 2]  106 	 cli	
+   0003 81            [ 4]  107 	rts
+                            108 ;------------------------------------------------------------
+                            109 ;Allocation info for local variables in function 'interpolate'
+                            110 ;------------------------------------------------------------
+                            111 ;x1                        Allocated to stack - sp +11
+                            112 ;x2                        Allocated to stack - sp +13
+                            113 ;y1                        Allocated to stack - sp +15
+                            114 ;y2                        Allocated to stack - sp +17
+                            115 ;x                         Allocated to registers a x 
+                            116 ;sloc0                     Allocated to stack - sp +5
+                            117 ;sloc1                     Allocated to stack - sp +1
+                            118 ;------------------------------------------------------------
+                            119 ;tables.h:33: static inline int16_t interpolate(int16_t x, int16_t x1, int16_t x2, int16_t y1, int16_t y2) {
+                            120 ;	-----------------------------------------
+                            121 ;	 function interpolate
+                            122 ;	-----------------------------------------
+                            123 ;	Register assignment might be sub-optimal.
+                            124 ;	Stack space usage: 8 bytes.
+   0004                     125 _interpolate:
+   0004 A7 F8         [ 2]  126 	ais	#-8
+                            127 ;tables.h:34: if (x2 == x1) return y1;
+   0006 87            [ 2]  128 	psha
+   0007 9E E6 0F      [ 4]  129 	lda	15,s
+   000A 9E E1 0D      [ 4]  130 	cmp	13,s
+   000D 86            [ 2]  131 	pula
+   000E 26 0A         [ 3]  132 	bne	00110$
+   0010 87            [ 2]  133 	psha
+   0011 9E E6 0E      [ 4]  134 	lda	14,s
+   0014 9E E1 0C      [ 4]  135 	cmp	12,s
+   0017 86            [ 2]  136 	pula
+   0018 27 02         [ 3]  137 	beq	00111$
+   001A                     138 00110$:
+   001A 20 09         [ 3]  139 	bra	00102$
+   001C                     140 00111$:
+   001C 95            [ 2]  141 	tsx
+   001D EE 0E         [ 3]  142 	ldx	14,x
+   001F 9E E6 10      [ 4]  143 	lda	16,s
+   0022 CCr00rEA      [ 3]  144 	jmp	00103$
+   0025                     145 00102$:
+                            146 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0025 9E E0 0C      [ 4]  147 	sub	12,s
+   0028 87            [ 2]  148 	psha
+   0029 9F            [ 1]  149 	txa
+   002A 9E E2 0C      [ 4]  150 	sbc	12,s
+   002D 97            [ 1]  151 	tax
+   002E 86            [ 2]  152 	pula
+   002F 9E E7 08      [ 4]  153 	sta	8,s
+   0032 9F            [ 1]  154 	txa
+   0033 9E E7 07      [ 4]  155 	sta	7,s
+   0036 49            [ 1]  156 	rola	
+   0037 4F            [ 1]  157 	clra	
+   0038 A2 00         [ 2]  158 	sbc	#0x00
+   003A 9E E7 06      [ 4]  159 	sta	6,s
+   003D 9E E7 05      [ 4]  160 	sta	5,s
+   0040 9E E6 12      [ 4]  161 	lda	18,s
+   0043 9E E0 10      [ 4]  162 	sub	16,s
+   0046 87            [ 2]  163 	psha
+   0047 9E E6 12      [ 4]  164 	lda	18,s
+   004A 9E E2 10      [ 4]  165 	sbc	16,s
+   004D 97            [ 1]  166 	tax
+   004E 86            [ 2]  167 	pula
+   004F 9E E7 04      [ 4]  168 	sta	4,s
+   0052 9F            [ 1]  169 	txa
+   0053 9E E7 03      [ 4]  170 	sta	3,s
+   0056 49            [ 1]  171 	rola	
+   0057 4F            [ 1]  172 	clra	
+   0058 A2 00         [ 2]  173 	sbc	#0x00
+   005A 9E E7 02      [ 4]  174 	sta	2,s
+   005D 9E E7 01      [ 4]  175 	sta	1,s
+   0060 95            [ 2]  176 	tsx
+   0061 E6 03         [ 3]  177 	lda	3,x
+   0063 87            [ 2]  178 	psha
+   0064 E6 02         [ 3]  179 	lda	2,x
+   0066 87            [ 2]  180 	psha
+   0067 E6 01         [ 3]  181 	lda	1,x
+   0069 87            [ 2]  182 	psha
+   006A F6            [ 2]  183 	lda	,x
+   006B 87            [ 2]  184 	psha
+   006C E6 07         [ 3]  185 	lda	7,x
+   006E 87            [ 2]  186 	psha
+   006F E6 06         [ 3]  187 	lda	6,x
+   0071 87            [ 2]  188 	psha
+   0072 E6 05         [ 3]  189 	lda	5,x
+   0074 87            [ 2]  190 	psha
+   0075 E6 04         [ 3]  191 	lda	4,x
+   0077 87            [ 2]  192 	psha
+   0078 CDr00r00      [ 5]  193 	jsr	__mullong
+   007B 9E E7 0C      [ 4]  194 	sta	12,s
+   007E 9E EF 0B      [ 4]  195 	stx	11,s
+   0081 B6*00         [ 3]  196 	lda	*___SDCC_hc08_ret2
+   0083 9E E7 0A      [ 4]  197 	sta	10,s
+   0086 B6*00         [ 3]  198 	lda	*___SDCC_hc08_ret3
+   0088 9E E7 09      [ 4]  199 	sta	9,s
+   008B A7 08         [ 2]  200 	ais	#8
+   008D 9E E6 0E      [ 4]  201 	lda	14,s
+   0090 9E E0 0C      [ 4]  202 	sub	12,s
+   0093 87            [ 2]  203 	psha
+   0094 9E E6 0E      [ 4]  204 	lda	14,s
+   0097 9E E2 0C      [ 4]  205 	sbc	12,s
+   009A 97            [ 1]  206 	tax
+   009B 86            [ 2]  207 	pula
+   009C 9E E7 08      [ 4]  208 	sta	8,s
+   009F 9F            [ 1]  209 	txa
+   00A0 9E E7 07      [ 4]  210 	sta	7,s
+   00A3 49            [ 1]  211 	rola	
+   00A4 4F            [ 1]  212 	clra	
+   00A5 A2 00         [ 2]  213 	sbc	#0x00
+   00A7 9E E7 06      [ 4]  214 	sta	6,s
+   00AA 9E E7 05      [ 4]  215 	sta	5,s
+   00AD 95            [ 2]  216 	tsx
+   00AE E6 07         [ 3]  217 	lda	7,x
+   00B0 87            [ 2]  218 	psha
+   00B1 E6 06         [ 3]  219 	lda	6,x
+   00B3 87            [ 2]  220 	psha
+   00B4 E6 05         [ 3]  221 	lda	5,x
+   00B6 87            [ 2]  222 	psha
+   00B7 E6 04         [ 3]  223 	lda	4,x
+   00B9 87            [ 2]  224 	psha
+   00BA E6 03         [ 3]  225 	lda	3,x
+   00BC 87            [ 2]  226 	psha
+   00BD E6 02         [ 3]  227 	lda	2,x
+   00BF 87            [ 2]  228 	psha
+   00C0 E6 01         [ 3]  229 	lda	1,x
+   00C2 87            [ 2]  230 	psha
+   00C3 F6            [ 2]  231 	lda	,x
+   00C4 87            [ 2]  232 	psha
+   00C5 CDr00r00      [ 5]  233 	jsr	__divslong
+   00C8 9E E7 0C      [ 4]  234 	sta	12,s
+   00CB 9E EF 0B      [ 4]  235 	stx	11,s
+   00CE B6*00         [ 3]  236 	lda	*___SDCC_hc08_ret2
+   00D0 9E E7 0A      [ 4]  237 	sta	10,s
+   00D3 B6*00         [ 3]  238 	lda	*___SDCC_hc08_ret3
+   00D5 9E E7 09      [ 4]  239 	sta	9,s
+   00D8 A7 08         [ 2]  240 	ais	#8
+   00DA 9E E6 04      [ 4]  241 	lda	4,s
+   00DD 9E EE 03      [ 4]  242 	ldx	3,s
+   00E0 9E EB 10      [ 4]  243 	add	16,s
+   00E3 87            [ 2]  244 	psha
+   00E4 9F            [ 1]  245 	txa
+   00E5 9E E9 10      [ 4]  246 	adc	16,s
+   00E8 97            [ 1]  247 	tax
+   00E9 86            [ 2]  248 	pula
+   00EA                     249 00103$:
+                            250 ;tables.h:36: }
+   00EA A7 08         [ 2]  251 	ais	#8
+   00EC 81            [ 4]  252 	rts
+                            253 ;------------------------------------------------------------
+                            254 ;Allocation info for local variables in function 'calculateAdvance'
+                            255 ;------------------------------------------------------------
+                            256 ;advance                   Allocated to registers a 
+                            257 ;------------------------------------------------------------
+                            258 ;ignition.c:11: int8_t calculateAdvance(void) {
+                            259 ;	-----------------------------------------
+                            260 ;	 function calculateAdvance
+                            261 ;	-----------------------------------------
+                            262 ;	Register assignment is optimal.
+                            263 ;	Stack space usage: 0 bytes.
+   00ED                     264 _calculateAdvance:
+                            265 ;ignition.c:14: if (BIT_CHECK(currentStatus.engineStatus, ENGINE_CRANK)) {
+   00ED C6r00r2A      [ 4]  266 	lda	(_currentStatus + 0x002a)
+   00F0 A5 01         [ 2]  267 	bit	#0x01
+   00F2 27 04         [ 3]  268 	beq	00102$
+                            269 ;ignition.c:15: return configPage2.crankAdvance;
+   00F4 C6r00r09      [ 4]  270 	lda	(_configPage2 + 0x0009)
+   00F7 81            [ 4]  271 	rts
+   00F8                     272 00102$:
+                            273 ;ignition.c:18: advance = getBaseAdvance();
+   00F8 CDr01r0E      [ 5]  274 	jsr	_getBaseAdvance
+                            275 ;ignition.c:19: advance = applyAdvanceCorrections(advance);
+   00FB CDr01r26      [ 5]  276 	jsr	_applyAdvanceCorrections
+                            277 ;ignition.c:20: advance = applyRevLimiter(advance);
+   00FE CDr03r5F      [ 5]  278 	jsr	_applyRevLimiter
+                            279 ;ignition.c:22: if (advance < IGN_MIN_ADVANCE) advance = IGN_MIN_ADVANCE;
+   0101 A1 F6         [ 2]  280 	cmp	#0xf6
+   0103 90 02         [ 3]  281 	bge	00104$
+   0105 A6 F6         [ 2]  282 	lda	#0xf6
+   0107                     283 00104$:
+                            284 ;ignition.c:23: if (advance > IGN_MAX_ADVANCE) advance = IGN_MAX_ADVANCE;
+   0107 A1 2D         [ 2]  285 	cmp	#0x2d
+   0109 93 02         [ 3]  286 	ble	00106$
+   010B A6 2D         [ 2]  287 	lda	#0x2d
+   010D                     288 00106$:
+                            289 ;ignition.c:25: return advance;
+                            290 ;ignition.c:26: }
+   010D 81            [ 4]  291 	rts
+                            292 ;------------------------------------------------------------
+                            293 ;Allocation info for local variables in function 'getBaseAdvance'
+                            294 ;------------------------------------------------------------
+                            295 ;advance                   Allocated to registers a x 
+                            296 ;------------------------------------------------------------
+                            297 ;ignition.c:28: int8_t getBaseAdvance(void) {
+                            298 ;	-----------------------------------------
+                            299 ;	 function getBaseAdvance
+                            300 ;	-----------------------------------------
+                            301 ;	Register assignment is optimal.
+                            302 ;	Stack space usage: 0 bytes.
+   010E                     303 _getBaseAdvance:
+                            304 ;ignition.c:29: int16_t advance = getTableValue(&ignTable, currentStatus.MAP, currentStatus.RPM);
+   010E C6r00r00      [ 4]  305 	lda	_currentStatus
+   0111 87            [ 2]  306 	psha
+   0112 8A            [ 2]  307 	pulh
+   0113 CEr00r01      [ 4]  308 	ldx	(_currentStatus + 1)
+   0116 C6r00r13      [ 4]  309 	lda	(_currentStatus + 0x0013)
+   0119 89            [ 2]  310 	pshx
+   011A 8B            [ 2]  311 	pshh
+   011B 87            [ 2]  312 	psha
+   011C A6r00         [ 2]  313 	lda	#_ignTable
+   011E AEs00         [ 2]  314 	ldx	#>_ignTable
+   0120 CDr00r00      [ 5]  315 	jsr	_getTableValue
+   0123 A7 03         [ 2]  316 	ais	#3
+                            317 ;ignition.c:30: return (int8_t)advance;
+                            318 ;ignition.c:31: }
+   0125 81            [ 4]  319 	rts
+                            320 ;------------------------------------------------------------
+                            321 ;Allocation info for local variables in function 'applyAdvanceCorrections'
+                            322 ;------------------------------------------------------------
+                            323 ;baseAdvance               Allocated to stack - sp +2
+                            324 ;corrected                 Allocated to registers a 
+                            325 ;sloc0                     Allocated to stack - sp +1
+                            326 ;------------------------------------------------------------
+                            327 ;ignition.c:33: int8_t applyAdvanceCorrections(int8_t baseAdvance) {
+                            328 ;	-----------------------------------------
+                            329 ;	 function applyAdvanceCorrections
+                            330 ;	-----------------------------------------
+                            331 ;	Register assignment is optimal.
+                            332 ;	Stack space usage: 2 bytes.
+   0126                     333 _applyAdvanceCorrections:
+   0126 87            [ 2]  334 	psha
+   0127 8B            [ 2]  335 	pshh
+                            336 ;ignition.c:36: corrected = (int8_t)(corrected + correctionCLTAdvance());
+   0128 CDr01rA3      [ 5]  337 	jsr	_correctionCLTAdvance
+   012B 95            [ 2]  338 	tsx
+   012C EB 01         [ 3]  339 	add	1,x
+                            340 ;ignition.c:38: if (isIdleAdvanceActive()) {
+   012E 87            [ 2]  341 	psha
+   012F CDr01r50      [ 5]  342 	jsr	_isIdleAdvanceActive
+   0132 97            [ 1]  343 	tax
+   0133 86            [ 2]  344 	pula
+   0134 5D            [ 1]  345 	tstx
+   0135 27 16         [ 3]  346 	beq	00105$
+                            347 ;ignition.c:39: if (configPage2.idleAdvEnabled == IDLE_ADV_SWITCHED) {
+   0137 CEr00r15      [ 4]  348 	ldx	(_configPage2 + 0x0015)
+   013A A3 02         [ 2]  349 	cpx	#0x02
+   013C 26 05         [ 3]  350 	bne	00102$
+                            351 ;ignition.c:40: corrected = correctionIdleAdvance();
+   013E CDr03r01      [ 5]  352 	jsr	_correctionIdleAdvance
+   0141 20 0A         [ 3]  353 	bra	00105$
+   0143                     354 00102$:
+                            355 ;ignition.c:42: corrected = (int8_t)(corrected + correctionIdleAdvance());
+   0143 87            [ 2]  356 	psha
+   0144 CDr03r01      [ 5]  357 	jsr	_correctionIdleAdvance
+   0147 95            [ 2]  358 	tsx
+   0148 E7 01         [ 3]  359 	sta	1,x
+   014A 86            [ 2]  360 	pula
+   014B EB 01         [ 3]  361 	add	1,x
+   014D                     362 00105$:
+                            363 ;ignition.c:46: return corrected;
+                            364 ;ignition.c:47: }
+   014D A7 02         [ 2]  365 	ais	#2
+   014F 81            [ 4]  366 	rts
+                            367 ;------------------------------------------------------------
+                            368 ;Allocation info for local variables in function 'isIdleAdvanceActive'
+                            369 ;------------------------------------------------------------
+                            370 ;sloc0                     Allocated to stack - sp +3
+                            371 ;sloc1                     Allocated to stack - sp +1
+                            372 ;------------------------------------------------------------
+                            373 ;ignition.c:49: bool isIdleAdvanceActive(void) {
+                            374 ;	-----------------------------------------
+                            375 ;	 function isIdleAdvanceActive
+                            376 ;	-----------------------------------------
+                            377 ;	Register assignment is optimal.
+                            378 ;	Stack space usage: 3 bytes.
+   0150                     379 _isIdleAdvanceActive:
+   0150 A7 FD         [ 2]  380 	ais	#-3
+                            381 ;ignition.c:50: if (configPage2.idleAdvEnabled == IDLE_ADV_OFF) return false;
+   0152 C6r00r15      [ 4]  382 	lda	(_configPage2 + 0x0015)
+   0155 26 03         [ 3]  383 	bne	00102$
+   0157 4F            [ 1]  384 	clra
+   0158 20 46         [ 3]  385 	bra	00109$
+   015A                     386 00102$:
+                            387 ;ignition.c:51: if (currentStatus.RPM == 0) return false;
+   015A CEr00r00      [ 4]  388 	ldx	_currentStatus
+   015D C6r00r01      [ 4]  389 	lda	(_currentStatus + 1)
+   0160 26 01         [ 3]  390 	bne	00132$
+   0162 5D            [ 1]  391 	tstx
+   0163                     392 00132$:
+   0163 26 03         [ 3]  393 	bne	00104$
+   0165 4F            [ 1]  394 	clra
+   0166 20 38         [ 3]  395 	bra	00109$
+   0168                     396 00104$:
+                            397 ;ignition.c:53: if (currentStatus.TPS > configPage2.idleAdvTPS) return false;
+   0168 C6r00r14      [ 4]  398 	lda	(_currentStatus + 0x0014)
+   016B CEr00r16      [ 4]  399 	ldx	(_configPage2 + 0x0016)
+   016E 9E EF 03      [ 4]  400 	stx	3,s
+   0171 9E E1 03      [ 4]  401 	cmp	3,s
+   0174 23 03         [ 3]  402 	bls	00106$
+   0176 4F            [ 1]  403 	clra
+   0177 20 27         [ 3]  404 	bra	00109$
+   0179                     405 00106$:
+                            406 ;ignition.c:54: if (currentStatus.RPM > ((uint16_t)configPage2.idleAdvRPM * 100U)) return false;
+   0179 C6r00r00      [ 4]  407 	lda	_currentStatus
+   017C 9E E7 01      [ 4]  408 	sta	1,s
+   017F C6r00r01      [ 4]  409 	lda	(_currentStatus + 1)
+   0182 9E E7 02      [ 4]  410 	sta	2,s
+   0185 C6r00r17      [ 4]  411 	lda	(_configPage2 + 0x0017)
+   0188 5F            [ 1]  412 	clrx
+   0189 87            [ 2]  413 	psha
+   018A 89            [ 2]  414 	pshx
+   018B A6 64         [ 2]  415 	lda	#0x64
+   018D CDr00r00      [ 5]  416 	jsr	__mulint
+   0190 A7 02         [ 2]  417 	ais	#2
+   0192 9E E0 02      [ 4]  418 	sub	2,s
+   0195 9F            [ 1]  419 	txa
+   0196 9E E2 01      [ 4]  420 	sbc	1,s
+   0199 24 03         [ 3]  421 	bcc	00108$
+   019B 4F            [ 1]  422 	clra
+   019C 20 02         [ 3]  423 	bra	00109$
+   019E                     424 00108$:
+                            425 ;ignition.c:56: return true;
+   019E A6 01         [ 2]  426 	lda	#0x01
+   01A0                     427 00109$:
+                            428 ;ignition.c:57: }
+   01A0 A7 03         [ 2]  429 	ais	#3
+   01A2 81            [ 4]  430 	rts
+                            431 ;------------------------------------------------------------
+                            432 ;Allocation info for local variables in function 'correctionCLTAdvance'
+                            433 ;------------------------------------------------------------
+                            434 ;temp                      Allocated to stack - sp +19
+                            435 ;i                         Allocated to stack - sp +15
+                            436 ;t1                        Allocated to registers a 
+                            437 ;t2                        Allocated to stack - sp +18
+                            438 ;v1                        Allocated to stack - sp +17
+                            439 ;v2                        Allocated to stack - sp +16
+                            440 ;sloc0                     Allocated to stack - sp +15
+                            441 ;sloc1                     Allocated to stack - sp +5
+                            442 ;sloc2                     Allocated to stack - sp +12
+                            443 ;sloc3                     Allocated to stack - sp +13
+                            444 ;sloc4                     Allocated to stack - sp +8
+                            445 ;sloc5                     Allocated to stack - sp +6
+                            446 ;sloc6                     Allocated to stack - sp +1
+                            447 ;------------------------------------------------------------
+                            448 ;ignition.c:59: int8_t correctionCLTAdvance(void) {
+                            449 ;	-----------------------------------------
+                            450 ;	 function correctionCLTAdvance
+                            451 ;	-----------------------------------------
+                            452 ;	Register assignment might be sub-optimal.
+                            453 ;	Stack space usage: 19 bytes.
+   01A3                     454 _correctionCLTAdvance:
+   01A3 A7 ED         [ 2]  455 	ais	#-19
+                            456 ;ignition.c:60: int8_t temp = currentStatus.coolant;
+   01A5 C6r00r15      [ 4]  457 	lda	(_currentStatus + 0x0015)
+   01A8 9E E7 13      [ 4]  458 	sta	19,s
+                            459 ;ignition.c:63: for (i = 0; i < 3; i++) {
+   01AB 4F            [ 1]  460 	clra
+   01AC 9E E7 0F      [ 4]  461 	sta	15,s
+   01AF                     462 00107$:
+                            463 ;ignition.c:64: if (temp >= configPage2.cltAdvBins[i] && temp < configPage2.cltAdvBins[i + 1]) {
+   01AF 97            [ 1]  464 	tax
+   01B0 8C            [ 1]  465 	clrh
+   01B1 DEr00r0B      [ 4]  466 	ldx	((_configPage2 + 0x000b)),x
+   01B4 9E E3 13      [ 4]  467 	cpx	19,s
+   01B7 93 03         [ 3]  468 	ble	00136$
+   01B9 CCr02rE3      [ 3]  469 	jmp	00108$
+   01BC                     470 00136$:
+   01BC 97            [ 1]  471 	tax
+   01BD AF 01         [ 2]  472 	aix	#1
+   01BF 9E EF 05      [ 4]  473 	stx	5,s
+   01C2 9E EE 05      [ 4]  474 	ldx	5,s
+   01C5 DEr00r0B      [ 4]  475 	ldx	((_configPage2 + 0x000b)),x
+   01C8 9E EF 0C      [ 4]  476 	stx	12,s
+   01CB 95            [ 2]  477 	tsx
+   01CC 87            [ 2]  478 	psha
+   01CD E6 12         [ 3]  479 	lda	18,x
+   01CF E1 0B         [ 3]  480 	cmp	11,x
+   01D1 86            [ 2]  481 	pula
+   01D2 91 03         [ 3]  482 	blt	00137$
+   01D4 CCr02rE3      [ 3]  483 	jmp	00108$
+   01D7                     484 00137$:
+                            485 ;ignition.c:65: int8_t t1 = configPage2.cltAdvBins[i];
+   01D7 EE 0E         [ 3]  486 	ldx	14,x
+   01D9 8C            [ 1]  487 	clrh
+   01DA D6r00r0B      [ 4]  488 	lda	((_configPage2 + 0x000b)),x
+                            489 ;ignition.c:66: int8_t t2 = configPage2.cltAdvBins[i + 1];
+   01DD 95            [ 2]  490 	tsx
+   01DE EE 0B         [ 3]  491 	ldx	11,x
+   01E0 9E EF 12      [ 4]  492 	stx	18,s
+                            493 ;ignition.c:67: int8_t v1 = configPage2.cltAdvValues[i];
+   01E3 9E EE 0F      [ 4]  494 	ldx	15,s
+   01E6 8C            [ 1]  495 	clrh
+   01E7 DEr00r0F      [ 4]  496 	ldx	((_configPage2 + 0x000f)),x
+   01EA 9E EF 11      [ 4]  497 	stx	17,s
+                            498 ;ignition.c:68: int8_t v2 = configPage2.cltAdvValues[i + 1];
+   01ED 9E EE 05      [ 4]  499 	ldx	5,s
+   01F0 DEr00r0F      [ 4]  500 	ldx	((_configPage2 + 0x000f)),x
+   01F3 9E EF 10      [ 4]  501 	stx	16,s
+                            502 ;ignition.c:70: return (int8_t)(v1 + (int32_t)(temp - t1) * (v2 - v1) / (t2 - t1));
+   01F6 9E EE 13      [ 4]  503 	ldx	19,s
+   01F9 87            [ 2]  504 	psha
+   01FA 9E E6 14      [ 4]  505 	lda	20,s
+   01FD 49            [ 1]  506 	rola	
+   01FE 4F            [ 1]  507 	clra	
+   01FF A2 00         [ 2]  508 	sbc	#0x00
+   0201 87            [ 2]  509 	psha
+   0202 8A            [ 2]  510 	pulh
+   0203 86            [ 2]  511 	pula
+   0204 9E E7 0E      [ 4]  512 	sta	14,s
+   0207 49            [ 1]  513 	rola	
+   0208 4F            [ 1]  514 	clra	
+   0209 A2 00         [ 2]  515 	sbc	#0x00
+   020B 9E E7 0D      [ 4]  516 	sta	13,s
+   020E 9F            [ 1]  517 	txa
+   020F 9E E0 0E      [ 4]  518 	sub	14,s
+   0212 87            [ 2]  519 	psha
+   0213 8B            [ 2]  520 	pshh
+   0214 86            [ 2]  521 	pula
+   0215 9E E2 0E      [ 4]  522 	sbc	14,s
+   0218 97            [ 1]  523 	tax
+   0219 86            [ 2]  524 	pula
+   021A 9E E7 0B      [ 4]  525 	sta	11,s
+   021D 9F            [ 1]  526 	txa
+   021E 9E E7 0A      [ 4]  527 	sta	10,s
+   0221 49            [ 1]  528 	rola	
+   0222 4F            [ 1]  529 	clra	
+   0223 A2 00         [ 2]  530 	sbc	#0x00
+   0225 9E E7 09      [ 4]  531 	sta	9,s
+   0228 9E E7 08      [ 4]  532 	sta	8,s
+   022B 9E E6 10      [ 4]  533 	lda	16,s
+   022E 87            [ 2]  534 	psha
+   022F 49            [ 1]  535 	rola	
+   0230 4F            [ 1]  536 	clra	
+   0231 A2 00         [ 2]  537 	sbc	#0x00
+   0233 97            [ 1]  538 	tax
+   0234 9E E6 12      [ 4]  539 	lda	18,s
+   0237 9E E7 08      [ 4]  540 	sta	8,s
+   023A 49            [ 1]  541 	rola	
+   023B 4F            [ 1]  542 	clra	
+   023C A2 00         [ 2]  543 	sbc	#0x00
+   023E 9E E7 07      [ 4]  544 	sta	7,s
+   0241 86            [ 2]  545 	pula
+   0242 9E E0 07      [ 4]  546 	sub	7,s
+   0245 87            [ 2]  547 	psha
+   0246 9F            [ 1]  548 	txa
+   0247 9E E2 07      [ 4]  549 	sbc	7,s
+   024A 97            [ 1]  550 	tax
+   024B 86            [ 2]  551 	pula
+   024C 9E E7 04      [ 4]  552 	sta	4,s
+   024F 9F            [ 1]  553 	txa
+   0250 9E E7 03      [ 4]  554 	sta	3,s
+   0253 49            [ 1]  555 	rola	
+   0254 4F            [ 1]  556 	clra	
+   0255 A2 00         [ 2]  557 	sbc	#0x00
+   0257 9E E7 02      [ 4]  558 	sta	2,s
+   025A 9E E7 01      [ 4]  559 	sta	1,s
+   025D 95            [ 2]  560 	tsx
+   025E E6 03         [ 3]  561 	lda	3,x
+   0260 87            [ 2]  562 	psha
+   0261 E6 02         [ 3]  563 	lda	2,x
+   0263 87            [ 2]  564 	psha
+   0264 E6 01         [ 3]  565 	lda	1,x
+   0266 87            [ 2]  566 	psha
+   0267 F6            [ 2]  567 	lda	,x
+   0268 87            [ 2]  568 	psha
+   0269 E6 0A         [ 3]  569 	lda	10,x
+   026B 87            [ 2]  570 	psha
+   026C E6 09         [ 3]  571 	lda	9,x
+   026E 87            [ 2]  572 	psha
+   026F E6 08         [ 3]  573 	lda	8,x
+   0271 87            [ 2]  574 	psha
+   0272 E6 07         [ 3]  575 	lda	7,x
+   0274 87            [ 2]  576 	psha
+   0275 CDr00r00      [ 5]  577 	jsr	__mullong
+   0278 9E E7 0C      [ 4]  578 	sta	12,s
+   027B 9E EF 0B      [ 4]  579 	stx	11,s
+   027E B6*00         [ 3]  580 	lda	*___SDCC_hc08_ret2
+   0280 9E E7 0A      [ 4]  581 	sta	10,s
+   0283 B6*00         [ 3]  582 	lda	*___SDCC_hc08_ret3
+   0285 9E E7 09      [ 4]  583 	sta	9,s
+   0288 A7 08         [ 2]  584 	ais	#8
+   028A 9E E6 12      [ 4]  585 	lda	18,s
+   028D 87            [ 2]  586 	psha
+   028E 49            [ 1]  587 	rola	
+   028F 4F            [ 1]  588 	clra	
+   0290 A2 00         [ 2]  589 	sbc	#0x00
+   0292 97            [ 1]  590 	tax
+   0293 86            [ 2]  591 	pula
+   0294 9E E0 0E      [ 4]  592 	sub	14,s
+   0297 87            [ 2]  593 	psha
+   0298 9F            [ 1]  594 	txa
+   0299 9E E2 0E      [ 4]  595 	sbc	14,s
+   029C 97            [ 1]  596 	tax
+   029D 86            [ 2]  597 	pula
+   029E 9E E7 0B      [ 4]  598 	sta	11,s
+   02A1 9F            [ 1]  599 	txa
+   02A2 9E E7 0A      [ 4]  600 	sta	10,s
+   02A5 49            [ 1]  601 	rola	
+   02A6 4F            [ 1]  602 	clra	
+   02A7 A2 00         [ 2]  603 	sbc	#0x00
+   02A9 9E E7 09      [ 4]  604 	sta	9,s
+   02AC 9E E7 08      [ 4]  605 	sta	8,s
+   02AF 95            [ 2]  606 	tsx
+   02B0 E6 0A         [ 3]  607 	lda	10,x
+   02B2 87            [ 2]  608 	psha
+   02B3 E6 09         [ 3]  609 	lda	9,x
+   02B5 87            [ 2]  610 	psha
+   02B6 E6 08         [ 3]  611 	lda	8,x
+   02B8 87            [ 2]  612 	psha
+   02B9 E6 07         [ 3]  613 	lda	7,x
+   02BB 87            [ 2]  614 	psha
+   02BC E6 03         [ 3]  615 	lda	3,x
+   02BE 87            [ 2]  616 	psha
+   02BF E6 02         [ 3]  617 	lda	2,x
+   02C1 87            [ 2]  618 	psha
+   02C2 E6 01         [ 3]  619 	lda	1,x
+   02C4 87            [ 2]  620 	psha
+   02C5 F6            [ 2]  621 	lda	,x
+   02C6 87            [ 2]  622 	psha
+   02C7 CDr00r00      [ 5]  623 	jsr	__divslong
+   02CA 9E E7 0C      [ 4]  624 	sta	12,s
+   02CD 9E EF 0B      [ 4]  625 	stx	11,s
+   02D0 B6*00         [ 3]  626 	lda	*___SDCC_hc08_ret2
+   02D2 9E E7 0A      [ 4]  627 	sta	10,s
+   02D5 B6*00         [ 3]  628 	lda	*___SDCC_hc08_ret3
+   02D7 9E E7 09      [ 4]  629 	sta	9,s
+   02DA A7 08         [ 2]  630 	ais	#8
+   02DC 95            [ 2]  631 	tsx
+   02DD E6 03         [ 3]  632 	lda	3,x
+   02DF EB 10         [ 3]  633 	add	16,x
+   02E1 20 1B         [ 3]  634 	bra	00109$
+   02E3                     635 00108$:
+                            636 ;ignition.c:63: for (i = 0; i < 3; i++) {
+   02E3 4C            [ 1]  637 	inca
+   02E4 9E E7 0F      [ 4]  638 	sta	15,s
+   02E7 A1 03         [ 2]  639 	cmp	#0x03
+   02E9 24 03         [ 3]  640 	bcc	00138$
+   02EB CCr01rAF      [ 3]  641 	jmp	00107$
+   02EE                     642 00138$:
+                            643 ;ignition.c:74: if (temp < configPage2.cltAdvBins[0]) {
+   02EE C6r00r0B      [ 4]  644 	lda	(_configPage2 + 0x000b)
+   02F1 9E E1 13      [ 4]  645 	cmp	19,s
+   02F4 93 05         [ 3]  646 	ble	00106$
+                            647 ;ignition.c:75: return configPage2.cltAdvValues[0];
+   02F6 C6r00r0F      [ 4]  648 	lda	(_configPage2 + 0x000f)
+   02F9 20 03         [ 3]  649 	bra	00109$
+   02FB                     650 00106$:
+                            651 ;ignition.c:77: return configPage2.cltAdvValues[3];
+   02FB C6r00r12      [ 4]  652 	lda	(_configPage2 + 0x0012)
+   02FE                     653 00109$:
+                            654 ;ignition.c:78: }
+   02FE A7 13         [ 2]  655 	ais	#19
+   0300 81            [ 4]  656 	rts
+                            657 ;------------------------------------------------------------
+                            658 ;Allocation info for local variables in function 'correctionIdleAdvance'
+                            659 ;------------------------------------------------------------
+                            660 ;delta                     Allocated to registers x h 
+                            661 ;sloc0                     Allocated to stack - sp +3
+                            662 ;sloc1                     Allocated to stack - sp +1
+                            663 ;------------------------------------------------------------
+                            664 ;ignition.c:80: int8_t correctionIdleAdvance(void) {
+                            665 ;	-----------------------------------------
+                            666 ;	 function correctionIdleAdvance
+                            667 ;	-----------------------------------------
+                            668 ;	Register assignment is optimal.
+                            669 ;	Stack space usage: 4 bytes.
+   0301                     670 _correctionIdleAdvance:
+   0301 A7 FC         [ 2]  671 	ais	#-4
+                            672 ;ignition.c:81: int16_t delta = (int16_t)currentStatus.CLIdleTarget - (int16_t)currentStatus.RPM;
+   0303 CEr00r2F      [ 4]  673 	ldx	(_currentStatus + 0x002f)
+   0306 C6r00r30      [ 4]  674 	lda	((_currentStatus + 0x002f) + 1)
+   0309 9E E7 04      [ 4]  675 	sta	4,s
+   030C 9E EF 03      [ 4]  676 	stx	3,s
+   030F CEr00r00      [ 4]  677 	ldx	_currentStatus
+   0312 C6r00r01      [ 4]  678 	lda	(_currentStatus + 1)
+   0315 9E E7 02      [ 4]  679 	sta	2,s
+   0318 9E EF 01      [ 4]  680 	stx	1,s
+   031B 9E E6 04      [ 4]  681 	lda	4,s
+   031E 9E E0 02      [ 4]  682 	sub	2,s
+   0321 97            [ 1]  683 	tax
+   0322 9E E6 03      [ 4]  684 	lda	3,s
+   0325 9E E2 01      [ 4]  685 	sbc	1,s
+   0328 87            [ 2]  686 	psha
+   0329 8A            [ 2]  687 	pulh
+                            688 ;ignition.c:82: if (delta < 0) delta = 0;
+   032A 9E EF 02      [ 4]  689 	stx	2,s
+   032D 8B            [ 2]  690 	pshh
+   032E 86            [ 2]  691 	pula
+   032F 9E E7 01      [ 4]  692 	sta	1,s
+   0332 9E E6 01      [ 4]  693 	lda	1,s
+   0335 A0 00         [ 2]  694 	sub	#0x00
+   0337 90 02         [ 3]  695 	bge	00102$
+   0339 8C            [ 1]  696 	clrh
+   033A 5F            [ 1]  697 	clrx
+   033B                     698 00102$:
+                            699 ;ignition.c:84: return lookupCurveI8(configPage2.idleAdvBins, configPage2.idleAdvValues, 4, (int16_t)(delta / 10));
+   033B A6 0A         [ 2]  700 	lda	#0x0a
+   033D 87            [ 2]  701 	psha
+   033E 4F            [ 1]  702 	clra
+   033F 87            [ 2]  703 	psha
+   0340 9F            [ 1]  704 	txa
+   0341 8B            [ 2]  705 	pshh
+   0342 88            [ 2]  706 	pulx
+   0343 CDr00r00      [ 5]  707 	jsr	__divsint
+   0346 A7 02         [ 2]  708 	ais	#2
+   0348 87            [ 2]  709 	psha
+   0349 89            [ 2]  710 	pshx
+   034A A6 04         [ 2]  711 	lda	#0x04
+   034C 87            [ 2]  712 	psha
+   034D A6r1C         [ 2]  713 	lda	#(_configPage2 + 0x001c)
+   034F 87            [ 2]  714 	psha
+   0350 A6s00         [ 2]  715 	lda	#>(_configPage2 + 0x001c)
+   0352 87            [ 2]  716 	psha
+   0353 A6r18         [ 2]  717 	lda	#(_configPage2 + 0x0018)
+   0355 AEs00         [ 2]  718 	ldx	#>(_configPage2 + 0x0018)
+   0357 CDr00r00      [ 5]  719 	jsr	_lookupCurveI8
+   035A A7 05         [ 2]  720 	ais	#5
+                            721 ;ignition.c:85: }
+   035C A7 04         [ 2]  722 	ais	#4
+   035E 81            [ 4]  723 	rts
+                            724 ;------------------------------------------------------------
+                            725 ;Allocation info for local variables in function 'applyRevLimiter'
+                            726 ;------------------------------------------------------------
+                            727 ;advance                   Allocated to registers h 
+                            728 ;limitRPM                  Allocated to stack - sp +1
+                            729 ;cutState                  Allocated with name '_applyRevLimiter_cutState_131072_43'
+                            730 ;------------------------------------------------------------
+                            731 ;ignition.c:87: int8_t applyRevLimiter(int8_t advance) {
+                            732 ;	-----------------------------------------
+                            733 ;	 function applyRevLimiter
+                            734 ;	-----------------------------------------
+                            735 ;	Register assignment is optimal.
+                            736 ;	Stack space usage: 2 bytes.
+   035F                     737 _applyRevLimiter:
+   035F A7 FE         [ 2]  738 	ais	#-2
+   0361 87            [ 2]  739 	psha
+   0362 8A            [ 2]  740 	pulh
+                            741 ;ignition.c:88: uint16_t limitRPM = (uint16_t)configPage2.revLimitRPM * 100;
+   0363 C6r00r0A      [ 4]  742 	lda	(_configPage2 + 0x000a)
+   0366 5F            [ 1]  743 	clrx
+   0367 8B            [ 2]  744 	pshh
+   0368 87            [ 2]  745 	psha
+   0369 89            [ 2]  746 	pshx
+   036A A6 64         [ 2]  747 	lda	#0x64
+   036C CDr00r00      [ 5]  748 	jsr	__mulint
+   036F A7 02         [ 2]  749 	ais	#2
+   0371 8A            [ 2]  750 	pulh
+   0372 9E E7 02      [ 4]  751 	sta	2,s
+   0375 9E EF 01      [ 4]  752 	stx	1,s
+                            753 ;ignition.c:90: if (currentStatus.RPM >= limitRPM) {
+   0378 CEr00r00      [ 4]  754 	ldx	_currentStatus
+   037B C6r00r01      [ 4]  755 	lda	(_currentStatus + 1)
+   037E 9E E0 02      [ 4]  756 	sub	2,s
+   0381 9F            [ 1]  757 	txa
+   0382 9E E2 01      [ 4]  758 	sbc	1,s
+   0385 25 11         [ 3]  759 	bcs	00104$
+                            760 ;ignition.c:92: cutState = !cutState;
+   0387 C6r00r00      [ 4]  761 	lda	_applyRevLimiter_cutState_131072_43
+   038A A8 01         [ 2]  762 	eor	#0x01
+   038C C7r00r00      [ 4]  763 	sta	_applyRevLimiter_cutState_131072_43
+                            764 ;ignition.c:94: if (cutState) {
+   038F C6r00r00      [ 4]  765 	lda	_applyRevLimiter_cutState_131072_43
+   0392 27 04         [ 3]  766 	beq	00104$
+                            767 ;ignition.c:95: return IGN_MIN_ADVANCE;
+   0394 A6 F6         [ 2]  768 	lda	#0xf6
+   0396 20 02         [ 3]  769 	bra	00105$
+   0398                     770 00104$:
+                            771 ;ignition.c:99: return advance;
+   0398 8B            [ 2]  772 	pshh
+   0399 86            [ 2]  773 	pula
+   039A                     774 00105$:
+                            775 ;ignition.c:100: }
+   039A A7 02         [ 2]  776 	ais	#2
+   039C 81            [ 4]  777 	rts
+                            778 ;------------------------------------------------------------
+                            779 ;Allocation info for local variables in function 'calculateDwell'
+                            780 ;------------------------------------------------------------
+                            781 ;dwell                     Allocated to stack - sp +1
+                            782 ;------------------------------------------------------------
+                            783 ;ignition.c:102: uint16_t calculateDwell(void) {
+                            784 ;	-----------------------------------------
+                            785 ;	 function calculateDwell
+                            786 ;	-----------------------------------------
+                            787 ;	Register assignment is optimal.
+                            788 ;	Stack space usage: 2 bytes.
+   039D                     789 _calculateDwell:
+   039D A7 FE         [ 2]  790 	ais	#-2
+                            791 ;ignition.c:105: if (BIT_CHECK(currentStatus.engineStatus, ENGINE_CRANK)) {
+   039F C6r00r2A      [ 4]  792 	lda	(_currentStatus + 0x002a)
+   03A2 A5 01         [ 2]  793 	bit	#0x01
+   03A4 27 0E         [ 3]  794 	beq	00102$
+                            795 ;ignition.c:106: dwell = configPage2.dwellCrank;
+   03A6 C6r00r05      [ 4]  796 	lda	(_configPage2 + 0x0005)
+   03A9 9E E7 01      [ 4]  797 	sta	1,s
+   03AC C6r00r06      [ 4]  798 	lda	((_configPage2 + 0x0005) + 1)
+   03AF 9E E7 02      [ 4]  799 	sta	2,s
+   03B2 20 0C         [ 3]  800 	bra	00103$
+   03B4                     801 00102$:
+                            802 ;ignition.c:108: dwell = configPage2.dwellRun;
+   03B4 C6r00r03      [ 4]  803 	lda	(_configPage2 + 0x0003)
+   03B7 9E E7 01      [ 4]  804 	sta	1,s
+   03BA C6r00r04      [ 4]  805 	lda	((_configPage2 + 0x0003) + 1)
+   03BD 9E E7 02      [ 4]  806 	sta	2,s
+   03C0                     807 00103$:
+                            808 ;ignition.c:111: if (dwell > configPage2.dwellLimit) {
+   03C0 CEr00r07      [ 4]  809 	ldx	(_configPage2 + 0x0007)
+   03C3 C6r00r08      [ 4]  810 	lda	((_configPage2 + 0x0007) + 1)
+   03C6 87            [ 2]  811 	psha
+   03C7 9E E0 03      [ 4]  812 	sub	3,s
+   03CA 9F            [ 1]  813 	txa
+   03CB 9E E2 02      [ 4]  814 	sbc	2,s
+   03CE 86            [ 2]  815 	pula
+   03CF 24 06         [ 3]  816 	bcc	00105$
+                            817 ;ignition.c:112: dwell = configPage2.dwellLimit;
+   03D1 9E EF 01      [ 4]  818 	stx	1,s
+   03D4 9E E7 02      [ 4]  819 	sta	2,s
+   03D7                     820 00105$:
+                            821 ;ignition.c:115: if (dwell < DWELL_MIN) dwell = DWELL_MIN;
+   03D7 9E E6 02      [ 4]  822 	lda	2,s
+   03DA 9E EE 01      [ 4]  823 	ldx	1,s
+   03DD A0 E8         [ 2]  824 	sub	#0xe8
+   03DF 9F            [ 1]  825 	txa
+   03E0 A2 03         [ 2]  826 	sbc	#0x03
+   03E2 24 08         [ 3]  827 	bcc	00107$
+   03E4 95            [ 2]  828 	tsx
+   03E5 A6 03         [ 2]  829 	lda	#0x03
+   03E7 F7            [ 2]  830 	sta	,x
+   03E8 A6 E8         [ 2]  831 	lda	#0xe8
+   03EA E7 01         [ 3]  832 	sta	1,x
+   03EC                     833 00107$:
+                            834 ;ignition.c:116: if (dwell > DWELL_MAX) dwell = DWELL_MAX;
+   03EC 8A            [ 2]  835 	pulh
+   03ED 88            [ 2]  836 	pulx
+   03EE 89            [ 2]  837 	pshx
+   03EF 8B            [ 2]  838 	pshh
+   03F0 65 1F 40      [ 3]  839 	cphx	#0x1f40
+   03F3 23 08         [ 3]  840 	bls	00109$
+   03F5 95            [ 2]  841 	tsx
+   03F6 A6 1F         [ 2]  842 	lda	#0x1f
+   03F8 F7            [ 2]  843 	sta	,x
+   03F9 A6 40         [ 2]  844 	lda	#0x40
+   03FB E7 01         [ 3]  845 	sta	1,x
+   03FD                     846 00109$:
+                            847 ;ignition.c:118: return dwell;
+   03FD 95            [ 2]  848 	tsx
+   03FE FE            [ 2]  849 	ldx	,x
+   03FF 9E E6 02      [ 4]  850 	lda	2,s
+                            851 ;ignition.c:119: }
+   0402 A7 02         [ 2]  852 	ais	#2
+   0404 81            [ 4]  853 	rts
+                            854 	.area CSEG    (CODE)
+                            855 	.area CONST   (CODE)
+                            856 	.area XINIT   (CODE)
+                            857 	.area CABS    (ABS,CODE)

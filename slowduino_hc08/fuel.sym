@@ -1,0 +1,63 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  2710 L
+    .__.ABS.                                                    =  0000 G
+    .__.CPU.                                                    =  0000 L
+    .__.H$L.                                                    =  0001 L
+    ___SDCC_hc08_ret2                                              **** GX
+    ___SDCC_hc08_ret3                                              **** GX
+    __divsint                                                      **** GX
+    __divslong                                                     **** GX
+    __divuint                                                      **** GX
+    __divulong                                                     **** GX
+    __mulint                                                       **** GX
+    __mullong                                                      **** GX
+  6 __xinit__aseCounter                                            0000 R
+  6 __xinit__aseValue                                              0001 R
+  B _aseCounter                                                    0000 R
+  B _aseValue                                                      0001 R
+  5 _calculateCorrections                                          032D GR
+  5 _calculateInjection                                            00ED GR
+    _configPage1                                                   **** GX
+  5 _correctionAE                                                  078F GR
+  5 _correctionASE                                                 0713 GR
+  5 _correctionBattery                                             0826 GR
+  5 _correctionCLT                                                 07FC GR
+  5 _correctionWUE                                                 0578 GR
+    _currentStatus                                                 **** GX
+  5 _decrementASE                                                  0736 GR
+    _getTableValue                                                 **** GX
+  5 _getVE                                                         02EA GR
+  5 _interpolate                                                   0004 R
+  5 _interrupts                                                    0002 R
+  5 _noInterrupts                                                  0000 R
+  5 _startASE                                                      0721 GR
+  5 _updateEngineStatus                                            0841 GR
+  A _updateEngineStatus_firstRun_65536_62                          0000 R
+    _veTable                                                       **** GX
+
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 2.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE                                      size    0   flags    0
+   1 HOME                                       size    0   flags   20
+   2 GSINIT0                                    size    0   flags   20
+   3 GSINIT                                     size    5   flags   20
+   4 GSFINAL                                    size    0   flags   20
+   5 CSEG                                       size  8E5   flags   20
+   6 XINIT                                      size    2   flags   20
+   7 CONST                                      size    0   flags   20
+   8 DSEG                                       size    0   flags   10
+   9 OSEG                                       size    0   flags   14
+   A XSEG                                       size    1   flags    0
+   B XISEG                                      size    2   flags    0
+   C IABS                                       size    0   flags    8
+   D XABS                                       size    0   flags    8
+   E CABS                                       size    0   flags   28
+

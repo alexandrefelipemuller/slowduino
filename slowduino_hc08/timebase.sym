@@ -1,0 +1,39 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  2710 L
+    .__.ABS.                                                    =  0000 G
+    .__.CPU.                                                    =  0000 L
+    .__.H$L.                                                    =  0001 L
+    ___SDCC_hc08_ret2                                              **** GX
+    ___SDCC_hc08_ret3                                              **** GX
+  5 _interrupts                                                    0002 R
+  5 _isr_tim2_overflow                                             00C0 GR
+  5 _micros                                                        0016 GR
+  5 _noInterrupts                                                  0000 R
+  A _tim2OverflowCount                                             0000 R
+  5 _timebaseInit                                                  0004 GR
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 2.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE                                      size    0   flags    0
+   1 HOME                                       size    0   flags   20
+   2 GSINIT0                                    size    0   flags   20
+   3 GSINIT                                     size    0   flags   20
+   4 GSFINAL                                    size    0   flags   20
+   5 CSEG                                       size  107   flags   20
+   6 XINIT                                      size    0   flags   20
+   7 CONST                                      size    0   flags   20
+   8 DSEG                                       size    0   flags   10
+   9 OSEG                                       size    0   flags   14
+   A XSEG                                       size    4   flags    0
+   B XISEG                                      size    0   flags    0
+   C IABS                                       size    0   flags    8
+   D XABS                                       size    0   flags    8
+   E CABS                                       size    0   flags   28
+

@@ -1,0 +1,78 @@
+XH2
+H F areas 7 global symbols
+M serial_hc08
+O -mhc08
+S .__.ABS. Def0000
+A _CODE size 0 flags 0 addr 0
+A HOME size 0 flags 20 addr 0
+A GSINIT0 size 0 flags 20 addr 0
+A GSINIT size 0 flags 20 addr 0
+A GSFINAL size 0 flags 20 addr 0
+A CSEG size 74 flags 20 addr 0
+S _sciAvailable Def0010
+S _sciPrintString Def0061
+S _sciReadByte Def001C
+S _sciWriteBytes Def0026
+S _sciInit Def0000
+S _sciWriteByte Def001F
+A XINIT size 0 flags 20 addr 0
+A CONST size 0 flags 20 addr 0
+A DSEG size 0 flags 10 addr 0
+A OSEG size 0 flags 14 addr 0
+A XSEG size 0 flags 0 addr 0
+A XISEG size 0 flags 0 addr 0
+A IABS size 0 flags 8 addr 0
+A XABS size 0 flags 8 addr 0
+A CABS size 0 flags 28 addr 0
+T 00 00
+R 00 00 00 05
+T 00 00 6E 00 19 B6 14 AA 0C B7 14 B6 13 AA 40 B7
+R 00 00 00 05
+T 00 0E 13 81
+R 00 00 00 05
+T 00 10
+R 00 00 00 05
+T 00 10 B6 16 A4 20 40 4F 49 A8 01 A8 01 81
+R 00 00 00 05
+T 00 1C
+R 00 00 00 05
+T 00 1C B6 18 81
+R 00 00 00 05
+T 00 1F
+R 00 00 00 05
+T 00 1F
+R 00 00 00 05
+T 00 1F BE 16 2A FC B7 18 81
+R 00 00 00 05
+T 00 26
+R 00 00 00 05
+T 00 26 87 89 A7 FE 8C 5F
+R 00 00 00 05
+T 00 2C
+R 00 00 00 05
+T 00 2C 9F 9E E0 08 8B 86 9E E2 07 24 27 9F 9E EB
+R 00 00 00 05
+T 00 3A 04 9E E7 02 8B 86 9E E9 03 9E E7 01 89 8B
+R 00 00 00 05
+T 00 48 9E E6 03 87 8A 9E EE 04 F6 8A 88 89 8B CD
+R 00 00 00 05
+T 00 56 00 1F 8A 88 AF 01 20 CE
+R 00 00 00 05 00 02 00 05
+T 00 5E
+R 00 00 00 05
+T 00 5E A7 04 81
+R 00 00 00 05
+T 00 61
+R 00 00 00 05
+T 00 61 89 97 8A
+R 00 00 00 05
+T 00 64
+R 00 00 00 05
+T 00 64 F6 4D 27 0B 89 8B CD 00 1F 8A 88 AF 01 20
+R 00 00 00 05 00 09 00 05
+T 00 72 F1
+R 00 00 00 05
+T 00 73
+R 00 00 00 05
+T 00 73 81
+R 00 00 00 05

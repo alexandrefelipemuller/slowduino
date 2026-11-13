@@ -1,0 +1,29 @@
+XH2
+H 6 areas 5 global symbols
+S _isr_irq Ref0000
+S _isr_tim2_overflow Ref0000
+S .__.ABS. Def0000
+S _isr_tim1_ch0 Ref0000
+S _isr_tim1_ch1 Ref0000
+A _CODE size 0 flags 0 addr 0
+A CODEIVT size 0 flags 8 addr 0
+A CODEIVT0 size 2 flags 8 addr FFEC
+A CODEIVT1 size 2 flags 8 addr FFF4
+A CODEIVT2 size 2 flags 8 addr FFF6
+A CODEIVT3 size 2 flags 8 addr FFFA
+T FF EC
+R 00 00 00 02
+T FF EC 00 00
+R 00 00 00 02 02 02 00 01
+T FF F4
+R 00 00 00 03
+T FF F4 00 00
+R 00 00 00 03 02 02 00 04
+T FF F6
+R 00 00 00 04
+T FF F6 00 00
+R 00 00 00 04 02 02 00 03
+T FF FA
+R 00 00 00 05
+T FF FA 00 00
+R 00 00 00 05 02 02 00 00

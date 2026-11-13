@@ -1,0 +1,63 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  2710 L
+    .__.ABS.                                                    =  0000 G
+    .__.CPU.                                                    =  0000 L
+    .__.H$L.                                                    =  0001 L
+  7 _IGNITION_MIN_DELAY_US                                         0000 R
+    ___SDCC_hc08_ret2                                              **** GX
+    ___SDCC_hc08_ret3                                              **** GX
+  6 __xinit__ignitionSchedule1                                     0000 R
+  6 __xinit__ignitionSchedule2                                     0008 R
+  5 _armIgnitionCompare                                            03B2 R
+  5 _beginCoil1Charge                                              001A R
+  5 _beginCoil2Charge                                              0028 R
+  5 _clearIgnitionSchedule                                         06C0 GR
+  5 _closeInjector1                                                003D R
+  5 _closeInjector2                                                004B R
+  5 _closeInjector3                                                0059 R
+  5 _endCoil1Charge                                                0021 R
+  5 _endCoil2Charge                                                002F R
+  5 _getTimer1Count                                                0000 R
+  5 _handleIgnitionChannel                                         02DD R
+  B _ignitionSchedule1                                             0000 GR
+  B _ignitionSchedule2                                             0008 GR
+  A _injector1Polling                                              0000 GR
+  A _injector2Polling                                              000A GR
+  A _injector3Polling                                              0014 GR
+  5 _isr_tim1_ch0                                                  06E3 GR
+  5 _isr_tim1_ch1                                                  0700 GR
+    _micros                                                        **** GX
+  5 _openInjector1                                                 0036 R
+  5 _openInjector2                                                 0044 R
+  5 _openInjector3                                                 0052 R
+  5 _processInjectorPolling                                        011A GR
+  5 _scheduleInjectorPolling                                       0060 GR
+  5 _schedulerInit                                                 02AF GR
+  5 _setIgnitionSchedule                                           0440 GR
+
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 2.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE                                      size    0   flags    0
+   1 HOME                                       size    0   flags   20
+   2 GSINIT0                                    size    0   flags   20
+   3 GSINIT                                     size    0   flags   20
+   4 GSFINAL                                    size    0   flags   20
+   5 CSEG                                       size  71D   flags   20
+   6 XINIT                                      size   10   flags   20
+   7 CONST                                      size    2   flags   20
+   8 DSEG                                       size    0   flags   10
+   9 OSEG                                       size    0   flags   14
+   A XSEG                                       size   1E   flags    0
+   B XISEG                                      size   10   flags    0
+   C IABS                                       size    0   flags    8
+   D XABS                                       size    0   flags    8
+   E CABS                                       size    0   flags   28
+

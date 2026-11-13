@@ -1,0 +1,72 @@
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 1.
+Hexadecimal [16-Bits]
+
+Symbol Table
+
+    .__.$$$.                                                    =  2710 L
+    .__.ABS.                                                    =  0000 G
+    .__.CPU.                                                    =  0000 L
+    .__.H$L.                                                    =  0001 L
+    ___SDCC_hc08_ret2                                              **** GX
+    ___SDCC_hc08_ret3                                              **** GX
+    __divsint                                                      **** GX
+    __divulong                                                     **** GX
+    __mulint                                                       **** GX
+    __mullong                                                      **** GX
+  6 __xinit__revolutionCounter                                     0000 R
+  6 __xinit__triggerEdgesPerTooth                                  0001 R
+  5 _angleToTime                                                   0BBA GR
+  5 _attachTriggerInterrupt                                        0E6C GR
+  5 _calculateRPM                                                  0A57 GR
+  5 _checkSyncLoss                                                 0B51 GR
+    _configPage1                                                   **** GX
+    _configPage2                                                   **** GX
+    _currentStatus                                                 **** GX
+  A _currentTriggerISR                                             0029 R
+  5 _getCrankAngle                                                 0D20 GR
+  5 _getTimer1Count                                                0004 R
+    _ignitionSchedule1                                             **** GX
+    _ignitionSchedule2                                             **** GX
+    _injector1Polling                                              **** GX
+    _injector2Polling                                              **** GX
+  5 _interrupts                                                    0002 R
+  5 _isr_irq                                                       0EF5 GR
+    _micros                                                        **** GX
+  5 _noInterrupts                                                  0000 R
+  5 _resetTriggerState                                             0E79 GR
+  B _revolutionCounter                                             0000 GR
+  5 _scheduleIgnitionISR                                           0140 R
+  5 _scheduleInjectionISR                                          001E R
+    _scheduleInjectorPolling                                       **** GX
+    _setIgnitionSchedule                                           **** GX
+  5 _timeToAngle                                                   0C7E GR
+  B _triggerEdgesPerTooth                                          0001 R
+  5 _triggerInit                                                   0A42 GR
+  5 _triggerPri_BasicDistributor                                   088A R
+  5 _triggerPri_MissingTooth                                       045B R
+  5 _triggerSetup_BasicDistributor                                 0A11 GR
+  5 _triggerSetup_MissingTooth                                     09B8 GR
+  A _triggerState                                                  0000 GR
+
+
+ASxxxx Assembler V02.00 + NoICE + SDCC mods  (Motorola 68HC(S)08), page 2.
+Hexadecimal [16-Bits]
+
+Area Table
+
+   0 _CODE                                      size    0   flags    0
+   1 HOME                                       size    0   flags   20
+   2 GSINIT0                                    size    0   flags   20
+   3 GSINIT                                     size    0   flags   20
+   4 GSFINAL                                    size    0   flags   20
+   5 CSEG                                       size  F0D   flags   20
+   6 XINIT                                      size    2   flags   20
+   7 CONST                                      size    0   flags   20
+   8 DSEG                                       size    0   flags   10
+   9 OSEG                                       size    0   flags   14
+   A XSEG                                       size   2B   flags    0
+   B XISEG                                      size    2   flags    0
+   C IABS                                       size    0   flags    8
+   D XABS                                       size    0   flags    8
+   E CABS                                       size    0   flags   28
+

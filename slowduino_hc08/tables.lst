@@ -1,0 +1,2398 @@
+                              1 ;--------------------------------------------------------
+                              2 ; File Created by SDCC : free open source ANSI-C Compiler
+                              3 ; Version 4.2.0 #13081 (Linux)
+                              4 ;--------------------------------------------------------
+                              5 	.module tables
+                              6 	.optsdcc -mhc08
+                              7 	
+                              8 	.area HOME    (CODE)
+                              9 	.area GSINIT0 (CODE)
+                             10 	.area GSINIT  (CODE)
+                             11 	.area GSFINAL (CODE)
+                             12 	.area CSEG    (CODE)
+                             13 	.area XINIT   (CODE)
+                             14 	.area CONST   (CODE)
+                             15 	.area DSEG    (PAG)
+                             16 	.area OSEG    (PAG, OVR)
+                             17 	.area XSEG
+                             18 	.area XISEG
+                             19 ;--------------------------------------------------------
+                             20 ; Public variables in this module
+                             21 ;--------------------------------------------------------
+                             22 	.globl _eepromReadI8
+                             23 	.globl _eepromReadByte
+                             24 	.globl _ignTable
+                             25 	.globl _veTable
+                             26 	.globl _initTables
+                             27 	.globl _getTableValue
+                             28 	.globl _findTableXIndices
+                             29 	.globl _findTableYIndices
+                             30 	.globl _lookupCurveU8
+                             31 	.globl _lookupCurveI8
+                             32 ;--------------------------------------------------------
+                             33 ; ram data
+                             34 ;--------------------------------------------------------
+                             35 	.area DSEG    (PAG)
+                             36 ;--------------------------------------------------------
+                             37 ; overlayable items in ram
+                             38 ;--------------------------------------------------------
+                             39 ;--------------------------------------------------------
+                             40 ; absolute ram data
+                             41 ;--------------------------------------------------------
+                             42 	.area IABS    (ABS)
+                             43 	.area IABS    (ABS)
+                             44 ;--------------------------------------------------------
+                             45 ; absolute external ram data
+                             46 ;--------------------------------------------------------
+                             47 	.area XABS    (ABS)
+                             48 ;--------------------------------------------------------
+                             49 ; external initialized ram data
+                             50 ;--------------------------------------------------------
+                             51 	.area XISEG
+                             52 ;--------------------------------------------------------
+                             53 ; extended address mode data
+                             54 ;--------------------------------------------------------
+                             55 	.area XSEG
+   0000                      56 _veTable::
+   0000                      57 	.ds 39
+   0027                      58 _ignTable::
+   0027                      59 	.ds 39
+                             60 ;--------------------------------------------------------
+                             61 ; global & static initialisations
+                             62 ;--------------------------------------------------------
+                             63 	.area HOME    (CODE)
+                             64 	.area GSINIT  (CODE)
+                             65 	.area GSFINAL (CODE)
+                             66 	.area GSINIT  (CODE)
+                             67 ;--------------------------------------------------------
+                             68 ; Home
+                             69 ;--------------------------------------------------------
+                             70 	.area HOME    (CODE)
+                             71 	.area HOME    (CODE)
+                             72 ;--------------------------------------------------------
+                             73 ; code
+                             74 ;--------------------------------------------------------
+                             75 	.area CSEG    (CODE)
+                             76 ;------------------------------------------------------------
+                             77 ;Allocation info for local variables in function 'interpolate'
+                             78 ;------------------------------------------------------------
+                             79 ;x1                        Allocated to stack - sp +11
+                             80 ;x2                        Allocated to stack - sp +13
+                             81 ;y1                        Allocated to stack - sp +15
+                             82 ;y2                        Allocated to stack - sp +17
+                             83 ;x                         Allocated to registers a x 
+                             84 ;sloc0                     Allocated to stack - sp +1
+                             85 ;sloc1                     Allocated to stack - sp +5
+                             86 ;------------------------------------------------------------
+                             87 ;tables.h:33: static inline int16_t interpolate(int16_t x, int16_t x1, int16_t x2, int16_t y1, int16_t y2) {
+                             88 ;	-----------------------------------------
+                             89 ;	 function interpolate
+                             90 ;	-----------------------------------------
+                             91 ;	Register assignment might be sub-optimal.
+                             92 ;	Stack space usage: 8 bytes.
+   0000                      93 _interpolate:
+   0000 A7 F8         [ 2]   94 	ais	#-8
+                             95 ;tables.h:34: if (x2 == x1) return y1;
+   0002 87            [ 2]   96 	psha
+   0003 9E E6 0F      [ 4]   97 	lda	15,s
+   0006 9E E1 0D      [ 4]   98 	cmp	13,s
+   0009 86            [ 2]   99 	pula
+   000A 26 0A         [ 3]  100 	bne	00110$
+   000C 87            [ 2]  101 	psha
+   000D 9E E6 0E      [ 4]  102 	lda	14,s
+   0010 9E E1 0C      [ 4]  103 	cmp	12,s
+   0013 86            [ 2]  104 	pula
+   0014 27 02         [ 3]  105 	beq	00111$
+   0016                     106 00110$:
+   0016 20 09         [ 3]  107 	bra	00102$
+   0018                     108 00111$:
+   0018 95            [ 2]  109 	tsx
+   0019 EE 0E         [ 3]  110 	ldx	14,x
+   001B 9E E6 10      [ 4]  111 	lda	16,s
+   001E CCr00rE6      [ 3]  112 	jmp	00103$
+   0021                     113 00102$:
+                            114 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0021 9E E0 0C      [ 4]  115 	sub	12,s
+   0024 87            [ 2]  116 	psha
+   0025 9F            [ 1]  117 	txa
+   0026 9E E2 0C      [ 4]  118 	sbc	12,s
+   0029 97            [ 1]  119 	tax
+   002A 86            [ 2]  120 	pula
+   002B 9E E7 04      [ 4]  121 	sta	4,s
+   002E 9F            [ 1]  122 	txa
+   002F 9E E7 03      [ 4]  123 	sta	3,s
+   0032 49            [ 1]  124 	rola	
+   0033 4F            [ 1]  125 	clra	
+   0034 A2 00         [ 2]  126 	sbc	#0x00
+   0036 9E E7 02      [ 4]  127 	sta	2,s
+   0039 9E E7 01      [ 4]  128 	sta	1,s
+   003C 9E E6 12      [ 4]  129 	lda	18,s
+   003F 9E E0 10      [ 4]  130 	sub	16,s
+   0042 87            [ 2]  131 	psha
+   0043 9E E6 12      [ 4]  132 	lda	18,s
+   0046 9E E2 10      [ 4]  133 	sbc	16,s
+   0049 97            [ 1]  134 	tax
+   004A 86            [ 2]  135 	pula
+   004B 9E E7 08      [ 4]  136 	sta	8,s
+   004E 9F            [ 1]  137 	txa
+   004F 9E E7 07      [ 4]  138 	sta	7,s
+   0052 49            [ 1]  139 	rola	
+   0053 4F            [ 1]  140 	clra	
+   0054 A2 00         [ 2]  141 	sbc	#0x00
+   0056 9E E7 06      [ 4]  142 	sta	6,s
+   0059 9E E7 05      [ 4]  143 	sta	5,s
+   005C 95            [ 2]  144 	tsx
+   005D E6 07         [ 3]  145 	lda	7,x
+   005F 87            [ 2]  146 	psha
+   0060 E6 06         [ 3]  147 	lda	6,x
+   0062 87            [ 2]  148 	psha
+   0063 E6 05         [ 3]  149 	lda	5,x
+   0065 87            [ 2]  150 	psha
+   0066 E6 04         [ 3]  151 	lda	4,x
+   0068 87            [ 2]  152 	psha
+   0069 E6 03         [ 3]  153 	lda	3,x
+   006B 87            [ 2]  154 	psha
+   006C E6 02         [ 3]  155 	lda	2,x
+   006E 87            [ 2]  156 	psha
+   006F E6 01         [ 3]  157 	lda	1,x
+   0071 87            [ 2]  158 	psha
+   0072 F6            [ 2]  159 	lda	,x
+   0073 87            [ 2]  160 	psha
+   0074 CDr00r00      [ 5]  161 	jsr	__mullong
+   0077 9E E7 10      [ 4]  162 	sta	16,s
+   007A 9E EF 0F      [ 4]  163 	stx	15,s
+   007D B6*00         [ 3]  164 	lda	*___SDCC_hc08_ret2
+   007F 9E E7 0E      [ 4]  165 	sta	14,s
+   0082 B6*00         [ 3]  166 	lda	*___SDCC_hc08_ret3
+   0084 9E E7 0D      [ 4]  167 	sta	13,s
+   0087 A7 08         [ 2]  168 	ais	#8
+   0089 9E E6 0E      [ 4]  169 	lda	14,s
+   008C 9E E0 0C      [ 4]  170 	sub	12,s
+   008F 87            [ 2]  171 	psha
+   0090 9E E6 0E      [ 4]  172 	lda	14,s
+   0093 9E E2 0C      [ 4]  173 	sbc	12,s
+   0096 97            [ 1]  174 	tax
+   0097 86            [ 2]  175 	pula
+   0098 9E E7 04      [ 4]  176 	sta	4,s
+   009B 9F            [ 1]  177 	txa
+   009C 9E E7 03      [ 4]  178 	sta	3,s
+   009F 49            [ 1]  179 	rola	
+   00A0 4F            [ 1]  180 	clra	
+   00A1 A2 00         [ 2]  181 	sbc	#0x00
+   00A3 9E E7 02      [ 4]  182 	sta	2,s
+   00A6 9E E7 01      [ 4]  183 	sta	1,s
+   00A9 95            [ 2]  184 	tsx
+   00AA E6 03         [ 3]  185 	lda	3,x
+   00AC 87            [ 2]  186 	psha
+   00AD E6 02         [ 3]  187 	lda	2,x
+   00AF 87            [ 2]  188 	psha
+   00B0 E6 01         [ 3]  189 	lda	1,x
+   00B2 87            [ 2]  190 	psha
+   00B3 F6            [ 2]  191 	lda	,x
+   00B4 87            [ 2]  192 	psha
+   00B5 E6 07         [ 3]  193 	lda	7,x
+   00B7 87            [ 2]  194 	psha
+   00B8 E6 06         [ 3]  195 	lda	6,x
+   00BA 87            [ 2]  196 	psha
+   00BB E6 05         [ 3]  197 	lda	5,x
+   00BD 87            [ 2]  198 	psha
+   00BE E6 04         [ 3]  199 	lda	4,x
+   00C0 87            [ 2]  200 	psha
+   00C1 CDr00r00      [ 5]  201 	jsr	__divslong
+   00C4 9E E7 10      [ 4]  202 	sta	16,s
+   00C7 9E EF 0F      [ 4]  203 	stx	15,s
+   00CA B6*00         [ 3]  204 	lda	*___SDCC_hc08_ret2
+   00CC 9E E7 0E      [ 4]  205 	sta	14,s
+   00CF B6*00         [ 3]  206 	lda	*___SDCC_hc08_ret3
+   00D1 9E E7 0D      [ 4]  207 	sta	13,s
+   00D4 A7 08         [ 2]  208 	ais	#8
+   00D6 9E E6 08      [ 4]  209 	lda	8,s
+   00D9 9E EE 07      [ 4]  210 	ldx	7,s
+   00DC 9E EB 10      [ 4]  211 	add	16,s
+   00DF 87            [ 2]  212 	psha
+   00E0 9F            [ 1]  213 	txa
+   00E1 9E E9 10      [ 4]  214 	adc	16,s
+   00E4 97            [ 1]  215 	tax
+   00E5 86            [ 2]  216 	pula
+   00E6                     217 00103$:
+                            218 ;tables.h:36: }
+   00E6 A7 08         [ 2]  219 	ais	#8
+   00E8 81            [ 4]  220 	rts
+                            221 ;------------------------------------------------------------
+                            222 ;Allocation info for local variables in function 'initTables'
+                            223 ;------------------------------------------------------------
+                            224 ;tables.c:17: void initTables(void) {
+                            225 ;	-----------------------------------------
+                            226 ;	 function initTables
+                            227 ;	-----------------------------------------
+                            228 ;	Register assignment is optimal.
+                            229 ;	Stack space usage: 0 bytes.
+   00E9                     230 _initTables:
+                            231 ;tables.c:18: veTable.isSigned = false;
+   00E9 4F            [ 1]  232 	clra
+   00EA C7r00r26      [ 4]  233 	sta	(_veTable + 0x0026)
+                            234 ;tables.c:19: ignTable.isSigned = true;
+   00ED 4C            [ 1]  235 	inca
+   00EE C7r00r4D      [ 4]  236 	sta	(_ignTable + 0x0026)
+                            237 ;tables.c:20: veTable.eepromValuesBase = EEPROM_VE_TABLE;
+   00F1 4A            [ 1]  238 	deca
+   00F2 C7r00r24      [ 4]  239 	sta	(_veTable + 0x0024)
+   00F5 C7r00r25      [ 4]  240 	sta	((_veTable + 0x0024) + 1)
+                            241 ;tables.c:21: ignTable.eepromValuesBase = EEPROM_IGN_TABLE;
+   00F8 C7r00r4B      [ 4]  242 	sta	(_ignTable + 0x0024)
+   00FB A6 90         [ 2]  243 	lda	#0x90
+   00FD C7r00r4C      [ 4]  244 	sta	((_ignTable + 0x0024) + 1)
+                            245 ;tables.c:22: }
+   0100 81            [ 4]  246 	rts
+                            247 ;------------------------------------------------------------
+                            248 ;Allocation info for local variables in function 'readTableCell'
+                            249 ;------------------------------------------------------------
+                            250 ;y                         Allocated to stack - sp +9
+                            251 ;x                         Allocated to stack - sp +10
+                            252 ;table                     Allocated to stack - sp +5
+                            253 ;addr                      Allocated to registers a x 
+                            254 ;sloc0                     Allocated to stack - sp +3
+                            255 ;sloc1                     Allocated to stack - sp +1
+                            256 ;------------------------------------------------------------
+                            257 ;tables.c:24: static int16_t readTableCell(const struct Table3D *table, uint8_t y, uint8_t x) {
+                            258 ;	-----------------------------------------
+                            259 ;	 function readTableCell
+                            260 ;	-----------------------------------------
+                            261 ;	Register assignment is optimal.
+                            262 ;	Stack space usage: 6 bytes.
+   0101                     263 _readTableCell:
+   0101 87            [ 2]  264 	psha
+   0102 89            [ 2]  265 	pshx
+   0103 A7 FC         [ 2]  266 	ais	#-4
+                            267 ;tables.c:25: uint16_t addr = table->eepromValuesBase + ((uint16_t)y * TABLE_SIZE_X) + x;
+   0105 95            [ 2]  268 	tsx
+   0106 E6 04         [ 3]  269 	lda	4,x
+   0108 E7 02         [ 3]  270 	sta	2,x
+   010A E6 05         [ 3]  271 	lda	5,x
+   010C E7 03         [ 3]  272 	sta	3,x
+   010E E6 02         [ 3]  273 	lda	2,x
+   0110 87            [ 2]  274 	psha
+   0111 8A            [ 2]  275 	pulh
+   0112 9E EE 04      [ 4]  276 	ldx	4,s
+   0115 E6 24         [ 3]  277 	lda	36,x
+   0117 9E E7 03      [ 4]  278 	sta	3,s
+   011A E6 25         [ 3]  279 	lda	37,x
+   011C 9E E7 04      [ 4]  280 	sta	4,s
+   011F 9E E6 09      [ 4]  281 	lda	9,s
+   0122 5F            [ 1]  282 	clrx
+   0123 87            [ 2]  283 	psha
+   0124 89            [ 2]  284 	pshx
+   0125 A6 0C         [ 2]  285 	lda	#0x0c
+   0127 CDr00r00      [ 5]  286 	jsr	__mulint
+   012A 9E E7 04      [ 4]  287 	sta	4,s
+   012D 9E EF 03      [ 4]  288 	stx	3,s
+   0130 A7 02         [ 2]  289 	ais	#2
+   0132 9E E6 04      [ 4]  290 	lda	4,s
+   0135 9E EE 03      [ 4]  291 	ldx	3,s
+   0138 9E EB 02      [ 4]  292 	add	2,s
+   013B 9E E7 02      [ 4]  293 	sta	2,s
+   013E 9F            [ 1]  294 	txa
+   013F 9E E9 01      [ 4]  295 	adc	1,s
+   0142 9E E7 01      [ 4]  296 	sta	1,s
+   0145 9E E6 0A      [ 4]  297 	lda	10,s
+   0148 5F            [ 1]  298 	clrx
+   0149 9E EB 02      [ 4]  299 	add	2,s
+   014C 87            [ 2]  300 	psha
+   014D 9F            [ 1]  301 	txa
+   014E 9E E9 02      [ 4]  302 	adc	2,s
+   0151 97            [ 1]  303 	tax
+                            304 ;tables.c:26: return table->isSigned ? (int16_t)eepromReadI8(addr) : (int16_t)eepromReadByte(addr);
+   0152 9E E6 06      [ 4]  305 	lda	6,s
+   0155 9E E7 02      [ 4]  306 	sta	2,s
+   0158 9E E6 07      [ 4]  307 	lda	7,s
+   015B 9E E7 03      [ 4]  308 	sta	3,s
+   015E 86            [ 2]  309 	pula
+   015F 89            [ 2]  310 	pshx
+   0160 9E EE 02      [ 4]  311 	ldx	2,s
+   0163 89            [ 2]  312 	pshx
+   0164 8A            [ 2]  313 	pulh
+   0165 9E EE 03      [ 4]  314 	ldx	3,s
+   0168 87            [ 2]  315 	psha
+   0169 E6 26         [ 3]  316 	lda	38,x
+   016B 86            [ 2]  317 	pula
+   016C 88            [ 2]  318 	pulx
+   016D 27 0C         [ 3]  319 	beq	00103$
+   016F CDr00r00      [ 5]  320 	jsr	_eepromReadI8
+   0172 87            [ 2]  321 	psha
+   0173 49            [ 1]  322 	rola	
+   0174 4F            [ 1]  323 	clra	
+   0175 A2 00         [ 2]  324 	sbc	#0x00
+   0177 97            [ 1]  325 	tax
+   0178 86            [ 2]  326 	pula
+   0179 20 04         [ 3]  327 	bra	00104$
+   017B                     328 00103$:
+   017B CDr00r00      [ 5]  329 	jsr	_eepromReadByte
+   017E 5F            [ 1]  330 	clrx
+   017F                     331 00104$:
+                            332 ;tables.c:27: }
+   017F A7 06         [ 2]  333 	ais	#6
+   0181 81            [ 4]  334 	rts
+                            335 ;------------------------------------------------------------
+                            336 ;Allocation info for local variables in function 'getTableValue'
+                            337 ;------------------------------------------------------------
+                            338 ;valueY                    Allocated to stack - sp +81
+                            339 ;valueX                    Allocated to stack - sp +82
+                            340 ;table                     Allocated to stack - sp +62
+                            341 ;xLow                      Allocated to stack - sp +3
+                            342 ;xHigh                     Allocated to stack - sp +2
+                            343 ;yLow                      Allocated to stack - sp +1
+                            344 ;yHigh                     Allocated to stack - sp +4
+                            345 ;q11                       Allocated to stack - sp +77
+                            346 ;q21                       Allocated to stack - sp +75
+                            347 ;q12                       Allocated to stack - sp +73
+                            348 ;q22                       Allocated to stack - sp +71
+                            349 ;x1                        Allocated to stack - sp +69
+                            350 ;x2                        Allocated to stack - sp +67
+                            351 ;y1                        Allocated to stack - sp +66
+                            352 ;y2                        Allocated to registers x 
+                            353 ;result                    Allocated to stack - sp +64
+                            354 ;__1966080001              Allocated to stack - sp +11
+                            355 ;__1966080002              Allocated to stack - sp +58
+                            356 ;__1966080003              Allocated to stack - sp +56
+                            357 ;__1966080004              Allocated to stack - sp +54
+                            358 ;__1966080005              Allocated to registers 
+                            359 ;__1966080006              Allocated to registers 
+                            360 ;x                         Allocated to registers 
+                            361 ;x1                        Allocated to registers 
+                            362 ;x2                        Allocated to registers 
+                            363 ;y1                        Allocated to registers 
+                            364 ;y2                        Allocated to registers 
+                            365 ;__1966080008              Allocated to stack - sp +20
+                            366 ;__1966080009              Allocated to stack - sp +52
+                            367 ;__1966080010              Allocated to stack - sp +50
+                            368 ;__1966080011              Allocated to stack - sp +48
+                            369 ;__1966080012              Allocated to registers 
+                            370 ;__1966080013              Allocated to registers 
+                            371 ;x                         Allocated to registers 
+                            372 ;x1                        Allocated to registers 
+                            373 ;x2                        Allocated to registers 
+                            374 ;y1                        Allocated to registers 
+                            375 ;y2                        Allocated to registers 
+                            376 ;__1966080029              Allocated to stack - sp +34
+                            377 ;__1966080022              Allocated to stack - sp +22
+                            378 ;__1966080015              Allocated to stack - sp +34
+                            379 ;r1                        Allocated to stack - sp +60
+                            380 ;r2                        Allocated to registers 
+                            381 ;__1966080016              Allocated to stack - sp +20
+                            382 ;__1966080017              Allocated to stack - sp +26
+                            383 ;__1966080018              Allocated to stack - sp +36
+                            384 ;__1966080019              Allocated to registers 
+                            385 ;__1966080020              Allocated to registers 
+                            386 ;x                         Allocated to registers 
+                            387 ;x1                        Allocated to registers 
+                            388 ;x2                        Allocated to registers 
+                            389 ;y1                        Allocated to registers 
+                            390 ;y2                        Allocated to registers 
+                            391 ;__1966080023              Allocated to registers 
+                            392 ;__1966080024              Allocated to registers 
+                            393 ;__1966080025              Allocated to registers 
+                            394 ;__1966080026              Allocated to registers 
+                            395 ;__1966080027              Allocated to registers 
+                            396 ;x                         Allocated to registers 
+                            397 ;x1                        Allocated to registers 
+                            398 ;x2                        Allocated to registers 
+                            399 ;y1                        Allocated to registers 
+                            400 ;y2                        Allocated to registers 
+                            401 ;__1966080030              Allocated to stack - sp +46
+                            402 ;__1966080031              Allocated to stack - sp +44
+                            403 ;__1966080032              Allocated to stack - sp +42
+                            404 ;__1966080033              Allocated to registers 
+                            405 ;__1966080034              Allocated to registers 
+                            406 ;x                         Allocated to registers 
+                            407 ;x1                        Allocated to registers 
+                            408 ;x2                        Allocated to registers 
+                            409 ;y1                        Allocated to registers 
+                            410 ;y2                        Allocated to registers 
+                            411 ;sloc0                     Allocated to stack - sp +11
+                            412 ;sloc1                     Allocated to stack - sp +40
+                            413 ;sloc2                     Allocated to stack - sp +13
+                            414 ;sloc3                     Allocated to stack - sp +9
+                            415 ;sloc4                     Allocated to stack - sp +18
+                            416 ;sloc5                     Allocated to stack - sp +14
+                            417 ;sloc6                     Allocated to stack - sp +30
+                            418 ;sloc7                     Allocated to stack - sp +5
+                            419 ;sloc8                     Allocated to stack - sp +20
+                            420 ;sloc9                     Allocated to stack - sp +26
+                            421 ;sloc10                    Allocated to stack - sp +36
+                            422 ;sloc11                    Allocated to stack - sp +34
+                            423 ;sloc12                    Allocated to stack - sp +22
+                            424 ;------------------------------------------------------------
+                            425 ;tables.c:29: int16_t getTableValue(struct Table3D *table, uint8_t valueY, uint16_t valueX) {
+                            426 ;	-----------------------------------------
+                            427 ;	 function getTableValue
+                            428 ;	-----------------------------------------
+                            429 ;	Register assignment might be sub-optimal.
+                            430 ;	Stack space usage: 78 bytes.
+   0182                     431 _getTableValue:
+   0182 A7 B2         [ 2]  432 	ais	#-78
+   0184 9E E7 3F      [ 4]  433 	sta	63,s
+   0187 9E EF 3E      [ 4]  434 	stx	62,s
+                            435 ;tables.c:36: findTableXIndices(table, valueX, &xLow, &xHigh);
+   018A 95            [ 2]  436 	tsx
+   018B AF 01         [ 2]  437 	aix	#1
+   018D 9E EF 0C      [ 4]  438 	stx	12,s
+   0190 8B            [ 2]  439 	pshh
+   0191 86            [ 2]  440 	pula
+   0192 9E E7 0B      [ 4]  441 	sta	11,s
+   0195 95            [ 2]  442 	tsx
+   0196 AF 02         [ 2]  443 	aix	#2
+   0198 9E E6 0C      [ 4]  444 	lda	12,s
+   019B 87            [ 2]  445 	psha
+   019C 9E E6 0C      [ 4]  446 	lda	12,s
+   019F 87            [ 2]  447 	psha
+   01A0 89            [ 2]  448 	pshx
+   01A1 8B            [ 2]  449 	pshh
+   01A2 95            [ 2]  450 	tsx
+   01A3 E6 56         [ 3]  451 	lda	86,x
+   01A5 87            [ 2]  452 	psha
+   01A6 E6 55         [ 3]  453 	lda	85,x
+   01A8 87            [ 2]  454 	psha
+   01A9 E6 42         [ 3]  455 	lda	66,x
+   01AB EE 41         [ 3]  456 	ldx	65,x
+   01AD CDr07rFC      [ 5]  457 	jsr	_findTableXIndices
+   01B0 A7 06         [ 2]  458 	ais	#6
+                            459 ;tables.c:37: findTableYIndices(table, valueY, &yLow, &yHigh);
+   01B2 95            [ 2]  460 	tsx
+   01B3 AF 03         [ 2]  461 	aix	#3
+   01B5 9E EF 0C      [ 4]  462 	stx	12,s
+   01B8 8B            [ 2]  463 	pshh
+   01B9 86            [ 2]  464 	pula
+   01BA 9E E7 0B      [ 4]  465 	sta	11,s
+   01BD 95            [ 2]  466 	tsx
+   01BE 9E E6 0C      [ 4]  467 	lda	12,s
+   01C1 87            [ 2]  468 	psha
+   01C2 9E E6 0C      [ 4]  469 	lda	12,s
+   01C5 87            [ 2]  470 	psha
+   01C6 89            [ 2]  471 	pshx
+   01C7 8B            [ 2]  472 	pshh
+   01C8 95            [ 2]  473 	tsx
+   01C9 E6 54         [ 3]  474 	lda	84,x
+   01CB 87            [ 2]  475 	psha
+   01CC E6 42         [ 3]  476 	lda	66,x
+   01CE EE 41         [ 3]  477 	ldx	65,x
+   01D0 CDr09r17      [ 5]  478 	jsr	_findTableYIndices
+   01D3 A7 05         [ 2]  479 	ais	#5
+                            480 ;tables.c:39: q11 = readTableCell(table, yLow, xLow);
+   01D5 95            [ 2]  481 	tsx
+   01D6 E6 02         [ 3]  482 	lda	2,x
+   01D8 87            [ 2]  483 	psha
+   01D9 F6            [ 2]  484 	lda	,x
+   01DA 87            [ 2]  485 	psha
+   01DB E6 3E         [ 3]  486 	lda	62,x
+   01DD EE 3D         [ 3]  487 	ldx	61,x
+   01DF CDr01r01      [ 5]  488 	jsr	_readTableCell
+   01E2 9E E7 50      [ 4]  489 	sta	80,s
+   01E5 9E EF 4F      [ 4]  490 	stx	79,s
+   01E8 A7 02         [ 2]  491 	ais	#2
+                            492 ;tables.c:40: q21 = readTableCell(table, yLow, xHigh);
+   01EA 95            [ 2]  493 	tsx
+   01EB E6 01         [ 3]  494 	lda	1,x
+   01ED 87            [ 2]  495 	psha
+   01EE F6            [ 2]  496 	lda	,x
+   01EF 87            [ 2]  497 	psha
+   01F0 E6 3E         [ 3]  498 	lda	62,x
+   01F2 EE 3D         [ 3]  499 	ldx	61,x
+   01F4 CDr01r01      [ 5]  500 	jsr	_readTableCell
+   01F7 9E E7 4E      [ 4]  501 	sta	78,s
+   01FA 9E EF 4D      [ 4]  502 	stx	77,s
+   01FD A7 02         [ 2]  503 	ais	#2
+                            504 ;tables.c:41: q12 = readTableCell(table, yHigh, xLow);
+   01FF 95            [ 2]  505 	tsx
+   0200 E6 02         [ 3]  506 	lda	2,x
+   0202 87            [ 2]  507 	psha
+   0203 E6 03         [ 3]  508 	lda	3,x
+   0205 87            [ 2]  509 	psha
+   0206 E6 3E         [ 3]  510 	lda	62,x
+   0208 EE 3D         [ 3]  511 	ldx	61,x
+   020A CDr01r01      [ 5]  512 	jsr	_readTableCell
+   020D 9E E7 4C      [ 4]  513 	sta	76,s
+   0210 9E EF 4B      [ 4]  514 	stx	75,s
+   0213 A7 02         [ 2]  515 	ais	#2
+                            516 ;tables.c:42: q22 = readTableCell(table, yHigh, xHigh);
+   0215 95            [ 2]  517 	tsx
+   0216 E6 01         [ 3]  518 	lda	1,x
+   0218 87            [ 2]  519 	psha
+   0219 E6 03         [ 3]  520 	lda	3,x
+   021B 87            [ 2]  521 	psha
+   021C E6 3E         [ 3]  522 	lda	62,x
+   021E EE 3D         [ 3]  523 	ldx	61,x
+   0220 CDr01r01      [ 5]  524 	jsr	_readTableCell
+   0223 9E E7 4A      [ 4]  525 	sta	74,s
+   0226 9E EF 49      [ 4]  526 	stx	73,s
+   0229 A7 02         [ 2]  527 	ais	#2
+                            528 ;tables.c:44: if (xLow == xHigh && yLow == yHigh) {
+   022B 95            [ 2]  529 	tsx
+   022C E6 02         [ 3]  530 	lda	2,x
+   022E E1 01         [ 3]  531 	cmp	1,x
+   0230 27 03         [ 3]  532 	beq	00173$
+   0232 4F            [ 1]  533 	clra
+   0233 20 02         [ 3]  534 	bra	00172$
+   0235                     535 00173$:
+   0235 A6 01         [ 2]  536 	lda	#0x01
+   0237                     537 00172$:
+   0237 E7 0A         [ 3]  538 	sta	10,x
+   0239 6D 0A         [ 3]  539 	tst	10,x
+   023B 27 0D         [ 3]  540 	beq	00102$
+   023D F6            [ 2]  541 	lda	,x
+   023E E1 03         [ 3]  542 	cmp	3,x
+   0240 26 08         [ 3]  543 	bne	00102$
+                            544 ;tables.c:45: return q11;
+   0242 EE 4C         [ 3]  545 	ldx	76,x
+   0244 9E E6 4E      [ 4]  546 	lda	78,s
+   0247 CCr07rF9      [ 3]  547 	jmp	00125$
+   024A                     548 00102$:
+                            549 ;tables.c:48: x1 = table->axisX[xLow];
+   024A 9E E6 03      [ 4]  550 	lda	3,s
+   024D 48            [ 1]  551 	lsla	
+   024E 9E EB 3F      [ 4]  552 	add	63,s
+   0251 97            [ 1]  553 	tax
+   0252 4F            [ 1]  554 	clra
+   0253 9E E9 3E      [ 4]  555 	adc	62,s
+   0256 87            [ 2]  556 	psha
+   0257 8A            [ 2]  557 	pulh
+   0258 F6            [ 2]  558 	lda	,x
+   0259 9E E7 45      [ 4]  559 	sta	69,s
+   025C E6 01         [ 3]  560 	lda	1,x
+   025E 9E E7 46      [ 4]  561 	sta	70,s
+                            562 ;tables.c:49: x2 = table->axisX[xHigh];
+   0261 9E E6 02      [ 4]  563 	lda	2,s
+   0264 48            [ 1]  564 	lsla	
+   0265 9E EB 3F      [ 4]  565 	add	63,s
+   0268 97            [ 1]  566 	tax
+   0269 4F            [ 1]  567 	clra
+   026A 9E E9 3E      [ 4]  568 	adc	62,s
+   026D 87            [ 2]  569 	psha
+   026E 8A            [ 2]  570 	pulh
+   026F F6            [ 2]  571 	lda	,x
+   0270 9E E7 43      [ 4]  572 	sta	67,s
+   0273 E6 01         [ 3]  573 	lda	1,x
+   0275 9E E7 44      [ 4]  574 	sta	68,s
+                            575 ;tables.c:50: y1 = table->axisY[yLow];
+   0278 95            [ 2]  576 	tsx
+   0279 E6 3E         [ 3]  577 	lda	62,x
+   027B AB 18         [ 2]  578 	add	#0x18
+   027D E7 28         [ 3]  579 	sta	40,x
+   027F E6 3D         [ 3]  580 	lda	61,x
+   0281 A9 00         [ 2]  581 	adc	#0
+   0283 E7 27         [ 3]  582 	sta	39,x
+   0285 F6            [ 2]  583 	lda	,x
+   0286 E7 0C         [ 3]  584 	sta	12,x
+   0288 E6 0C         [ 3]  585 	lda	12,x
+   028A EB 28         [ 3]  586 	add	40,x
+   028C 97            [ 1]  587 	tax
+   028D A6 00         [ 2]  588 	lda	#0x00
+   028F 9E E9 28      [ 4]  589 	adc	40,s
+   0292 87            [ 2]  590 	psha
+   0293 8A            [ 2]  591 	pulh
+   0294 F6            [ 2]  592 	lda	,x
+   0295 9E E7 42      [ 4]  593 	sta	66,s
+                            594 ;tables.c:51: y2 = table->axisY[yHigh];
+   0298 9E E6 04      [ 4]  595 	lda	4,s
+   029B 87            [ 2]  596 	psha
+   029C 8A            [ 2]  597 	pulh
+   029D 8B            [ 2]  598 	pshh
+   029E 86            [ 2]  599 	pula
+   029F 9E EB 29      [ 4]  600 	add	41,s
+   02A2 97            [ 1]  601 	tax
+   02A3 4F            [ 1]  602 	clra
+   02A4 9E E9 28      [ 4]  603 	adc	40,s
+   02A7 8B            [ 2]  604 	pshh
+   02A8 87            [ 2]  605 	psha
+   02A9 8A            [ 2]  606 	pulh
+   02AA FE            [ 2]  607 	ldx	,x
+   02AB 8A            [ 2]  608 	pulh
+                            609 ;tables.c:54: result = interpolate((int16_t)valueY, y1, y2, q11, q12);
+   02AC 9E EF 29      [ 4]  610 	stx	41,s
+   02AF 4F            [ 1]  611 	clra
+   02B0 9E E7 28      [ 4]  612 	sta	40,s
+   02B3 9E E6 42      [ 4]  613 	lda	66,s
+   02B6 9E E7 0A      [ 4]  614 	sta	10,s
+   02B9 4F            [ 1]  615 	clra
+   02BA 9E E7 09      [ 4]  616 	sta	9,s
+   02BD 9E E6 51      [ 4]  617 	lda	81,s
+   02C0 9E E7 13      [ 4]  618 	sta	19,s
+   02C3 4F            [ 1]  619 	clra
+   02C4 9E E7 12      [ 4]  620 	sta	18,s
+                            621 ;tables.c:53: if (xLow == xHigh) {
+   02C7 9E 6D 0B      [ 4]  622 	tst	11,s
+   02CA 26 03         [ 3]  623 	bne	00176$
+   02CC CCr03rDC      [ 3]  624 	jmp	00108$
+   02CF                     625 00176$:
+                            626 ;tables.c:54: result = interpolate((int16_t)valueY, y1, y2, q11, q12);
+   02CF 95            [ 2]  627 	tsx
+   02D0 E6 27         [ 3]  628 	lda	39,x
+   02D2 E7 35         [ 3]  629 	sta	53,x
+   02D4 E6 28         [ 3]  630 	lda	40,x
+   02D6 E7 36         [ 3]  631 	sta	54,x
+   02D8 E6 08         [ 3]  632 	lda	8,x
+   02DA E7 37         [ 3]  633 	sta	55,x
+   02DC E6 09         [ 3]  634 	lda	9,x
+   02DE E7 38         [ 3]  635 	sta	56,x
+   02E0 E6 11         [ 3]  636 	lda	17,x
+   02E2 E7 39         [ 3]  637 	sta	57,x
+   02E4 E6 12         [ 3]  638 	lda	18,x
+   02E6 E7 3A         [ 3]  639 	sta	58,x
+                            640 ;tables.h:34: if (x2 == x1) return y1;
+   02E8 E6 36         [ 3]  641 	lda	54,x
+   02EA E1 38         [ 3]  642 	cmp	56,x
+   02EC 26 06         [ 3]  643 	bne	00177$
+   02EE E6 35         [ 3]  644 	lda	53,x
+   02F0 E1 37         [ 3]  645 	cmp	55,x
+   02F2 27 02         [ 3]  646 	beq	00178$
+   02F4                     647 00177$:
+   02F4 20 0B         [ 3]  648 	bra	00111$
+   02F6                     649 00178$:
+   02F6 E6 4C         [ 3]  650 	lda	76,x
+   02F8 E7 0A         [ 3]  651 	sta	10,x
+   02FA E6 4D         [ 3]  652 	lda	77,x
+   02FC E7 0B         [ 3]  653 	sta	11,x
+   02FE CCr03rD0      [ 3]  654 	jmp	00112$
+   0301                     655 00111$:
+                            656 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0301 9E E6 3B      [ 4]  657 	lda	59,s
+   0304 9E E0 39      [ 4]  658 	sub	57,s
+   0307 87            [ 2]  659 	psha
+   0308 9E E6 3B      [ 4]  660 	lda	59,s
+   030B 9E E2 39      [ 4]  661 	sbc	57,s
+   030E 97            [ 1]  662 	tax
+   030F 86            [ 2]  663 	pula
+   0310 9E E7 11      [ 4]  664 	sta	17,s
+   0313 9F            [ 1]  665 	txa
+   0314 9E E7 10      [ 4]  666 	sta	16,s
+   0317 49            [ 1]  667 	rola	
+   0318 4F            [ 1]  668 	clra	
+   0319 A2 00         [ 2]  669 	sbc	#0x00
+   031B 9E E7 0F      [ 4]  670 	sta	15,s
+   031E 9E E7 0E      [ 4]  671 	sta	14,s
+   0321 9E E6 4A      [ 4]  672 	lda	74,s
+   0324 9E E0 4E      [ 4]  673 	sub	78,s
+   0327 87            [ 2]  674 	psha
+   0328 9E E6 4A      [ 4]  675 	lda	74,s
+   032B 9E E2 4E      [ 4]  676 	sbc	78,s
+   032E 97            [ 1]  677 	tax
+   032F 86            [ 2]  678 	pula
+   0330 9E E7 21      [ 4]  679 	sta	33,s
+   0333 9F            [ 1]  680 	txa
+   0334 9E E7 20      [ 4]  681 	sta	32,s
+   0337 49            [ 1]  682 	rola	
+   0338 4F            [ 1]  683 	clra	
+   0339 A2 00         [ 2]  684 	sbc	#0x00
+   033B 9E E7 1F      [ 4]  685 	sta	31,s
+   033E 9E E7 1E      [ 4]  686 	sta	30,s
+   0341 95            [ 2]  687 	tsx
+   0342 E6 20         [ 3]  688 	lda	32,x
+   0344 87            [ 2]  689 	psha
+   0345 E6 1F         [ 3]  690 	lda	31,x
+   0347 87            [ 2]  691 	psha
+   0348 E6 1E         [ 3]  692 	lda	30,x
+   034A 87            [ 2]  693 	psha
+   034B E6 1D         [ 3]  694 	lda	29,x
+   034D 87            [ 2]  695 	psha
+   034E E6 10         [ 3]  696 	lda	16,x
+   0350 87            [ 2]  697 	psha
+   0351 E6 0F         [ 3]  698 	lda	15,x
+   0353 87            [ 2]  699 	psha
+   0354 E6 0E         [ 3]  700 	lda	14,x
+   0356 87            [ 2]  701 	psha
+   0357 E6 0D         [ 3]  702 	lda	13,x
+   0359 87            [ 2]  703 	psha
+   035A CDr00r00      [ 5]  704 	jsr	__mullong
+   035D 9E E7 29      [ 4]  705 	sta	41,s
+   0360 9E EF 28      [ 4]  706 	stx	40,s
+   0363 B6*00         [ 3]  707 	lda	*___SDCC_hc08_ret2
+   0365 9E E7 27      [ 4]  708 	sta	39,s
+   0368 B6*00         [ 3]  709 	lda	*___SDCC_hc08_ret3
+   036A 9E E7 26      [ 4]  710 	sta	38,s
+   036D A7 08         [ 2]  711 	ais	#8
+   036F 9E E6 37      [ 4]  712 	lda	55,s
+   0372 9E E0 39      [ 4]  713 	sub	57,s
+   0375 87            [ 2]  714 	psha
+   0376 9E E6 37      [ 4]  715 	lda	55,s
+   0379 9E E2 39      [ 4]  716 	sbc	57,s
+   037C 97            [ 1]  717 	tax
+   037D 86            [ 2]  718 	pula
+   037E 9E E7 11      [ 4]  719 	sta	17,s
+   0381 9F            [ 1]  720 	txa
+   0382 9E E7 10      [ 4]  721 	sta	16,s
+   0385 49            [ 1]  722 	rola	
+   0386 4F            [ 1]  723 	clra	
+   0387 A2 00         [ 2]  724 	sbc	#0x00
+   0389 9E E7 0F      [ 4]  725 	sta	15,s
+   038C 9E E7 0E      [ 4]  726 	sta	14,s
+   038F 95            [ 2]  727 	tsx
+   0390 E6 10         [ 3]  728 	lda	16,x
+   0392 87            [ 2]  729 	psha
+   0393 E6 0F         [ 3]  730 	lda	15,x
+   0395 87            [ 2]  731 	psha
+   0396 E6 0E         [ 3]  732 	lda	14,x
+   0398 87            [ 2]  733 	psha
+   0399 E6 0D         [ 3]  734 	lda	13,x
+   039B 87            [ 2]  735 	psha
+   039C E6 20         [ 3]  736 	lda	32,x
+   039E 87            [ 2]  737 	psha
+   039F E6 1F         [ 3]  738 	lda	31,x
+   03A1 87            [ 2]  739 	psha
+   03A2 E6 1E         [ 3]  740 	lda	30,x
+   03A4 87            [ 2]  741 	psha
+   03A5 E6 1D         [ 3]  742 	lda	29,x
+   03A7 87            [ 2]  743 	psha
+   03A8 CDr00r00      [ 5]  744 	jsr	__divslong
+   03AB 9E E7 29      [ 4]  745 	sta	41,s
+   03AE 9E EF 28      [ 4]  746 	stx	40,s
+   03B1 B6*00         [ 3]  747 	lda	*___SDCC_hc08_ret2
+   03B3 9E E7 27      [ 4]  748 	sta	39,s
+   03B6 B6*00         [ 3]  749 	lda	*___SDCC_hc08_ret3
+   03B8 9E E7 26      [ 4]  750 	sta	38,s
+   03BB A7 08         [ 2]  751 	ais	#8
+   03BD 9E E6 21      [ 4]  752 	lda	33,s
+   03C0 9E EE 20      [ 4]  753 	ldx	32,s
+   03C3 9E EB 4E      [ 4]  754 	add	78,s
+   03C6 9E E7 0C      [ 4]  755 	sta	12,s
+   03C9 9F            [ 1]  756 	txa
+   03CA 9E E9 4D      [ 4]  757 	adc	77,s
+   03CD 9E E7 0B      [ 4]  758 	sta	11,s
+                            759 ;tables.c:54: result = interpolate((int16_t)valueY, y1, y2, q11, q12);
+   03D0                     760 00112$:
+   03D0 95            [ 2]  761 	tsx
+   03D1 E6 0A         [ 3]  762 	lda	10,x
+   03D3 E7 3F         [ 3]  763 	sta	63,x
+   03D5 E6 0B         [ 3]  764 	lda	11,x
+   03D7 E7 40         [ 3]  765 	sta	64,x
+   03D9 CCr07rF3      [ 3]  766 	jmp	00109$
+   03DC                     767 00108$:
+                            768 ;tables.c:56: result = interpolate((int16_t)valueX, (int16_t)x1, (int16_t)x2, q11, q21);
+   03DC 9E E6 44      [ 4]  769 	lda	68,s
+   03DF 9E E7 1F      [ 4]  770 	sta	31,s
+   03E2 9E E6 43      [ 4]  771 	lda	67,s
+   03E5 9E E7 1E      [ 4]  772 	sta	30,s
+   03E8 9E E6 46      [ 4]  773 	lda	70,s
+   03EB 9E E7 0F      [ 4]  774 	sta	15,s
+   03EE 9E E6 45      [ 4]  775 	lda	69,s
+   03F1 9E E7 0E      [ 4]  776 	sta	14,s
+   03F4 9E E6 53      [ 4]  777 	lda	83,s
+   03F7 9E E7 0C      [ 4]  778 	sta	12,s
+   03FA 9E E6 52      [ 4]  779 	lda	82,s
+   03FD 9E E7 0B      [ 4]  780 	sta	11,s
+                            781 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0400 9E E6 4C      [ 4]  782 	lda	76,s
+   0403 9E E0 4E      [ 4]  783 	sub	78,s
+   0406 87            [ 2]  784 	psha
+   0407 9E E6 4C      [ 4]  785 	lda	76,s
+   040A 9E E2 4E      [ 4]  786 	sbc	78,s
+   040D 97            [ 1]  787 	tax
+   040E 86            [ 2]  788 	pula
+   040F 9E E7 08      [ 4]  789 	sta	8,s
+   0412 9F            [ 1]  790 	txa
+   0413 9E E7 07      [ 4]  791 	sta	7,s
+   0416 49            [ 1]  792 	rola	
+   0417 4F            [ 1]  793 	clra	
+   0418 A2 00         [ 2]  794 	sbc	#0x00
+   041A 9E E7 06      [ 4]  795 	sta	6,s
+   041D 9E E7 05      [ 4]  796 	sta	5,s
+                            797 ;tables.c:55: } else if (yLow == yHigh) {
+   0420 8B            [ 2]  798 	pshh
+   0421 86            [ 2]  799 	pula
+   0422 9E E1 0D      [ 4]  800 	cmp	13,s
+   0425 27 03         [ 3]  801 	beq	00179$
+   0427 CCr05r17      [ 3]  802 	jmp	00105$
+   042A                     803 00179$:
+                            804 ;tables.c:56: result = interpolate((int16_t)valueX, (int16_t)x1, (int16_t)x2, q11, q21);
+   042A 95            [ 2]  805 	tsx
+   042B E6 1D         [ 3]  806 	lda	29,x
+   042D E7 2F         [ 3]  807 	sta	47,x
+   042F E6 1E         [ 3]  808 	lda	30,x
+   0431 E7 30         [ 3]  809 	sta	48,x
+   0433 E6 0D         [ 3]  810 	lda	13,x
+   0435 E7 31         [ 3]  811 	sta	49,x
+   0437 E6 0E         [ 3]  812 	lda	14,x
+   0439 E7 32         [ 3]  813 	sta	50,x
+   043B E6 0A         [ 3]  814 	lda	10,x
+   043D E7 33         [ 3]  815 	sta	51,x
+   043F E6 0B         [ 3]  816 	lda	11,x
+   0441 E7 34         [ 3]  817 	sta	52,x
+                            818 ;tables.h:34: if (x2 == x1) return y1;
+   0443 E6 30         [ 3]  819 	lda	48,x
+   0445 E1 32         [ 3]  820 	cmp	50,x
+   0447 26 06         [ 3]  821 	bne	00180$
+   0449 E6 2F         [ 3]  822 	lda	47,x
+   044B E1 31         [ 3]  823 	cmp	49,x
+   044D 27 02         [ 3]  824 	beq	00181$
+   044F                     825 00180$:
+   044F 20 0B         [ 3]  826 	bra	00114$
+   0451                     827 00181$:
+   0451 E6 4C         [ 3]  828 	lda	76,x
+   0453 E7 13         [ 3]  829 	sta	19,x
+   0455 E6 4D         [ 3]  830 	lda	77,x
+   0457 E7 14         [ 3]  831 	sta	20,x
+   0459 CCr05r0B      [ 3]  832 	jmp	00115$
+   045C                     833 00114$:
+                            834 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   045C 9E E6 35      [ 4]  835 	lda	53,s
+   045F 9E E0 33      [ 4]  836 	sub	51,s
+   0462 87            [ 2]  837 	psha
+   0463 9E E6 35      [ 4]  838 	lda	53,s
+   0466 9E E2 33      [ 4]  839 	sbc	51,s
+   0469 97            [ 1]  840 	tax
+   046A 86            [ 2]  841 	pula
+   046B 9E E7 1D      [ 4]  842 	sta	29,s
+   046E 9F            [ 1]  843 	txa
+   046F 9E E7 1C      [ 4]  844 	sta	28,s
+   0472 49            [ 1]  845 	rola	
+   0473 4F            [ 1]  846 	clra	
+   0474 A2 00         [ 2]  847 	sbc	#0x00
+   0476 9E E7 1B      [ 4]  848 	sta	27,s
+   0479 9E E7 1A      [ 4]  849 	sta	26,s
+   047C 95            [ 2]  850 	tsx
+   047D E6 07         [ 3]  851 	lda	7,x
+   047F 87            [ 2]  852 	psha
+   0480 E6 06         [ 3]  853 	lda	6,x
+   0482 87            [ 2]  854 	psha
+   0483 E6 05         [ 3]  855 	lda	5,x
+   0485 87            [ 2]  856 	psha
+   0486 E6 04         [ 3]  857 	lda	4,x
+   0488 87            [ 2]  858 	psha
+   0489 E6 1C         [ 3]  859 	lda	28,x
+   048B 87            [ 2]  860 	psha
+   048C E6 1B         [ 3]  861 	lda	27,x
+   048E 87            [ 2]  862 	psha
+   048F E6 1A         [ 3]  863 	lda	26,x
+   0491 87            [ 2]  864 	psha
+   0492 E6 19         [ 3]  865 	lda	25,x
+   0494 87            [ 2]  866 	psha
+   0495 CDr00r00      [ 5]  867 	jsr	__mullong
+   0498 9E E7 25      [ 4]  868 	sta	37,s
+   049B 9E EF 24      [ 4]  869 	stx	36,s
+   049E B6*00         [ 3]  870 	lda	*___SDCC_hc08_ret2
+   04A0 9E E7 23      [ 4]  871 	sta	35,s
+   04A3 B6*00         [ 3]  872 	lda	*___SDCC_hc08_ret3
+   04A5 9E E7 22      [ 4]  873 	sta	34,s
+   04A8 A7 08         [ 2]  874 	ais	#8
+   04AA 9E E6 31      [ 4]  875 	lda	49,s
+   04AD 9E E0 33      [ 4]  876 	sub	51,s
+   04B0 87            [ 2]  877 	psha
+   04B1 9E E6 31      [ 4]  878 	lda	49,s
+   04B4 9E E2 33      [ 4]  879 	sbc	51,s
+   04B7 97            [ 1]  880 	tax
+   04B8 86            [ 2]  881 	pula
+   04B9 9E E7 27      [ 4]  882 	sta	39,s
+   04BC 9F            [ 1]  883 	txa
+   04BD 9E E7 26      [ 4]  884 	sta	38,s
+   04C0 49            [ 1]  885 	rola	
+   04C1 4F            [ 1]  886 	clra	
+   04C2 A2 00         [ 2]  887 	sbc	#0x00
+   04C4 9E E7 25      [ 4]  888 	sta	37,s
+   04C7 9E E7 24      [ 4]  889 	sta	36,s
+   04CA 95            [ 2]  890 	tsx
+   04CB E6 26         [ 3]  891 	lda	38,x
+   04CD 87            [ 2]  892 	psha
+   04CE E6 25         [ 3]  893 	lda	37,x
+   04D0 87            [ 2]  894 	psha
+   04D1 E6 24         [ 3]  895 	lda	36,x
+   04D3 87            [ 2]  896 	psha
+   04D4 E6 23         [ 3]  897 	lda	35,x
+   04D6 87            [ 2]  898 	psha
+   04D7 E6 1C         [ 3]  899 	lda	28,x
+   04D9 87            [ 2]  900 	psha
+   04DA E6 1B         [ 3]  901 	lda	27,x
+   04DC 87            [ 2]  902 	psha
+   04DD E6 1A         [ 3]  903 	lda	26,x
+   04DF 87            [ 2]  904 	psha
+   04E0 E6 19         [ 3]  905 	lda	25,x
+   04E2 87            [ 2]  906 	psha
+   04E3 CDr00r00      [ 5]  907 	jsr	__divslong
+   04E6 9E E7 2F      [ 4]  908 	sta	47,s
+   04E9 9E EF 2E      [ 4]  909 	stx	46,s
+   04EC B6*00         [ 3]  910 	lda	*___SDCC_hc08_ret2
+   04EE 9E E7 2D      [ 4]  911 	sta	45,s
+   04F1 B6*00         [ 3]  912 	lda	*___SDCC_hc08_ret3
+   04F3 9E E7 2C      [ 4]  913 	sta	44,s
+   04F6 A7 08         [ 2]  914 	ais	#8
+   04F8 9E E6 27      [ 4]  915 	lda	39,s
+   04FB 9E EE 26      [ 4]  916 	ldx	38,s
+   04FE 9E EB 4E      [ 4]  917 	add	78,s
+   0501 9E E7 15      [ 4]  918 	sta	21,s
+   0504 9F            [ 1]  919 	txa
+   0505 9E E9 4D      [ 4]  920 	adc	77,s
+   0508 9E E7 14      [ 4]  921 	sta	20,s
+                            922 ;tables.c:56: result = interpolate((int16_t)valueX, (int16_t)x1, (int16_t)x2, q11, q21);
+   050B                     923 00115$:
+   050B 95            [ 2]  924 	tsx
+   050C E6 13         [ 3]  925 	lda	19,x
+   050E E7 3F         [ 3]  926 	sta	63,x
+   0510 E6 14         [ 3]  927 	lda	20,x
+   0512 E7 40         [ 3]  928 	sta	64,x
+   0514 CCr07rF3      [ 3]  929 	jmp	00109$
+   0517                     930 00105$:
+                            931 ;tables.c:58: int16_t r1 = interpolate((int16_t)valueX, (int16_t)x1, (int16_t)x2, q11, q21);
+   0517 95            [ 2]  932 	tsx
+   0518 E6 1D         [ 3]  933 	lda	29,x
+   051A E7 23         [ 3]  934 	sta	35,x
+   051C E6 1E         [ 3]  935 	lda	30,x
+   051E E7 24         [ 3]  936 	sta	36,x
+   0520 E6 0D         [ 3]  937 	lda	13,x
+   0522 E7 19         [ 3]  938 	sta	25,x
+   0524 E6 0E         [ 3]  939 	lda	14,x
+   0526 E7 1A         [ 3]  940 	sta	26,x
+   0528 E6 0A         [ 3]  941 	lda	10,x
+   052A E7 13         [ 3]  942 	sta	19,x
+   052C E6 0B         [ 3]  943 	lda	11,x
+   052E E7 14         [ 3]  944 	sta	20,x
+   0530 E6 24         [ 3]  945 	lda	36,x
+   0532 E1 1A         [ 3]  946 	cmp	26,x
+   0534 26 06         [ 3]  947 	bne	00182$
+   0536 E6 23         [ 3]  948 	lda	35,x
+   0538 E1 19         [ 3]  949 	cmp	25,x
+   053A 27 02         [ 3]  950 	beq	00183$
+   053C                     951 00182$:
+   053C 20 0B         [ 3]  952 	bra	00117$
+   053E                     953 00183$:
+   053E E6 4C         [ 3]  954 	lda	76,x
+   0540 E7 21         [ 3]  955 	sta	33,x
+   0542 E6 4D         [ 3]  956 	lda	77,x
+   0544 E7 22         [ 3]  957 	sta	34,x
+   0546 CCr05rF8      [ 3]  958 	jmp	00118$
+   0549                     959 00117$:
+   0549 9E E6 15      [ 4]  960 	lda	21,s
+   054C 9E E0 1B      [ 4]  961 	sub	27,s
+   054F 87            [ 2]  962 	psha
+   0550 9E E6 15      [ 4]  963 	lda	21,s
+   0553 9E E2 1B      [ 4]  964 	sbc	27,s
+   0556 97            [ 1]  965 	tax
+   0557 86            [ 2]  966 	pula
+   0558 9E E7 19      [ 4]  967 	sta	25,s
+   055B 9F            [ 1]  968 	txa
+   055C 9E E7 18      [ 4]  969 	sta	24,s
+   055F 49            [ 1]  970 	rola	
+   0560 4F            [ 1]  971 	clra	
+   0561 A2 00         [ 2]  972 	sbc	#0x00
+   0563 9E E7 17      [ 4]  973 	sta	23,s
+   0566 9E E7 16      [ 4]  974 	sta	22,s
+   0569 95            [ 2]  975 	tsx
+   056A E6 07         [ 3]  976 	lda	7,x
+   056C 87            [ 2]  977 	psha
+   056D E6 06         [ 3]  978 	lda	6,x
+   056F 87            [ 2]  979 	psha
+   0570 E6 05         [ 3]  980 	lda	5,x
+   0572 87            [ 2]  981 	psha
+   0573 E6 04         [ 3]  982 	lda	4,x
+   0575 87            [ 2]  983 	psha
+   0576 E6 18         [ 3]  984 	lda	24,x
+   0578 87            [ 2]  985 	psha
+   0579 E6 17         [ 3]  986 	lda	23,x
+   057B 87            [ 2]  987 	psha
+   057C E6 16         [ 3]  988 	lda	22,x
+   057E 87            [ 2]  989 	psha
+   057F E6 15         [ 3]  990 	lda	21,x
+   0581 87            [ 2]  991 	psha
+   0582 CDr00r00      [ 5]  992 	jsr	__mullong
+   0585 9E E7 21      [ 4]  993 	sta	33,s
+   0588 9E EF 20      [ 4]  994 	stx	32,s
+   058B B6*00         [ 3]  995 	lda	*___SDCC_hc08_ret2
+   058D 9E E7 1F      [ 4]  996 	sta	31,s
+   0590 B6*00         [ 3]  997 	lda	*___SDCC_hc08_ret3
+   0592 9E E7 1E      [ 4]  998 	sta	30,s
+   0595 A7 08         [ 2]  999 	ais	#8
+   0597 9E E6 25      [ 4] 1000 	lda	37,s
+   059A 9E E0 1B      [ 4] 1001 	sub	27,s
+   059D 87            [ 2] 1002 	psha
+   059E 9E E6 25      [ 4] 1003 	lda	37,s
+   05A1 9E E2 1B      [ 4] 1004 	sbc	27,s
+   05A4 97            [ 1] 1005 	tax
+   05A5 86            [ 2] 1006 	pula
+   05A6 9E E7 27      [ 4] 1007 	sta	39,s
+   05A9 9F            [ 1] 1008 	txa
+   05AA 9E E7 26      [ 4] 1009 	sta	38,s
+   05AD 49            [ 1] 1010 	rola	
+   05AE 4F            [ 1] 1011 	clra	
+   05AF A2 00         [ 2] 1012 	sbc	#0x00
+   05B1 9E E7 25      [ 4] 1013 	sta	37,s
+   05B4 9E E7 24      [ 4] 1014 	sta	36,s
+   05B7 95            [ 2] 1015 	tsx
+   05B8 E6 26         [ 3] 1016 	lda	38,x
+   05BA 87            [ 2] 1017 	psha
+   05BB E6 25         [ 3] 1018 	lda	37,x
+   05BD 87            [ 2] 1019 	psha
+   05BE E6 24         [ 3] 1020 	lda	36,x
+   05C0 87            [ 2] 1021 	psha
+   05C1 E6 23         [ 3] 1022 	lda	35,x
+   05C3 87            [ 2] 1023 	psha
+   05C4 E6 18         [ 3] 1024 	lda	24,x
+   05C6 87            [ 2] 1025 	psha
+   05C7 E6 17         [ 3] 1026 	lda	23,x
+   05C9 87            [ 2] 1027 	psha
+   05CA E6 16         [ 3] 1028 	lda	22,x
+   05CC 87            [ 2] 1029 	psha
+   05CD E6 15         [ 3] 1030 	lda	21,x
+   05CF 87            [ 2] 1031 	psha
+   05D0 CDr00r00      [ 5] 1032 	jsr	__divslong
+   05D3 9E E7 21      [ 4] 1033 	sta	33,s
+   05D6 9E EF 20      [ 4] 1034 	stx	32,s
+   05D9 B6*00         [ 3] 1035 	lda	*___SDCC_hc08_ret2
+   05DB 9E E7 1F      [ 4] 1036 	sta	31,s
+   05DE B6*00         [ 3] 1037 	lda	*___SDCC_hc08_ret3
+   05E0 9E E7 1E      [ 4] 1038 	sta	30,s
+   05E3 A7 08         [ 2] 1039 	ais	#8
+   05E5 9E E6 19      [ 4] 1040 	lda	25,s
+   05E8 9E EE 18      [ 4] 1041 	ldx	24,s
+   05EB 9E EB 4E      [ 4] 1042 	add	78,s
+   05EE 9E E7 23      [ 4] 1043 	sta	35,s
+   05F1 9F            [ 1] 1044 	txa
+   05F2 9E E9 4D      [ 4] 1045 	adc	77,s
+   05F5 9E E7 22      [ 4] 1046 	sta	34,s
+   05F8                    1047 00118$:
+   05F8 95            [ 2] 1048 	tsx
+   05F9 E6 21         [ 3] 1049 	lda	33,x
+   05FB E7 3B         [ 3] 1050 	sta	59,x
+   05FD E6 22         [ 3] 1051 	lda	34,x
+   05FF E7 3C         [ 3] 1052 	sta	60,x
+                           1053 ;tables.c:59: int16_t r2 = interpolate((int16_t)valueX, (int16_t)x1, (int16_t)x2, q12, q22);
+   0601 E6 1E         [ 3] 1054 	lda	30,x
+   0603 E1 0E         [ 3] 1055 	cmp	14,x
+   0605 26 06         [ 3] 1056 	bne	00184$
+   0607 E6 1D         [ 3] 1057 	lda	29,x
+   0609 E1 0D         [ 3] 1058 	cmp	13,x
+   060B 27 02         [ 3] 1059 	beq	00185$
+   060D                    1060 00184$:
+   060D 20 0B         [ 3] 1061 	bra	00120$
+   060F                    1062 00185$:
+   060F E6 48         [ 3] 1063 	lda	72,x
+   0611 E7 15         [ 3] 1064 	sta	21,x
+   0613 E6 49         [ 3] 1065 	lda	73,x
+   0615 E7 16         [ 3] 1066 	sta	22,x
+   0617 CCr06rE9      [ 3] 1067 	jmp	00121$
+   061A                    1068 00120$:
+   061A 9E E6 0C      [ 4] 1069 	lda	12,s
+   061D 9E E0 0F      [ 4] 1070 	sub	15,s
+   0620 87            [ 2] 1071 	psha
+   0621 9E E6 0C      [ 4] 1072 	lda	12,s
+   0624 9E E2 0F      [ 4] 1073 	sbc	15,s
+   0627 97            [ 1] 1074 	tax
+   0628 86            [ 2] 1075 	pula
+   0629 9E E7 27      [ 4] 1076 	sta	39,s
+   062C 9F            [ 1] 1077 	txa
+   062D 9E E7 26      [ 4] 1078 	sta	38,s
+   0630 49            [ 1] 1079 	rola	
+   0631 4F            [ 1] 1080 	clra	
+   0632 A2 00         [ 2] 1081 	sbc	#0x00
+   0634 9E E7 25      [ 4] 1082 	sta	37,s
+   0637 9E E7 24      [ 4] 1083 	sta	36,s
+   063A 9E E6 48      [ 4] 1084 	lda	72,s
+   063D 9E E0 4A      [ 4] 1085 	sub	74,s
+   0640 87            [ 2] 1086 	psha
+   0641 9E E6 48      [ 4] 1087 	lda	72,s
+   0644 9E E2 4A      [ 4] 1088 	sbc	74,s
+   0647 97            [ 1] 1089 	tax
+   0648 86            [ 2] 1090 	pula
+   0649 9E E7 1D      [ 4] 1091 	sta	29,s
+   064C 9F            [ 1] 1092 	txa
+   064D 9E E7 1C      [ 4] 1093 	sta	28,s
+   0650 49            [ 1] 1094 	rola	
+   0651 4F            [ 1] 1095 	clra	
+   0652 A2 00         [ 2] 1096 	sbc	#0x00
+   0654 9E E7 1B      [ 4] 1097 	sta	27,s
+   0657 9E E7 1A      [ 4] 1098 	sta	26,s
+   065A 95            [ 2] 1099 	tsx
+   065B E6 1C         [ 3] 1100 	lda	28,x
+   065D 87            [ 2] 1101 	psha
+   065E E6 1B         [ 3] 1102 	lda	27,x
+   0660 87            [ 2] 1103 	psha
+   0661 E6 1A         [ 3] 1104 	lda	26,x
+   0663 87            [ 2] 1105 	psha
+   0664 E6 19         [ 3] 1106 	lda	25,x
+   0666 87            [ 2] 1107 	psha
+   0667 E6 26         [ 3] 1108 	lda	38,x
+   0669 87            [ 2] 1109 	psha
+   066A E6 25         [ 3] 1110 	lda	37,x
+   066C 87            [ 2] 1111 	psha
+   066D E6 24         [ 3] 1112 	lda	36,x
+   066F 87            [ 2] 1113 	psha
+   0670 E6 23         [ 3] 1114 	lda	35,x
+   0672 87            [ 2] 1115 	psha
+   0673 CDr00r00      [ 5] 1116 	jsr	__mullong
+   0676 9E E7 2F      [ 4] 1117 	sta	47,s
+   0679 9E EF 2E      [ 4] 1118 	stx	46,s
+   067C B6*00         [ 3] 1119 	lda	*___SDCC_hc08_ret2
+   067E 9E E7 2D      [ 4] 1120 	sta	45,s
+   0681 B6*00         [ 3] 1121 	lda	*___SDCC_hc08_ret3
+   0683 9E E7 2C      [ 4] 1122 	sta	44,s
+   0686 A7 08         [ 2] 1123 	ais	#8
+   0688 9E E6 1F      [ 4] 1124 	lda	31,s
+   068B 9E E0 0F      [ 4] 1125 	sub	15,s
+   068E 87            [ 2] 1126 	psha
+   068F 9E E6 1F      [ 4] 1127 	lda	31,s
+   0692 9E E2 0F      [ 4] 1128 	sbc	15,s
+   0695 97            [ 1] 1129 	tax
+   0696 86            [ 2] 1130 	pula
+   0697 9E E7 1D      [ 4] 1131 	sta	29,s
+   069A 9F            [ 1] 1132 	txa
+   069B 9E E7 1C      [ 4] 1133 	sta	28,s
+   069E 49            [ 1] 1134 	rola	
+   069F 4F            [ 1] 1135 	clra	
+   06A0 A2 00         [ 2] 1136 	sbc	#0x00
+   06A2 9E E7 1B      [ 4] 1137 	sta	27,s
+   06A5 9E E7 1A      [ 4] 1138 	sta	26,s
+   06A8 95            [ 2] 1139 	tsx
+   06A9 E6 1C         [ 3] 1140 	lda	28,x
+   06AB 87            [ 2] 1141 	psha
+   06AC E6 1B         [ 3] 1142 	lda	27,x
+   06AE 87            [ 2] 1143 	psha
+   06AF E6 1A         [ 3] 1144 	lda	26,x
+   06B1 87            [ 2] 1145 	psha
+   06B2 E6 19         [ 3] 1146 	lda	25,x
+   06B4 87            [ 2] 1147 	psha
+   06B5 E6 26         [ 3] 1148 	lda	38,x
+   06B7 87            [ 2] 1149 	psha
+   06B8 E6 25         [ 3] 1150 	lda	37,x
+   06BA 87            [ 2] 1151 	psha
+   06BB E6 24         [ 3] 1152 	lda	36,x
+   06BD 87            [ 2] 1153 	psha
+   06BE E6 23         [ 3] 1154 	lda	35,x
+   06C0 87            [ 2] 1155 	psha
+   06C1 CDr00r00      [ 5] 1156 	jsr	__divslong
+   06C4 9E E7 2F      [ 4] 1157 	sta	47,s
+   06C7 9E EF 2E      [ 4] 1158 	stx	46,s
+   06CA B6*00         [ 3] 1159 	lda	*___SDCC_hc08_ret2
+   06CC 9E E7 2D      [ 4] 1160 	sta	45,s
+   06CF B6*00         [ 3] 1161 	lda	*___SDCC_hc08_ret3
+   06D1 9E E7 2C      [ 4] 1162 	sta	44,s
+   06D4 A7 08         [ 2] 1163 	ais	#8
+   06D6 9E E6 27      [ 4] 1164 	lda	39,s
+   06D9 9E EE 26      [ 4] 1165 	ldx	38,s
+   06DC 9E EB 4A      [ 4] 1166 	add	74,s
+   06DF 9E E7 17      [ 4] 1167 	sta	23,s
+   06E2 9F            [ 1] 1168 	txa
+   06E3 9E E9 49      [ 4] 1169 	adc	73,s
+   06E6 9E E7 16      [ 4] 1170 	sta	22,s
+   06E9                    1171 00121$:
+                           1172 ;tables.c:60: result = interpolate((int16_t)valueY, y1, y2, r1, r2);
+   06E9 95            [ 2] 1173 	tsx
+   06EA E6 27         [ 3] 1174 	lda	39,x
+   06EC E7 29         [ 3] 1175 	sta	41,x
+   06EE E6 28         [ 3] 1176 	lda	40,x
+   06F0 E7 2A         [ 3] 1177 	sta	42,x
+   06F2 E6 08         [ 3] 1178 	lda	8,x
+   06F4 E7 2B         [ 3] 1179 	sta	43,x
+   06F6 E6 09         [ 3] 1180 	lda	9,x
+   06F8 E7 2C         [ 3] 1181 	sta	44,x
+   06FA E6 11         [ 3] 1182 	lda	17,x
+   06FC E7 2D         [ 3] 1183 	sta	45,x
+   06FE E6 12         [ 3] 1184 	lda	18,x
+   0700 E7 2E         [ 3] 1185 	sta	46,x
+                           1186 ;tables.h:34: if (x2 == x1) return y1;
+   0702 E6 2A         [ 3] 1187 	lda	42,x
+   0704 E1 2C         [ 3] 1188 	cmp	44,x
+   0706 26 06         [ 3] 1189 	bne	00186$
+   0708 E6 29         [ 3] 1190 	lda	41,x
+   070A E1 2B         [ 3] 1191 	cmp	43,x
+   070C 27 02         [ 3] 1192 	beq	00187$
+   070E                    1193 00186$:
+   070E 20 0B         [ 3] 1194 	bra	00123$
+   0710                    1195 00187$:
+   0710 E6 3B         [ 3] 1196 	lda	59,x
+   0712 E7 21         [ 3] 1197 	sta	33,x
+   0714 E6 3C         [ 3] 1198 	lda	60,x
+   0716 E7 22         [ 3] 1199 	sta	34,x
+   0718 CCr07rEA      [ 3] 1200 	jmp	00124$
+   071B                    1201 00123$:
+                           1202 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   071B 9E E6 2F      [ 4] 1203 	lda	47,s
+   071E 9E E0 2D      [ 4] 1204 	sub	45,s
+   0721 87            [ 2] 1205 	psha
+   0722 9E E6 2F      [ 4] 1206 	lda	47,s
+   0725 9E E2 2D      [ 4] 1207 	sbc	45,s
+   0728 97            [ 1] 1208 	tax
+   0729 86            [ 2] 1209 	pula
+   072A 9E E7 27      [ 4] 1210 	sta	39,s
+   072D 9F            [ 1] 1211 	txa
+   072E 9E E7 26      [ 4] 1212 	sta	38,s
+   0731 49            [ 1] 1213 	rola	
+   0732 4F            [ 1] 1214 	clra	
+   0733 A2 00         [ 2] 1215 	sbc	#0x00
+   0735 9E E7 25      [ 4] 1216 	sta	37,s
+   0738 9E E7 24      [ 4] 1217 	sta	36,s
+   073B 9E E6 17      [ 4] 1218 	lda	23,s
+   073E 9E E0 3D      [ 4] 1219 	sub	61,s
+   0741 87            [ 2] 1220 	psha
+   0742 9E E6 17      [ 4] 1221 	lda	23,s
+   0745 9E E2 3D      [ 4] 1222 	sbc	61,s
+   0748 97            [ 1] 1223 	tax
+   0749 86            [ 2] 1224 	pula
+   074A 9E E7 19      [ 4] 1225 	sta	25,s
+   074D 9F            [ 1] 1226 	txa
+   074E 9E E7 18      [ 4] 1227 	sta	24,s
+   0751 49            [ 1] 1228 	rola	
+   0752 4F            [ 1] 1229 	clra	
+   0753 A2 00         [ 2] 1230 	sbc	#0x00
+   0755 9E E7 17      [ 4] 1231 	sta	23,s
+   0758 9E E7 16      [ 4] 1232 	sta	22,s
+   075B 95            [ 2] 1233 	tsx
+   075C E6 18         [ 3] 1234 	lda	24,x
+   075E 87            [ 2] 1235 	psha
+   075F E6 17         [ 3] 1236 	lda	23,x
+   0761 87            [ 2] 1237 	psha
+   0762 E6 16         [ 3] 1238 	lda	22,x
+   0764 87            [ 2] 1239 	psha
+   0765 E6 15         [ 3] 1240 	lda	21,x
+   0767 87            [ 2] 1241 	psha
+   0768 E6 26         [ 3] 1242 	lda	38,x
+   076A 87            [ 2] 1243 	psha
+   076B E6 25         [ 3] 1244 	lda	37,x
+   076D 87            [ 2] 1245 	psha
+   076E E6 24         [ 3] 1246 	lda	36,x
+   0770 87            [ 2] 1247 	psha
+   0771 E6 23         [ 3] 1248 	lda	35,x
+   0773 87            [ 2] 1249 	psha
+   0774 CDr00r00      [ 5] 1250 	jsr	__mullong
+   0777 9E E7 21      [ 4] 1251 	sta	33,s
+   077A 9E EF 20      [ 4] 1252 	stx	32,s
+   077D B6*00         [ 3] 1253 	lda	*___SDCC_hc08_ret2
+   077F 9E E7 1F      [ 4] 1254 	sta	31,s
+   0782 B6*00         [ 3] 1255 	lda	*___SDCC_hc08_ret3
+   0784 9E E7 1E      [ 4] 1256 	sta	30,s
+   0787 A7 08         [ 2] 1257 	ais	#8
+   0789 9E E6 2B      [ 4] 1258 	lda	43,s
+   078C 9E E0 2D      [ 4] 1259 	sub	45,s
+   078F 87            [ 2] 1260 	psha
+   0790 9E E6 2B      [ 4] 1261 	lda	43,s
+   0793 9E E2 2D      [ 4] 1262 	sbc	45,s
+   0796 97            [ 1] 1263 	tax
+   0797 86            [ 2] 1264 	pula
+   0798 9E E7 27      [ 4] 1265 	sta	39,s
+   079B 9F            [ 1] 1266 	txa
+   079C 9E E7 26      [ 4] 1267 	sta	38,s
+   079F 49            [ 1] 1268 	rola	
+   07A0 4F            [ 1] 1269 	clra	
+   07A1 A2 00         [ 2] 1270 	sbc	#0x00
+   07A3 9E E7 25      [ 4] 1271 	sta	37,s
+   07A6 9E E7 24      [ 4] 1272 	sta	36,s
+   07A9 95            [ 2] 1273 	tsx
+   07AA E6 26         [ 3] 1274 	lda	38,x
+   07AC 87            [ 2] 1275 	psha
+   07AD E6 25         [ 3] 1276 	lda	37,x
+   07AF 87            [ 2] 1277 	psha
+   07B0 E6 24         [ 3] 1278 	lda	36,x
+   07B2 87            [ 2] 1279 	psha
+   07B3 E6 23         [ 3] 1280 	lda	35,x
+   07B5 87            [ 2] 1281 	psha
+   07B6 E6 18         [ 3] 1282 	lda	24,x
+   07B8 87            [ 2] 1283 	psha
+   07B9 E6 17         [ 3] 1284 	lda	23,x
+   07BB 87            [ 2] 1285 	psha
+   07BC E6 16         [ 3] 1286 	lda	22,x
+   07BE 87            [ 2] 1287 	psha
+   07BF E6 15         [ 3] 1288 	lda	21,x
+   07C1 87            [ 2] 1289 	psha
+   07C2 CDr00r00      [ 5] 1290 	jsr	__divslong
+   07C5 9E E7 21      [ 4] 1291 	sta	33,s
+   07C8 9E EF 20      [ 4] 1292 	stx	32,s
+   07CB B6*00         [ 3] 1293 	lda	*___SDCC_hc08_ret2
+   07CD 9E E7 1F      [ 4] 1294 	sta	31,s
+   07D0 B6*00         [ 3] 1295 	lda	*___SDCC_hc08_ret3
+   07D2 9E E7 1E      [ 4] 1296 	sta	30,s
+   07D5 A7 08         [ 2] 1297 	ais	#8
+   07D7 9E E6 19      [ 4] 1298 	lda	25,s
+   07DA 9E EE 18      [ 4] 1299 	ldx	24,s
+   07DD 9E EB 3D      [ 4] 1300 	add	61,s
+   07E0 9E E7 23      [ 4] 1301 	sta	35,s
+   07E3 9F            [ 1] 1302 	txa
+   07E4 9E E9 3C      [ 4] 1303 	adc	60,s
+   07E7 9E E7 22      [ 4] 1304 	sta	34,s
+                           1305 ;tables.c:60: result = interpolate((int16_t)valueY, y1, y2, r1, r2);
+   07EA                    1306 00124$:
+   07EA 95            [ 2] 1307 	tsx
+   07EB E6 21         [ 3] 1308 	lda	33,x
+   07ED E7 3F         [ 3] 1309 	sta	63,x
+   07EF E6 22         [ 3] 1310 	lda	34,x
+   07F1 E7 40         [ 3] 1311 	sta	64,x
+   07F3                    1312 00109$:
+                           1313 ;tables.c:63: return result;
+   07F3 95            [ 2] 1314 	tsx
+   07F4 EE 3F         [ 3] 1315 	ldx	63,x
+   07F6 9E E6 41      [ 4] 1316 	lda	65,s
+   07F9                    1317 00125$:
+                           1318 ;tables.c:64: }
+   07F9 A7 4E         [ 2] 1319 	ais	#78
+   07FB 81            [ 4] 1320 	rts
+                           1321 ;------------------------------------------------------------
+                           1322 ;Allocation info for local variables in function 'findTableXIndices'
+                           1323 ;------------------------------------------------------------
+                           1324 ;value                     Allocated to stack - sp +13
+                           1325 ;idxLow                    Allocated to stack - sp +15
+                           1326 ;idxHigh                   Allocated to stack - sp +17
+                           1327 ;table                     Allocated to stack - sp +9
+                           1328 ;i                         Allocated to stack - sp +8
+                           1329 ;sloc0                     Allocated to stack - sp +6
+                           1330 ;sloc1                     Allocated to stack - sp +4
+                           1331 ;sloc2                     Allocated to stack - sp +2
+                           1332 ;sloc3                     Allocated to stack - sp +1
+                           1333 ;------------------------------------------------------------
+                           1334 ;tables.c:66: void findTableXIndices(struct Table3D *table, uint16_t value, uint8_t *idxLow, uint8_t *idxHigh) {
+                           1335 ;	-----------------------------------------
+                           1336 ;	 function findTableXIndices
+                           1337 ;	-----------------------------------------
+                           1338 ;	Register assignment is optimal.
+                           1339 ;	Stack space usage: 10 bytes.
+   07FC                    1340 _findTableXIndices:
+   07FC 87            [ 2] 1341 	psha
+   07FD 89            [ 2] 1342 	pshx
+   07FE A7 F8         [ 2] 1343 	ais	#-8
+                           1344 ;tables.c:69: if (value <= table->axisX[0]) {
+   0800 9E E6 09      [ 4] 1345 	lda	9,s
+   0803 87            [ 2] 1346 	psha
+   0804 8A            [ 2] 1347 	pulh
+   0805 9E EE 0A      [ 4] 1348 	ldx	10,s
+   0808 F6            [ 2] 1349 	lda	,x
+   0809 87            [ 2] 1350 	psha
+   080A EE 01         [ 3] 1351 	ldx	1,x
+   080C 8A            [ 2] 1352 	pulh
+                           1353 ;tables.c:70: *idxLow = 0;
+   080D 9E E6 0F      [ 4] 1354 	lda	15,s
+   0810 9E E7 06      [ 4] 1355 	sta	6,s
+   0813 9E E6 10      [ 4] 1356 	lda	16,s
+   0816 9E E7 07      [ 4] 1357 	sta	7,s
+                           1358 ;tables.c:71: *idxHigh = 0;
+   0819 9E E6 11      [ 4] 1359 	lda	17,s
+   081C 9E E7 04      [ 4] 1360 	sta	4,s
+   081F 9E E6 12      [ 4] 1361 	lda	18,s
+   0822 9E E7 05      [ 4] 1362 	sta	5,s
+                           1363 ;tables.c:69: if (value <= table->axisX[0]) {
+   0825 9F            [ 1] 1364 	txa
+   0826 9E E0 0E      [ 4] 1365 	sub	14,s
+   0829 8B            [ 2] 1366 	pshh
+   082A 86            [ 2] 1367 	pula
+   082B 9E E2 0D      [ 4] 1368 	sbc	13,s
+   082E 25 17         [ 3] 1369 	bcs	00102$
+                           1370 ;tables.c:70: *idxLow = 0;
+   0830 9E E6 06      [ 4] 1371 	lda	6,s
+   0833 87            [ 2] 1372 	psha
+   0834 8A            [ 2] 1373 	pulh
+   0835 9E EE 07      [ 4] 1374 	ldx	7,s
+   0838 4F            [ 1] 1375 	clra
+   0839 F7            [ 2] 1376 	sta	,x
+                           1377 ;tables.c:71: *idxHigh = 0;
+   083A 9E E6 04      [ 4] 1378 	lda	4,s
+   083D 87            [ 2] 1379 	psha
+   083E 8A            [ 2] 1380 	pulh
+   083F 9E EE 05      [ 4] 1381 	ldx	5,s
+   0842 4F            [ 1] 1382 	clra
+   0843 F7            [ 2] 1383 	sta	,x
+                           1384 ;tables.c:72: return;
+   0844 CCr09r14      [ 3] 1385 	jmp	00111$
+   0847                    1386 00102$:
+                           1387 ;tables.c:74: if (value >= table->axisX[TABLE_SIZE_X - 1]) {
+   0847 95            [ 2] 1388 	tsx
+   0848 E6 08         [ 3] 1389 	lda	8,x
+   084A E7 01         [ 3] 1390 	sta	1,x
+   084C E6 09         [ 3] 1391 	lda	9,x
+   084E E7 02         [ 3] 1392 	sta	2,x
+   0850 E6 01         [ 3] 1393 	lda	1,x
+   0852 87            [ 2] 1394 	psha
+   0853 8A            [ 2] 1395 	pulh
+   0854 9E EE 03      [ 4] 1396 	ldx	3,s
+   0857 E6 17         [ 3] 1397 	lda	23,x
+   0859 EE 16         [ 3] 1398 	ldx	22,x
+   085B 87            [ 2] 1399 	psha
+   085C 9E E6 0F      [ 4] 1400 	lda	15,s
+   085F 9E E0 01      [ 4] 1401 	sub	1, s
+   0862 86            [ 2] 1402 	pula
+   0863 9E E6 0D      [ 4] 1403 	lda	13,s
+   0866 89            [ 2] 1404 	pshx
+   0867 9E E2 01      [ 4] 1405 	sbc	1,s
+   086A A7 01         [ 2] 1406 	ais	#1
+   086C 25 19         [ 3] 1407 	bcs	00104$
+                           1408 ;tables.c:75: *idxLow = TABLE_SIZE_X - 1;
+   086E 9E E6 06      [ 4] 1409 	lda	6,s
+   0871 87            [ 2] 1410 	psha
+   0872 8A            [ 2] 1411 	pulh
+   0873 9E EE 07      [ 4] 1412 	ldx	7,s
+   0876 A6 0B         [ 2] 1413 	lda	#0x0b
+   0878 F7            [ 2] 1414 	sta	,x
+                           1415 ;tables.c:76: *idxHigh = TABLE_SIZE_X - 1;
+   0879 9E E6 04      [ 4] 1416 	lda	4,s
+   087C 87            [ 2] 1417 	psha
+   087D 8A            [ 2] 1418 	pulh
+   087E 9E EE 05      [ 4] 1419 	ldx	5,s
+   0881 A6 0B         [ 2] 1420 	lda	#0x0b
+   0883 F7            [ 2] 1421 	sta	,x
+                           1422 ;tables.c:77: return;
+   0884 CCr09r14      [ 3] 1423 	jmp	00111$
+   0887                    1424 00104$:
+                           1425 ;tables.c:80: for (i = 0; i < TABLE_SIZE_X - 1; i++) {
+   0887 95            [ 2] 1426 	tsx
+   0888 4F            [ 1] 1427 	clra
+   0889 E7 01         [ 3] 1428 	sta	1,x
+   088B E7 07         [ 3] 1429 	sta	7,x
+   088D                    1430 00109$:
+                           1431 ;tables.c:81: if (value >= table->axisX[i] && value < table->axisX[i + 1]) {
+   088D 9E E6 08      [ 4] 1432 	lda	8,s
+   0890 48            [ 1] 1433 	lsla	
+   0891 9E EB 0A      [ 4] 1434 	add	10,s
+   0894 97            [ 1] 1435 	tax
+   0895 4F            [ 1] 1436 	clra
+   0896 9E E9 09      [ 4] 1437 	adc	9,s
+   0899 87            [ 2] 1438 	psha
+   089A 8A            [ 2] 1439 	pulh
+   089B E6 01         [ 3] 1440 	lda	1,x
+   089D FE            [ 2] 1441 	ldx	,x
+   089E 87            [ 2] 1442 	psha
+   089F 9E E6 0F      [ 4] 1443 	lda	15,s
+   08A2 9E E0 01      [ 4] 1444 	sub	1, s
+   08A5 86            [ 2] 1445 	pula
+   08A6 9E E6 0D      [ 4] 1446 	lda	13,s
+   08A9 89            [ 2] 1447 	pshx
+   08AA 9E E2 01      [ 4] 1448 	sbc	1,s
+   08AD A7 01         [ 2] 1449 	ais	#1
+   08AF 25 41         [ 3] 1450 	bcs	00110$
+   08B1 95            [ 2] 1451 	tsx
+   08B2 E6 07         [ 3] 1452 	lda	7,x
+   08B4 AB 01         [ 2] 1453 	add	#0x01
+   08B6 F7            [ 2] 1454 	sta	,x
+   08B7 F6            [ 2] 1455 	lda	,x
+   08B8 48            [ 1] 1456 	lsla	
+   08B9 EB 09         [ 3] 1457 	add	9,x
+   08BB 97            [ 1] 1458 	tax
+   08BC 4F            [ 1] 1459 	clra
+   08BD 9E E9 09      [ 4] 1460 	adc	9,s
+   08C0 87            [ 2] 1461 	psha
+   08C1 8A            [ 2] 1462 	pulh
+   08C2 E6 01         [ 3] 1463 	lda	1,x
+   08C4 FE            [ 2] 1464 	ldx	,x
+   08C5 87            [ 2] 1465 	psha
+   08C6 9E E6 0F      [ 4] 1466 	lda	15,s
+   08C9 9E E0 01      [ 4] 1467 	sub	1, s
+   08CC 86            [ 2] 1468 	pula
+   08CD 9E E6 0D      [ 4] 1469 	lda	13,s
+   08D0 89            [ 2] 1470 	pshx
+   08D1 9E E2 01      [ 4] 1471 	sbc	1,s
+   08D4 A7 01         [ 2] 1472 	ais	#1
+   08D6 24 1A         [ 3] 1473 	bcc	00110$
+                           1474 ;tables.c:82: *idxLow = i;
+   08D8 9E E6 06      [ 4] 1475 	lda	6,s
+   08DB 87            [ 2] 1476 	psha
+   08DC 8A            [ 2] 1477 	pulh
+   08DD 9E EE 07      [ 4] 1478 	ldx	7,s
+   08E0 9E E6 02      [ 4] 1479 	lda	2,s
+   08E3 F7            [ 2] 1480 	sta	,x
+                           1481 ;tables.c:83: *idxHigh = i + 1;
+   08E4 9E E6 04      [ 4] 1482 	lda	4,s
+   08E7 87            [ 2] 1483 	psha
+   08E8 8A            [ 2] 1484 	pulh
+   08E9 9E EE 05      [ 4] 1485 	ldx	5,s
+   08EC 9E E6 01      [ 4] 1486 	lda	1,s
+   08EF F7            [ 2] 1487 	sta	,x
+                           1488 ;tables.c:84: return;
+   08F0 20 22         [ 3] 1489 	bra	00111$
+   08F2                    1490 00110$:
+                           1491 ;tables.c:80: for (i = 0; i < TABLE_SIZE_X - 1; i++) {
+   08F2 95            [ 2] 1492 	tsx
+   08F3 6C 07         [ 4] 1493 	inc	7,x
+   08F5 E6 07         [ 3] 1494 	lda	7,x
+   08F7 E7 01         [ 3] 1495 	sta	1,x
+   08F9 E6 07         [ 3] 1496 	lda	7,x
+   08FB A1 0B         [ 2] 1497 	cmp	#0x0b
+   08FD 25 8E         [ 3] 1498 	bcs	00109$
+                           1499 ;tables.c:88: *idxLow = TABLE_SIZE_X - 2;
+   08FF E6 05         [ 3] 1500 	lda	5,x
+   0901 87            [ 2] 1501 	psha
+   0902 8A            [ 2] 1502 	pulh
+   0903 9E EE 07      [ 4] 1503 	ldx	7,s
+   0906 A6 0A         [ 2] 1504 	lda	#0x0a
+   0908 F7            [ 2] 1505 	sta	,x
+                           1506 ;tables.c:89: *idxHigh = TABLE_SIZE_X - 1;
+   0909 9E E6 04      [ 4] 1507 	lda	4,s
+   090C 87            [ 2] 1508 	psha
+   090D 8A            [ 2] 1509 	pulh
+   090E 9E EE 05      [ 4] 1510 	ldx	5,s
+   0911 A6 0B         [ 2] 1511 	lda	#0x0b
+   0913 F7            [ 2] 1512 	sta	,x
+   0914                    1513 00111$:
+                           1514 ;tables.c:90: }
+   0914 A7 0A         [ 2] 1515 	ais	#10
+   0916 81            [ 4] 1516 	rts
+                           1517 ;------------------------------------------------------------
+                           1518 ;Allocation info for local variables in function 'findTableYIndices'
+                           1519 ;------------------------------------------------------------
+                           1520 ;value                     Allocated to stack - sp +16
+                           1521 ;idxLow                    Allocated to stack - sp +17
+                           1522 ;idxHigh                   Allocated to stack - sp +19
+                           1523 ;table                     Allocated to stack - sp +5
+                           1524 ;i                         Allocated to stack - sp +7
+                           1525 ;sloc0                     Allocated to stack - sp +12
+                           1526 ;sloc1                     Allocated to stack - sp +1
+                           1527 ;sloc2                     Allocated to stack - sp +3
+                           1528 ;sloc3                     Allocated to stack - sp +10
+                           1529 ;sloc4                     Allocated to stack - sp +8
+                           1530 ;------------------------------------------------------------
+                           1531 ;tables.c:92: void findTableYIndices(struct Table3D *table, uint8_t value, uint8_t *idxLow, uint8_t *idxHigh) {
+                           1532 ;	-----------------------------------------
+                           1533 ;	 function findTableYIndices
+                           1534 ;	-----------------------------------------
+                           1535 ;	Register assignment might be sub-optimal.
+                           1536 ;	Stack space usage: 13 bytes.
+   0917                    1537 _findTableYIndices:
+   0917 A7 F3         [ 2] 1538 	ais	#-13
+   0919 9E E7 06      [ 4] 1539 	sta	6,s
+   091C 9E EF 05      [ 4] 1540 	stx	5,s
+                           1541 ;tables.c:95: if (value <= table->axisY[0]) {
+   091F 9E E6 05      [ 4] 1542 	lda	5,s
+   0922 9E EE 06      [ 4] 1543 	ldx	6,s
+   0925 87            [ 2] 1544 	psha
+   0926 8A            [ 2] 1545 	pulh
+   0927 EE 18         [ 3] 1546 	ldx	24,x
+                           1547 ;tables.c:96: *idxLow = 0;
+   0929 9E E6 11      [ 4] 1548 	lda	17,s
+   092C 9E E7 0C      [ 4] 1549 	sta	12,s
+   092F 9E E6 12      [ 4] 1550 	lda	18,s
+   0932 9E E7 0D      [ 4] 1551 	sta	13,s
+                           1552 ;tables.c:97: *idxHigh = 0;
+   0935 9E E6 13      [ 4] 1553 	lda	19,s
+   0938 9E E7 01      [ 4] 1554 	sta	1,s
+   093B 9E E6 14      [ 4] 1555 	lda	20,s
+   093E 9E E7 02      [ 4] 1556 	sta	2,s
+                           1557 ;tables.c:95: if (value <= table->axisY[0]) {
+   0941 9E E3 10      [ 4] 1558 	cpx	16,s
+   0944 25 12         [ 3] 1559 	bcs	00102$
+                           1560 ;tables.c:96: *idxLow = 0;
+   0946 9E E6 0C      [ 4] 1561 	lda	12,s
+   0949 87            [ 2] 1562 	psha
+   094A 8A            [ 2] 1563 	pulh
+   094B 9E EE 0D      [ 4] 1564 	ldx	13,s
+   094E 4F            [ 1] 1565 	clra
+   094F F7            [ 2] 1566 	sta	,x
+                           1567 ;tables.c:97: *idxHigh = 0;
+   0950 8A            [ 2] 1568 	pulh
+   0951 88            [ 2] 1569 	pulx
+   0952 89            [ 2] 1570 	pshx
+   0953 8B            [ 2] 1571 	pshh
+   0954 F7            [ 2] 1572 	sta	,x
+                           1573 ;tables.c:98: return;
+   0955 CCr09rF8      [ 3] 1574 	jmp	00111$
+   0958                    1575 00102$:
+                           1576 ;tables.c:100: if (value >= table->axisY[TABLE_SIZE_Y - 1]) {
+   0958 95            [ 2] 1577 	tsx
+   0959 E6 05         [ 3] 1578 	lda	5,x
+   095B AB 18         [ 2] 1579 	add	#0x18
+   095D E7 03         [ 3] 1580 	sta	3,x
+   095F E6 04         [ 3] 1581 	lda	4,x
+   0961 A9 00         [ 2] 1582 	adc	#0
+   0963 E7 02         [ 3] 1583 	sta	2,x
+   0965 E6 02         [ 3] 1584 	lda	2,x
+   0967 E7 09         [ 3] 1585 	sta	9,x
+   0969 E6 03         [ 3] 1586 	lda	3,x
+   096B E7 0A         [ 3] 1587 	sta	10,x
+   096D E6 09         [ 3] 1588 	lda	9,x
+   096F 87            [ 2] 1589 	psha
+   0970 8A            [ 2] 1590 	pulh
+   0971 9E EE 0B      [ 4] 1591 	ldx	11,s
+   0974 E6 0B         [ 3] 1592 	lda	11,x
+   0976 9E E1 10      [ 4] 1593 	cmp	16,s
+   0979 22 12         [ 3] 1594 	bhi	00104$
+                           1595 ;tables.c:101: *idxLow = TABLE_SIZE_Y - 1;
+   097B 9E E6 0C      [ 4] 1596 	lda	12,s
+   097E 87            [ 2] 1597 	psha
+   097F 8A            [ 2] 1598 	pulh
+   0980 9E EE 0D      [ 4] 1599 	ldx	13,s
+   0983 A6 0B         [ 2] 1600 	lda	#0x0b
+   0985 F7            [ 2] 1601 	sta	,x
+                           1602 ;tables.c:102: *idxHigh = TABLE_SIZE_Y - 1;
+   0986 8A            [ 2] 1603 	pulh
+   0987 88            [ 2] 1604 	pulx
+   0988 89            [ 2] 1605 	pshx
+   0989 8B            [ 2] 1606 	pshh
+   098A F7            [ 2] 1607 	sta	,x
+                           1608 ;tables.c:103: return;
+   098B 20 6B         [ 3] 1609 	bra	00111$
+   098D                    1610 00104$:
+                           1611 ;tables.c:106: for (i = 0; i < TABLE_SIZE_Y - 1; i++) {
+   098D 95            [ 2] 1612 	tsx
+   098E 4F            [ 1] 1613 	clra
+   098F E7 09         [ 3] 1614 	sta	9,x
+   0991 E6 02         [ 3] 1615 	lda	2,x
+   0993 E7 07         [ 3] 1616 	sta	7,x
+   0995 E6 03         [ 3] 1617 	lda	3,x
+   0997 E7 08         [ 3] 1618 	sta	8,x
+   0999 4F            [ 1] 1619 	clra
+   099A E7 06         [ 3] 1620 	sta	6,x
+   099C                    1621 00109$:
+                           1622 ;tables.c:107: if (value >= table->axisY[i] && value < table->axisY[i + 1]) {
+   099C 9E E6 07      [ 4] 1623 	lda	7,s
+   099F 9E EB 04      [ 4] 1624 	add	4,s
+   09A2 97            [ 1] 1625 	tax
+   09A3 A6 00         [ 2] 1626 	lda	#0x00
+   09A5 9E E9 03      [ 4] 1627 	adc	3,s
+   09A8 87            [ 2] 1628 	psha
+   09A9 8A            [ 2] 1629 	pulh
+   09AA FE            [ 2] 1630 	ldx	,x
+   09AB 9E E3 10      [ 4] 1631 	cpx	16,s
+   09AE 22 2B         [ 3] 1632 	bhi	00110$
+   09B0 9E E6 07      [ 4] 1633 	lda	7,s
+   09B3 4C            [ 1] 1634 	inca
+   09B4 87            [ 2] 1635 	psha
+   09B5 9E EB 0A      [ 4] 1636 	add	10,s
+   09B8 97            [ 1] 1637 	tax
+   09B9 4F            [ 1] 1638 	clra
+   09BA 9E E9 09      [ 4] 1639 	adc	9,s
+   09BD 87            [ 2] 1640 	psha
+   09BE 8A            [ 2] 1641 	pulh
+   09BF 86            [ 2] 1642 	pula
+   09C0 FE            [ 2] 1643 	ldx	,x
+   09C1 9E E3 10      [ 4] 1644 	cpx	16,s
+   09C4 23 15         [ 3] 1645 	bls	00110$
+                           1646 ;tables.c:108: *idxLow = i;
+   09C6 87            [ 2] 1647 	psha
+   09C7 9E E6 0D      [ 4] 1648 	lda	13,s
+   09CA 87            [ 2] 1649 	psha
+   09CB 8A            [ 2] 1650 	pulh
+   09CC 9E EE 0E      [ 4] 1651 	ldx	14,s
+   09CF 9E E6 0B      [ 4] 1652 	lda	11,s
+   09D2 F7            [ 2] 1653 	sta	,x
+   09D3 86            [ 2] 1654 	pula
+                           1655 ;tables.c:109: *idxHigh = i + 1;
+   09D4 8A            [ 2] 1656 	pulh
+   09D5 88            [ 2] 1657 	pulx
+   09D6 89            [ 2] 1658 	pshx
+   09D7 8B            [ 2] 1659 	pshh
+   09D8 F7            [ 2] 1660 	sta	,x
+                           1661 ;tables.c:110: return;
+   09D9 20 1D         [ 3] 1662 	bra	00111$
+   09DB                    1663 00110$:
+                           1664 ;tables.c:106: for (i = 0; i < TABLE_SIZE_Y - 1; i++) {
+   09DB 95            [ 2] 1665 	tsx
+   09DC 6C 06         [ 4] 1666 	inc	6,x
+   09DE E6 06         [ 3] 1667 	lda	6,x
+   09E0 E7 09         [ 3] 1668 	sta	9,x
+   09E2 E6 06         [ 3] 1669 	lda	6,x
+   09E4 A1 0B         [ 2] 1670 	cmp	#0x0b
+   09E6 25 B4         [ 3] 1671 	bcs	00109$
+                           1672 ;tables.c:114: *idxLow = TABLE_SIZE_Y - 2;
+   09E8 E6 0B         [ 3] 1673 	lda	11,x
+   09EA 87            [ 2] 1674 	psha
+   09EB 8A            [ 2] 1675 	pulh
+   09EC 9E EE 0D      [ 4] 1676 	ldx	13,s
+   09EF A6 0A         [ 2] 1677 	lda	#0x0a
+   09F1 F7            [ 2] 1678 	sta	,x
+                           1679 ;tables.c:115: *idxHigh = TABLE_SIZE_Y - 1;
+   09F2 8A            [ 2] 1680 	pulh
+   09F3 88            [ 2] 1681 	pulx
+   09F4 89            [ 2] 1682 	pshx
+   09F5 8B            [ 2] 1683 	pshh
+   09F6 4C            [ 1] 1684 	inca
+   09F7 F7            [ 2] 1685 	sta	,x
+   09F8                    1686 00111$:
+                           1687 ;tables.c:116: }
+   09F8 A7 0D         [ 2] 1688 	ais	#13
+   09FA 81            [ 4] 1689 	rts
+                           1690 ;------------------------------------------------------------
+                           1691 ;Allocation info for local variables in function 'lookupCurveU8'
+                           1692 ;------------------------------------------------------------
+                           1693 ;values                    Allocated to stack - sp +34
+                           1694 ;size                      Allocated to stack - sp +36
+                           1695 ;x                         Allocated to stack - sp +37
+                           1696 ;bins                      Allocated to stack - sp +29
+                           1697 ;i                         Allocated to stack - sp +31
+                           1698 ;__3276800036              Allocated to stack - sp +19
+                           1699 ;__3276800037              Allocated to registers a x 
+                           1700 ;__3276800038              Allocated to stack - sp +27
+                           1701 ;__3276800039              Allocated to stack - sp +25
+                           1702 ;__3276800040              Allocated to stack - sp +23
+                           1703 ;__3276800041              Allocated to stack - sp +21
+                           1704 ;x                         Allocated to registers 
+                           1705 ;x1                        Allocated to registers 
+                           1706 ;x2                        Allocated to registers 
+                           1707 ;y1                        Allocated to registers 
+                           1708 ;y2                        Allocated to registers 
+                           1709 ;sloc0                     Allocated to stack - sp +1
+                           1710 ;sloc1                     Allocated to stack - sp +11
+                           1711 ;sloc2                     Allocated to stack - sp +13
+                           1712 ;sloc3                     Allocated to stack - sp +15
+                           1713 ;sloc4                     Allocated to stack - sp +17
+                           1714 ;sloc5                     Allocated to stack - sp +19
+                           1715 ;sloc6                     Allocated to stack - sp +3
+                           1716 ;sloc7                     Allocated to stack - sp +7
+                           1717 ;------------------------------------------------------------
+                           1718 ;tables.c:118: uint8_t lookupCurveU8(const int8_t *bins, const uint8_t *values, uint8_t size, int16_t x) {
+                           1719 ;	-----------------------------------------
+                           1720 ;	 function lookupCurveU8
+                           1721 ;	-----------------------------------------
+                           1722 ;	Register assignment might be sub-optimal.
+                           1723 ;	Stack space usage: 31 bytes.
+   09FB                    1724 _lookupCurveU8:
+   09FB A7 E1         [ 2] 1725 	ais	#-31
+   09FD 9E E7 1E      [ 4] 1726 	sta	30,s
+   0A00 9E EF 1D      [ 4] 1727 	stx	29,s
+                           1728 ;tables.c:120: if (size == 0) return 0;
+   0A03 9E 6D 24      [ 4] 1729 	tst	36,s
+   0A06 26 04         [ 3] 1730 	bne	00102$
+   0A08 4F            [ 1] 1731 	clra
+   0A09 CCr0Cr24      [ 3] 1732 	jmp	00117$
+   0A0C                    1733 00102$:
+                           1734 ;tables.c:121: if (x <= bins[0]) return values[0];
+   0A0C 9E E6 1D      [ 4] 1735 	lda	29,s
+   0A0F 87            [ 2] 1736 	psha
+   0A10 8A            [ 2] 1737 	pulh
+   0A11 9E EE 1E      [ 4] 1738 	ldx	30,s
+   0A14 F6            [ 2] 1739 	lda	,x
+   0A15 87            [ 2] 1740 	psha
+   0A16 49            [ 1] 1741 	rola	
+   0A17 4F            [ 1] 1742 	clra	
+   0A18 A2 00         [ 2] 1743 	sbc	#0x00
+   0A1A 97            [ 1] 1744 	tax
+   0A1B 86            [ 2] 1745 	pula
+   0A1C 9E E0 26      [ 4] 1746 	sub	38,s
+   0A1F 9F            [ 1] 1747 	txa
+   0A20 9E E2 25      [ 4] 1748 	sbc	37,s
+   0A23 91 0C         [ 3] 1749 	blt	00104$
+   0A25 95            [ 2] 1750 	tsx
+   0A26 E6 21         [ 3] 1751 	lda	33,x
+   0A28 87            [ 2] 1752 	psha
+   0A29 8A            [ 2] 1753 	pulh
+   0A2A 9E EE 23      [ 4] 1754 	ldx	35,s
+   0A2D F6            [ 2] 1755 	lda	,x
+   0A2E CCr0Cr24      [ 3] 1756 	jmp	00117$
+   0A31                    1757 00104$:
+                           1758 ;tables.c:122: if (x >= bins[size - 1]) return values[size - 1];
+   0A31 9E EE 24      [ 4] 1759 	ldx	36,s
+   0A34 8C            [ 1] 1760 	clrh
+   0A35 AF FF         [ 2] 1761 	aix	#-1
+   0A37 8B            [ 2] 1762 	pshh
+   0A38 86            [ 2] 1763 	pula
+   0A39 9E E7 01      [ 4] 1764 	sta	1,s
+   0A3C 9E EF 02      [ 4] 1765 	stx	2,s
+   0A3F 9E E6 02      [ 4] 1766 	lda	2,s
+   0A42 9E EB 1E      [ 4] 1767 	add	30,s
+   0A45 97            [ 1] 1768 	tax
+   0A46 9E E6 01      [ 4] 1769 	lda	1,s
+   0A49 9E E9 1D      [ 4] 1770 	adc	29,s
+   0A4C 87            [ 2] 1771 	psha
+   0A4D 8A            [ 2] 1772 	pulh
+   0A4E F6            [ 2] 1773 	lda	,x
+   0A4F 95            [ 2] 1774 	tsx
+   0A50 E7 0B         [ 3] 1775 	sta	11,x
+   0A52 49            [ 1] 1776 	rola	
+   0A53 4F            [ 1] 1777 	clra	
+   0A54 A2 00         [ 2] 1778 	sbc	#0x00
+   0A56 E7 0A         [ 3] 1779 	sta	10,x
+   0A58 E6 01         [ 3] 1780 	lda	1,x
+   0A5A EB 22         [ 3] 1781 	add	34,x
+   0A5C E7 0D         [ 3] 1782 	sta	13,x
+   0A5E F6            [ 2] 1783 	lda	,x
+   0A5F E9 21         [ 3] 1784 	adc	33,x
+   0A61 E7 0C         [ 3] 1785 	sta	12,x
+   0A63 E6 25         [ 3] 1786 	lda	37,x
+   0A65 E0 0B         [ 3] 1787 	sub	11,x
+   0A67 E6 24         [ 3] 1788 	lda	36,x
+   0A69 E2 0A         [ 3] 1789 	sbc	10,x
+   0A6B 91 0B         [ 3] 1790 	blt	00106$
+   0A6D E6 0C         [ 3] 1791 	lda	12,x
+   0A6F 87            [ 2] 1792 	psha
+   0A70 8A            [ 2] 1793 	pulh
+   0A71 9E EE 0E      [ 4] 1794 	ldx	14,s
+   0A74 F6            [ 2] 1795 	lda	,x
+   0A75 CCr0Cr24      [ 3] 1796 	jmp	00117$
+   0A78                    1797 00106$:
+                           1798 ;tables.c:124: for (i = 0; i < size - 1; i++) {
+   0A78 95            [ 2] 1799 	tsx
+   0A79 4F            [ 1] 1800 	clra
+   0A7A E7 0A         [ 3] 1801 	sta	10,x
+   0A7C E7 1E         [ 3] 1802 	sta	30,x
+   0A7E                    1803 00115$:
+   0A7E 95            [ 2] 1804 	tsx
+   0A7F E6 1E         [ 3] 1805 	lda	30,x
+   0A81 E7 0F         [ 3] 1806 	sta	15,x
+   0A83 4F            [ 1] 1807 	clra
+   0A84 E7 0E         [ 3] 1808 	sta	14,x
+   0A86 E6 0F         [ 3] 1809 	lda	15,x
+   0A88 E0 01         [ 3] 1810 	sub	1,x
+   0A8A E6 0E         [ 3] 1811 	lda	14,x
+   0A8C F2            [ 2] 1812 	sbc	,x
+   0A8D 91 03         [ 3] 1813 	blt	00162$
+   0A8F CCr0Cr1B      [ 3] 1814 	jmp	00110$
+   0A92                    1815 00162$:
+                           1816 ;tables.c:125: if (x >= bins[i] && x < bins[i + 1]) {
+   0A92 E6 1E         [ 3] 1817 	lda	30,x
+   0A94 EB 1D         [ 3] 1818 	add	29,x
+   0A96 97            [ 1] 1819 	tax
+   0A97 A6 00         [ 2] 1820 	lda	#0x00
+   0A99 9E E9 1D      [ 4] 1821 	adc	29,s
+   0A9C 87            [ 2] 1822 	psha
+   0A9D 8A            [ 2] 1823 	pulh
+   0A9E F6            [ 2] 1824 	lda	,x
+   0A9F 95            [ 2] 1825 	tsx
+   0AA0 E7 11         [ 3] 1826 	sta	17,x
+   0AA2 49            [ 1] 1827 	rola	
+   0AA3 4F            [ 1] 1828 	clra	
+   0AA4 A2 00         [ 2] 1829 	sbc	#0x00
+   0AA6 E7 10         [ 3] 1830 	sta	16,x
+   0AA8 E6 25         [ 3] 1831 	lda	37,x
+   0AAA E0 11         [ 3] 1832 	sub	17,x
+   0AAC E6 24         [ 3] 1833 	lda	36,x
+   0AAE E2 10         [ 3] 1834 	sbc	16,x
+   0AB0 90 03         [ 3] 1835 	bge	00163$
+   0AB2 CCr0Cr11      [ 3] 1836 	jmp	00116$
+   0AB5                    1837 00163$:
+   0AB5 6C 0F         [ 4] 1838 	inc	15,x
+   0AB7 26 02         [ 3] 1839 	bne	00164$
+   0AB9 6C 0E         [ 4] 1840 	inc	14,x
+   0ABB                    1841 00164$:
+   0ABB E6 0F         [ 3] 1842 	lda	15,x
+   0ABD EB 1D         [ 3] 1843 	add	29,x
+   0ABF 97            [ 1] 1844 	tax
+   0AC0 9E E6 0F      [ 4] 1845 	lda	15,s
+   0AC3 9E E9 1D      [ 4] 1846 	adc	29,s
+   0AC6 87            [ 2] 1847 	psha
+   0AC7 8A            [ 2] 1848 	pulh
+   0AC8 F6            [ 2] 1849 	lda	,x
+   0AC9 95            [ 2] 1850 	tsx
+   0ACA E7 13         [ 3] 1851 	sta	19,x
+   0ACC 49            [ 1] 1852 	rola	
+   0ACD 4F            [ 1] 1853 	clra	
+   0ACE A2 00         [ 2] 1854 	sbc	#0x00
+   0AD0 E7 12         [ 3] 1855 	sta	18,x
+   0AD2 E6 25         [ 3] 1856 	lda	37,x
+   0AD4 E0 13         [ 3] 1857 	sub	19,x
+   0AD6 E6 24         [ 3] 1858 	lda	36,x
+   0AD8 E2 12         [ 3] 1859 	sbc	18,x
+   0ADA 91 03         [ 3] 1860 	blt	00165$
+   0ADC CCr0Cr11      [ 3] 1861 	jmp	00116$
+   0ADF                    1862 00165$:
+                           1863 ;tables.c:126: return (uint8_t)interpolate(x, bins[i], bins[i + 1], values[i], values[i + 1]);
+   0ADF E6 0F         [ 3] 1864 	lda	15,x
+   0AE1 EB 22         [ 3] 1865 	add	34,x
+   0AE3 97            [ 1] 1866 	tax
+   0AE4 9E E6 0F      [ 4] 1867 	lda	15,s
+   0AE7 9E E9 22      [ 4] 1868 	adc	34,s
+   0AEA 87            [ 2] 1869 	psha
+   0AEB 8A            [ 2] 1870 	pulh
+   0AEC F6            [ 2] 1871 	lda	,x
+   0AED 95            [ 2] 1872 	tsx
+   0AEE E7 15         [ 3] 1873 	sta	21,x
+   0AF0 5F            [ 1] 1874 	clrx
+   0AF1 9E EF 15      [ 4] 1875 	stx	21,s
+   0AF4 9E E6 0B      [ 4] 1876 	lda	11,s
+   0AF7 9E EB 23      [ 4] 1877 	add	35,s
+   0AFA 97            [ 1] 1878 	tax
+   0AFB A6 00         [ 2] 1879 	lda	#0x00
+   0AFD 9E E9 22      [ 4] 1880 	adc	34,s
+   0B00 87            [ 2] 1881 	psha
+   0B01 8A            [ 2] 1882 	pulh
+   0B02 F6            [ 2] 1883 	lda	,x
+   0B03 95            [ 2] 1884 	tsx
+   0B04 E7 17         [ 3] 1885 	sta	23,x
+   0B06 5F            [ 1] 1886 	clrx
+   0B07 9E EF 17      [ 4] 1887 	stx	23,s
+   0B0A 95            [ 2] 1888 	tsx
+   0B0B E6 12         [ 3] 1889 	lda	18,x
+   0B0D E7 18         [ 3] 1890 	sta	24,x
+   0B0F E6 13         [ 3] 1891 	lda	19,x
+   0B11 E7 19         [ 3] 1892 	sta	25,x
+   0B13 E6 10         [ 3] 1893 	lda	16,x
+   0B15 E7 1A         [ 3] 1894 	sta	26,x
+   0B17 E6 11         [ 3] 1895 	lda	17,x
+   0B19 E7 1B         [ 3] 1896 	sta	27,x
+   0B1B EE 24         [ 3] 1897 	ldx	36,x
+   0B1D 9E E6 26      [ 4] 1898 	lda	38,s
+                           1899 ;tables.h:34: if (x2 == x1) return y1;
+   0B20 87            [ 2] 1900 	psha
+   0B21 9E E6 1B      [ 4] 1901 	lda	27,s
+   0B24 9E E1 1D      [ 4] 1902 	cmp	29,s
+   0B27 86            [ 2] 1903 	pula
+   0B28 26 0A         [ 3] 1904 	bne	00166$
+   0B2A 87            [ 2] 1905 	psha
+   0B2B 9E E6 1A      [ 4] 1906 	lda	26,s
+   0B2E 9E E1 1C      [ 4] 1907 	cmp	28,s
+   0B31 86            [ 2] 1908 	pula
+   0B32 27 02         [ 3] 1909 	beq	00167$
+   0B34                    1910 00166$:
+   0B34 20 0C         [ 3] 1911 	bra	00112$
+   0B36                    1912 00167$:
+   0B36 95            [ 2] 1913 	tsx
+   0B37 E6 16         [ 3] 1914 	lda	22,x
+   0B39 E7 12         [ 3] 1915 	sta	18,x
+   0B3B E6 17         [ 3] 1916 	lda	23,x
+   0B3D E7 13         [ 3] 1917 	sta	19,x
+   0B3F CCr0Cr0C      [ 3] 1918 	jmp	00113$
+   0B42                    1919 00112$:
+                           1920 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0B42 9E E0 1C      [ 4] 1921 	sub	28,s
+   0B45 87            [ 2] 1922 	psha
+   0B46 9F            [ 1] 1923 	txa
+   0B47 9E E2 1C      [ 4] 1924 	sbc	28,s
+   0B4A 97            [ 1] 1925 	tax
+   0B4B 86            [ 2] 1926 	pula
+   0B4C 9E E7 06      [ 4] 1927 	sta	6,s
+   0B4F 9F            [ 1] 1928 	txa
+   0B50 9E E7 05      [ 4] 1929 	sta	5,s
+   0B53 49            [ 1] 1930 	rola	
+   0B54 4F            [ 1] 1931 	clra	
+   0B55 A2 00         [ 2] 1932 	sbc	#0x00
+   0B57 9E E7 04      [ 4] 1933 	sta	4,s
+   0B5A 9E E7 03      [ 4] 1934 	sta	3,s
+   0B5D 9E E6 16      [ 4] 1935 	lda	22,s
+   0B60 9E E0 18      [ 4] 1936 	sub	24,s
+   0B63 87            [ 2] 1937 	psha
+   0B64 9E E6 16      [ 4] 1938 	lda	22,s
+   0B67 9E E2 18      [ 4] 1939 	sbc	24,s
+   0B6A 97            [ 1] 1940 	tax
+   0B6B 86            [ 2] 1941 	pula
+   0B6C 9E E7 0A      [ 4] 1942 	sta	10,s
+   0B6F 9F            [ 1] 1943 	txa
+   0B70 9E E7 09      [ 4] 1944 	sta	9,s
+   0B73 49            [ 1] 1945 	rola	
+   0B74 4F            [ 1] 1946 	clra	
+   0B75 A2 00         [ 2] 1947 	sbc	#0x00
+   0B77 9E E7 08      [ 4] 1948 	sta	8,s
+   0B7A 9E E7 07      [ 4] 1949 	sta	7,s
+   0B7D 95            [ 2] 1950 	tsx
+   0B7E E6 09         [ 3] 1951 	lda	9,x
+   0B80 87            [ 2] 1952 	psha
+   0B81 E6 08         [ 3] 1953 	lda	8,x
+   0B83 87            [ 2] 1954 	psha
+   0B84 E6 07         [ 3] 1955 	lda	7,x
+   0B86 87            [ 2] 1956 	psha
+   0B87 E6 06         [ 3] 1957 	lda	6,x
+   0B89 87            [ 2] 1958 	psha
+   0B8A E6 05         [ 3] 1959 	lda	5,x
+   0B8C 87            [ 2] 1960 	psha
+   0B8D E6 04         [ 3] 1961 	lda	4,x
+   0B8F 87            [ 2] 1962 	psha
+   0B90 E6 03         [ 3] 1963 	lda	3,x
+   0B92 87            [ 2] 1964 	psha
+   0B93 E6 02         [ 3] 1965 	lda	2,x
+   0B95 87            [ 2] 1966 	psha
+   0B96 CDr00r00      [ 5] 1967 	jsr	__mullong
+   0B99 9E E7 12      [ 4] 1968 	sta	18,s
+   0B9C 9E EF 11      [ 4] 1969 	stx	17,s
+   0B9F B6*00         [ 3] 1970 	lda	*___SDCC_hc08_ret2
+   0BA1 9E E7 10      [ 4] 1971 	sta	16,s
+   0BA4 B6*00         [ 3] 1972 	lda	*___SDCC_hc08_ret3
+   0BA6 9E E7 0F      [ 4] 1973 	sta	15,s
+   0BA9 A7 08         [ 2] 1974 	ais	#8
+   0BAB 9E E6 1A      [ 4] 1975 	lda	26,s
+   0BAE 9E E0 1C      [ 4] 1976 	sub	28,s
+   0BB1 87            [ 2] 1977 	psha
+   0BB2 9E E6 1A      [ 4] 1978 	lda	26,s
+   0BB5 9E E2 1C      [ 4] 1979 	sbc	28,s
+   0BB8 97            [ 1] 1980 	tax
+   0BB9 86            [ 2] 1981 	pula
+   0BBA 9E E7 06      [ 4] 1982 	sta	6,s
+   0BBD 9F            [ 1] 1983 	txa
+   0BBE 9E E7 05      [ 4] 1984 	sta	5,s
+   0BC1 49            [ 1] 1985 	rola	
+   0BC2 4F            [ 1] 1986 	clra	
+   0BC3 A2 00         [ 2] 1987 	sbc	#0x00
+   0BC5 9E E7 04      [ 4] 1988 	sta	4,s
+   0BC8 9E E7 03      [ 4] 1989 	sta	3,s
+   0BCB 95            [ 2] 1990 	tsx
+   0BCC E6 05         [ 3] 1991 	lda	5,x
+   0BCE 87            [ 2] 1992 	psha
+   0BCF E6 04         [ 3] 1993 	lda	4,x
+   0BD1 87            [ 2] 1994 	psha
+   0BD2 E6 03         [ 3] 1995 	lda	3,x
+   0BD4 87            [ 2] 1996 	psha
+   0BD5 E6 02         [ 3] 1997 	lda	2,x
+   0BD7 87            [ 2] 1998 	psha
+   0BD8 E6 09         [ 3] 1999 	lda	9,x
+   0BDA 87            [ 2] 2000 	psha
+   0BDB E6 08         [ 3] 2001 	lda	8,x
+   0BDD 87            [ 2] 2002 	psha
+   0BDE E6 07         [ 3] 2003 	lda	7,x
+   0BE0 87            [ 2] 2004 	psha
+   0BE1 E6 06         [ 3] 2005 	lda	6,x
+   0BE3 87            [ 2] 2006 	psha
+   0BE4 CDr00r00      [ 5] 2007 	jsr	__divslong
+   0BE7 9E E7 12      [ 4] 2008 	sta	18,s
+   0BEA 9E EF 11      [ 4] 2009 	stx	17,s
+   0BED B6*00         [ 3] 2010 	lda	*___SDCC_hc08_ret2
+   0BEF 9E E7 10      [ 4] 2011 	sta	16,s
+   0BF2 B6*00         [ 3] 2012 	lda	*___SDCC_hc08_ret3
+   0BF4 9E E7 0F      [ 4] 2013 	sta	15,s
+   0BF7 A7 08         [ 2] 2014 	ais	#8
+   0BF9 9E E6 0A      [ 4] 2015 	lda	10,s
+   0BFC 9E EE 09      [ 4] 2016 	ldx	9,s
+   0BFF 9E EB 18      [ 4] 2017 	add	24,s
+   0C02 9E E7 14      [ 4] 2018 	sta	20,s
+   0C05 9F            [ 1] 2019 	txa
+   0C06 9E E9 17      [ 4] 2020 	adc	23,s
+   0C09 9E E7 13      [ 4] 2021 	sta	19,s
+                           2022 ;tables.c:126: return (uint8_t)interpolate(x, bins[i], bins[i + 1], values[i], values[i + 1]);
+   0C0C                    2023 00113$:
+   0C0C 95            [ 2] 2024 	tsx
+   0C0D E6 13         [ 3] 2025 	lda	19,x
+   0C0F 20 13         [ 3] 2026 	bra	00117$
+   0C11                    2027 00116$:
+                           2028 ;tables.c:124: for (i = 0; i < size - 1; i++) {
+   0C11 95            [ 2] 2029 	tsx
+   0C12 6C 1E         [ 4] 2030 	inc	30,x
+   0C14 E6 1E         [ 3] 2031 	lda	30,x
+   0C16 E7 0A         [ 3] 2032 	sta	10,x
+   0C18 CCr0Ar7E      [ 3] 2033 	jmp	00115$
+   0C1B                    2034 00110$:
+                           2035 ;tables.c:129: return values[size - 1];
+   0C1B 9E E6 0D      [ 4] 2036 	lda	13,s
+   0C1E 87            [ 2] 2037 	psha
+   0C1F 8A            [ 2] 2038 	pulh
+   0C20 9E EE 0E      [ 4] 2039 	ldx	14,s
+   0C23 F6            [ 2] 2040 	lda	,x
+   0C24                    2041 00117$:
+                           2042 ;tables.c:130: }
+   0C24 A7 1F         [ 2] 2043 	ais	#31
+   0C26 81            [ 4] 2044 	rts
+                           2045 ;------------------------------------------------------------
+                           2046 ;Allocation info for local variables in function 'lookupCurveI8'
+                           2047 ;------------------------------------------------------------
+                           2048 ;values                    Allocated to stack - sp +34
+                           2049 ;size                      Allocated to stack - sp +36
+                           2050 ;x                         Allocated to stack - sp +37
+                           2051 ;bins                      Allocated to stack - sp +24
+                           2052 ;i                         Allocated to stack - sp +23
+                           2053 ;__3276800043              Allocated to stack - sp +19
+                           2054 ;__3276800044              Allocated to registers a x 
+                           2055 ;__3276800045              Allocated to stack - sp +26
+                           2056 ;__3276800046              Allocated to stack - sp +21
+                           2057 ;__3276800047              Allocated to stack - sp +28
+                           2058 ;__3276800048              Allocated to stack - sp +30
+                           2059 ;x                         Allocated to registers 
+                           2060 ;x1                        Allocated to registers 
+                           2061 ;x2                        Allocated to registers 
+                           2062 ;y1                        Allocated to registers 
+                           2063 ;y2                        Allocated to registers 
+                           2064 ;sloc0                     Allocated to stack - sp +17
+                           2065 ;sloc1                     Allocated to stack - sp +15
+                           2066 ;sloc2                     Allocated to stack - sp +13
+                           2067 ;sloc3                     Allocated to stack - sp +9
+                           2068 ;sloc4                     Allocated to stack - sp +11
+                           2069 ;sloc5                     Allocated to stack - sp +19
+                           2070 ;sloc6                     Allocated to stack - sp +5
+                           2071 ;sloc7                     Allocated to stack - sp +1
+                           2072 ;------------------------------------------------------------
+                           2073 ;tables.c:132: int8_t lookupCurveI8(const uint8_t *bins, const int8_t *values, uint8_t size, int16_t x) {
+                           2074 ;	-----------------------------------------
+                           2075 ;	 function lookupCurveI8
+                           2076 ;	-----------------------------------------
+                           2077 ;	Register assignment might be sub-optimal.
+                           2078 ;	Stack space usage: 31 bytes.
+   0C27                    2079 _lookupCurveI8:
+   0C27 A7 E1         [ 2] 2080 	ais	#-31
+   0C29 9E E7 19      [ 4] 2081 	sta	25,s
+   0C2C 9E EF 18      [ 4] 2082 	stx	24,s
+                           2083 ;tables.c:134: if (size == 0) return 0;
+   0C2F 9E 6D 24      [ 4] 2084 	tst	36,s
+   0C32 26 04         [ 3] 2085 	bne	00102$
+   0C34 4F            [ 1] 2086 	clra
+   0C35 CCr0Er48      [ 3] 2087 	jmp	00117$
+   0C38                    2088 00102$:
+                           2089 ;tables.c:135: if (x <= (int16_t)bins[0]) return values[0];
+   0C38 9E E6 18      [ 4] 2090 	lda	24,s
+   0C3B 87            [ 2] 2091 	psha
+   0C3C 8A            [ 2] 2092 	pulh
+   0C3D 9E EE 19      [ 4] 2093 	ldx	25,s
+   0C40 F6            [ 2] 2094 	lda	,x
+   0C41 5F            [ 1] 2095 	clrx
+   0C42 9E E0 26      [ 4] 2096 	sub	38,s
+   0C45 9F            [ 1] 2097 	txa
+   0C46 9E E2 25      [ 4] 2098 	sbc	37,s
+   0C49 91 0C         [ 3] 2099 	blt	00104$
+   0C4B 95            [ 2] 2100 	tsx
+   0C4C E6 21         [ 3] 2101 	lda	33,x
+   0C4E 87            [ 2] 2102 	psha
+   0C4F 8A            [ 2] 2103 	pulh
+   0C50 9E EE 23      [ 4] 2104 	ldx	35,s
+   0C53 F6            [ 2] 2105 	lda	,x
+   0C54 CCr0Er48      [ 3] 2106 	jmp	00117$
+   0C57                    2107 00104$:
+                           2108 ;tables.c:136: if (x >= (int16_t)bins[size - 1]) return values[size - 1];
+   0C57 9E EE 24      [ 4] 2109 	ldx	36,s
+   0C5A 8C            [ 1] 2110 	clrh
+   0C5B AF FF         [ 2] 2111 	aix	#-1
+   0C5D 8B            [ 2] 2112 	pshh
+   0C5E 86            [ 2] 2113 	pula
+   0C5F 9E E7 11      [ 4] 2114 	sta	17,s
+   0C62 9E EF 12      [ 4] 2115 	stx	18,s
+   0C65 9E E6 12      [ 4] 2116 	lda	18,s
+   0C68 9E EB 19      [ 4] 2117 	add	25,s
+   0C6B 97            [ 1] 2118 	tax
+   0C6C 9E E6 11      [ 4] 2119 	lda	17,s
+   0C6F 9E E9 18      [ 4] 2120 	adc	24,s
+   0C72 87            [ 2] 2121 	psha
+   0C73 8A            [ 2] 2122 	pulh
+   0C74 F6            [ 2] 2123 	lda	,x
+   0C75 95            [ 2] 2124 	tsx
+   0C76 E7 0F         [ 3] 2125 	sta	15,x
+   0C78 5F            [ 1] 2126 	clrx
+   0C79 9E EF 0F      [ 4] 2127 	stx	15,s
+   0C7C 95            [ 2] 2128 	tsx
+   0C7D E6 11         [ 3] 2129 	lda	17,x
+   0C7F EB 22         [ 3] 2130 	add	34,x
+   0C81 E7 0D         [ 3] 2131 	sta	13,x
+   0C83 E6 10         [ 3] 2132 	lda	16,x
+   0C85 E9 21         [ 3] 2133 	adc	33,x
+   0C87 E7 0C         [ 3] 2134 	sta	12,x
+   0C89 E6 25         [ 3] 2135 	lda	37,x
+   0C8B E0 0F         [ 3] 2136 	sub	15,x
+   0C8D E6 24         [ 3] 2137 	lda	36,x
+   0C8F E2 0E         [ 3] 2138 	sbc	14,x
+   0C91 91 0B         [ 3] 2139 	blt	00106$
+   0C93 E6 0C         [ 3] 2140 	lda	12,x
+   0C95 87            [ 2] 2141 	psha
+   0C96 8A            [ 2] 2142 	pulh
+   0C97 9E EE 0E      [ 4] 2143 	ldx	14,s
+   0C9A F6            [ 2] 2144 	lda	,x
+   0C9B CCr0Er48      [ 3] 2145 	jmp	00117$
+   0C9E                    2146 00106$:
+                           2147 ;tables.c:138: for (i = 0; i < size - 1; i++) {
+   0C9E 95            [ 2] 2148 	tsx
+   0C9F 4F            [ 1] 2149 	clra
+   0CA0 E7 0E         [ 3] 2150 	sta	14,x
+   0CA2 E7 16         [ 3] 2151 	sta	22,x
+   0CA4                    2152 00115$:
+   0CA4 95            [ 2] 2153 	tsx
+   0CA5 E6 16         [ 3] 2154 	lda	22,x
+   0CA7 E7 09         [ 3] 2155 	sta	9,x
+   0CA9 4F            [ 1] 2156 	clra
+   0CAA E7 08         [ 3] 2157 	sta	8,x
+   0CAC E6 09         [ 3] 2158 	lda	9,x
+   0CAE E0 11         [ 3] 2159 	sub	17,x
+   0CB0 E6 08         [ 3] 2160 	lda	8,x
+   0CB2 E2 10         [ 3] 2161 	sbc	16,x
+   0CB4 91 03         [ 3] 2162 	blt	00162$
+   0CB6 CCr0Er3F      [ 3] 2163 	jmp	00110$
+   0CB9                    2164 00162$:
+                           2165 ;tables.c:139: if (x >= (int16_t)bins[i] && x < (int16_t)bins[i + 1]) {
+   0CB9 E6 16         [ 3] 2166 	lda	22,x
+   0CBB EB 18         [ 3] 2167 	add	24,x
+   0CBD 97            [ 1] 2168 	tax
+   0CBE A6 00         [ 2] 2169 	lda	#0x00
+   0CC0 9E E9 18      [ 4] 2170 	adc	24,s
+   0CC3 87            [ 2] 2171 	psha
+   0CC4 8A            [ 2] 2172 	pulh
+   0CC5 F6            [ 2] 2173 	lda	,x
+   0CC6 95            [ 2] 2174 	tsx
+   0CC7 E7 0B         [ 3] 2175 	sta	11,x
+   0CC9 5F            [ 1] 2176 	clrx
+   0CCA 9E EF 0B      [ 4] 2177 	stx	11,s
+   0CCD 95            [ 2] 2178 	tsx
+   0CCE E6 25         [ 3] 2179 	lda	37,x
+   0CD0 E0 0B         [ 3] 2180 	sub	11,x
+   0CD2 E6 24         [ 3] 2181 	lda	36,x
+   0CD4 E2 0A         [ 3] 2182 	sbc	10,x
+   0CD6 90 03         [ 3] 2183 	bge	00163$
+   0CD8 CCr0Er35      [ 3] 2184 	jmp	00116$
+   0CDB                    2185 00163$:
+   0CDB 6C 09         [ 4] 2186 	inc	9,x
+   0CDD 26 02         [ 3] 2187 	bne	00164$
+   0CDF 6C 08         [ 4] 2188 	inc	8,x
+   0CE1                    2189 00164$:
+   0CE1 E6 09         [ 3] 2190 	lda	9,x
+   0CE3 EB 18         [ 3] 2191 	add	24,x
+   0CE5 97            [ 1] 2192 	tax
+   0CE6 9E E6 09      [ 4] 2193 	lda	9,s
+   0CE9 9E E9 18      [ 4] 2194 	adc	24,s
+   0CEC 87            [ 2] 2195 	psha
+   0CED 8A            [ 2] 2196 	pulh
+   0CEE F6            [ 2] 2197 	lda	,x
+   0CEF 95            [ 2] 2198 	tsx
+   0CF0 E7 13         [ 3] 2199 	sta	19,x
+   0CF2 5F            [ 1] 2200 	clrx
+   0CF3 9E EF 13      [ 4] 2201 	stx	19,s
+   0CF6 95            [ 2] 2202 	tsx
+   0CF7 E6 25         [ 3] 2203 	lda	37,x
+   0CF9 E0 13         [ 3] 2204 	sub	19,x
+   0CFB E6 24         [ 3] 2205 	lda	36,x
+   0CFD E2 12         [ 3] 2206 	sbc	18,x
+   0CFF 91 03         [ 3] 2207 	blt	00165$
+   0D01 CCr0Er35      [ 3] 2208 	jmp	00116$
+   0D04                    2209 00165$:
+                           2210 ;tables.c:140: return (int8_t)interpolate(x, bins[i], bins[i + 1], values[i], values[i + 1]);
+   0D04 E6 09         [ 3] 2211 	lda	9,x
+   0D06 EB 22         [ 3] 2212 	add	34,x
+   0D08 97            [ 1] 2213 	tax
+   0D09 9E E6 09      [ 4] 2214 	lda	9,s
+   0D0C 9E E9 22      [ 4] 2215 	adc	34,s
+   0D0F 87            [ 2] 2216 	psha
+   0D10 8A            [ 2] 2217 	pulh
+   0D11 F6            [ 2] 2218 	lda	,x
+   0D12 95            [ 2] 2219 	tsx
+   0D13 E7 1E         [ 3] 2220 	sta	30,x
+   0D15 49            [ 1] 2221 	rola	
+   0D16 4F            [ 1] 2222 	clra	
+   0D17 A2 00         [ 2] 2223 	sbc	#0x00
+   0D19 E7 1D         [ 3] 2224 	sta	29,x
+   0D1B E6 0E         [ 3] 2225 	lda	14,x
+   0D1D EB 22         [ 3] 2226 	add	34,x
+   0D1F 97            [ 1] 2227 	tax
+   0D20 A6 00         [ 2] 2228 	lda	#0x00
+   0D22 9E E9 22      [ 4] 2229 	adc	34,s
+   0D25 87            [ 2] 2230 	psha
+   0D26 8A            [ 2] 2231 	pulh
+   0D27 F6            [ 2] 2232 	lda	,x
+   0D28 95            [ 2] 2233 	tsx
+   0D29 E7 1C         [ 3] 2234 	sta	28,x
+   0D2B 49            [ 1] 2235 	rola	
+   0D2C 4F            [ 1] 2236 	clra	
+   0D2D A2 00         [ 2] 2237 	sbc	#0x00
+   0D2F E7 1B         [ 3] 2238 	sta	27,x
+   0D31 E6 12         [ 3] 2239 	lda	18,x
+   0D33 E7 14         [ 3] 2240 	sta	20,x
+   0D35 E6 13         [ 3] 2241 	lda	19,x
+   0D37 E7 15         [ 3] 2242 	sta	21,x
+   0D39 E6 0A         [ 3] 2243 	lda	10,x
+   0D3B E7 19         [ 3] 2244 	sta	25,x
+   0D3D E6 0B         [ 3] 2245 	lda	11,x
+   0D3F E7 1A         [ 3] 2246 	sta	26,x
+   0D41 EE 24         [ 3] 2247 	ldx	36,x
+   0D43 9E E6 26      [ 4] 2248 	lda	38,s
+                           2249 ;tables.h:34: if (x2 == x1) return y1;
+   0D46 87            [ 2] 2250 	psha
+   0D47 9E E6 17      [ 4] 2251 	lda	23,s
+   0D4A 9E E1 1C      [ 4] 2252 	cmp	28,s
+   0D4D 86            [ 2] 2253 	pula
+   0D4E 26 0A         [ 3] 2254 	bne	00166$
+   0D50 87            [ 2] 2255 	psha
+   0D51 9E E6 16      [ 4] 2256 	lda	22,s
+   0D54 9E E1 1B      [ 4] 2257 	cmp	27,s
+   0D57 86            [ 2] 2258 	pula
+   0D58 27 02         [ 3] 2259 	beq	00167$
+   0D5A                    2260 00166$:
+   0D5A 20 0C         [ 3] 2261 	bra	00112$
+   0D5C                    2262 00167$:
+   0D5C 95            [ 2] 2263 	tsx
+   0D5D E6 1B         [ 3] 2264 	lda	27,x
+   0D5F E7 12         [ 3] 2265 	sta	18,x
+   0D61 E6 1C         [ 3] 2266 	lda	28,x
+   0D63 E7 13         [ 3] 2267 	sta	19,x
+   0D65 CCr0Er30      [ 3] 2268 	jmp	00113$
+   0D68                    2269 00112$:
+                           2270 ;tables.h:35: return (int16_t)(y1 + (int32_t)(x - x1) * (y2 - y1) / (x2 - x1));
+   0D68 9E E0 1B      [ 4] 2271 	sub	27,s
+   0D6B 87            [ 2] 2272 	psha
+   0D6C 9F            [ 1] 2273 	txa
+   0D6D 9E E2 1B      [ 4] 2274 	sbc	27,s
+   0D70 97            [ 1] 2275 	tax
+   0D71 86            [ 2] 2276 	pula
+   0D72 9E E7 08      [ 4] 2277 	sta	8,s
+   0D75 9F            [ 1] 2278 	txa
+   0D76 9E E7 07      [ 4] 2279 	sta	7,s
+   0D79 49            [ 1] 2280 	rola	
+   0D7A 4F            [ 1] 2281 	clra	
+   0D7B A2 00         [ 2] 2282 	sbc	#0x00
+   0D7D 9E E7 06      [ 4] 2283 	sta	6,s
+   0D80 9E E7 05      [ 4] 2284 	sta	5,s
+   0D83 9E E6 1F      [ 4] 2285 	lda	31,s
+   0D86 9E E0 1D      [ 4] 2286 	sub	29,s
+   0D89 87            [ 2] 2287 	psha
+   0D8A 9E E6 1F      [ 4] 2288 	lda	31,s
+   0D8D 9E E2 1D      [ 4] 2289 	sbc	29,s
+   0D90 97            [ 1] 2290 	tax
+   0D91 86            [ 2] 2291 	pula
+   0D92 9E E7 04      [ 4] 2292 	sta	4,s
+   0D95 9F            [ 1] 2293 	txa
+   0D96 9E E7 03      [ 4] 2294 	sta	3,s
+   0D99 49            [ 1] 2295 	rola	
+   0D9A 4F            [ 1] 2296 	clra	
+   0D9B A2 00         [ 2] 2297 	sbc	#0x00
+   0D9D 9E E7 02      [ 4] 2298 	sta	2,s
+   0DA0 9E E7 01      [ 4] 2299 	sta	1,s
+   0DA3 95            [ 2] 2300 	tsx
+   0DA4 E6 03         [ 3] 2301 	lda	3,x
+   0DA6 87            [ 2] 2302 	psha
+   0DA7 E6 02         [ 3] 2303 	lda	2,x
+   0DA9 87            [ 2] 2304 	psha
+   0DAA E6 01         [ 3] 2305 	lda	1,x
+   0DAC 87            [ 2] 2306 	psha
+   0DAD F6            [ 2] 2307 	lda	,x
+   0DAE 87            [ 2] 2308 	psha
+   0DAF E6 07         [ 3] 2309 	lda	7,x
+   0DB1 87            [ 2] 2310 	psha
+   0DB2 E6 06         [ 3] 2311 	lda	6,x
+   0DB4 87            [ 2] 2312 	psha
+   0DB5 E6 05         [ 3] 2313 	lda	5,x
+   0DB7 87            [ 2] 2314 	psha
+   0DB8 E6 04         [ 3] 2315 	lda	4,x
+   0DBA 87            [ 2] 2316 	psha
+   0DBB CDr00r00      [ 5] 2317 	jsr	__mullong
+   0DBE 9E E7 0C      [ 4] 2318 	sta	12,s
+   0DC1 9E EF 0B      [ 4] 2319 	stx	11,s
+   0DC4 B6*00         [ 3] 2320 	lda	*___SDCC_hc08_ret2
+   0DC6 9E E7 0A      [ 4] 2321 	sta	10,s
+   0DC9 B6*00         [ 3] 2322 	lda	*___SDCC_hc08_ret3
+   0DCB 9E E7 09      [ 4] 2323 	sta	9,s
+   0DCE A7 08         [ 2] 2324 	ais	#8
+   0DD0 9E E6 16      [ 4] 2325 	lda	22,s
+   0DD3 9E E0 1B      [ 4] 2326 	sub	27,s
+   0DD6 87            [ 2] 2327 	psha
+   0DD7 9E E6 16      [ 4] 2328 	lda	22,s
+   0DDA 9E E2 1B      [ 4] 2329 	sbc	27,s
+   0DDD 97            [ 1] 2330 	tax
+   0DDE 86            [ 2] 2331 	pula
+   0DDF 9E E7 08      [ 4] 2332 	sta	8,s
+   0DE2 9F            [ 1] 2333 	txa
+   0DE3 9E E7 07      [ 4] 2334 	sta	7,s
+   0DE6 49            [ 1] 2335 	rola	
+   0DE7 4F            [ 1] 2336 	clra	
+   0DE8 A2 00         [ 2] 2337 	sbc	#0x00
+   0DEA 9E E7 06      [ 4] 2338 	sta	6,s
+   0DED 9E E7 05      [ 4] 2339 	sta	5,s
+   0DF0 95            [ 2] 2340 	tsx
+   0DF1 E6 07         [ 3] 2341 	lda	7,x
+   0DF3 87            [ 2] 2342 	psha
+   0DF4 E6 06         [ 3] 2343 	lda	6,x
+   0DF6 87            [ 2] 2344 	psha
+   0DF7 E6 05         [ 3] 2345 	lda	5,x
+   0DF9 87            [ 2] 2346 	psha
+   0DFA E6 04         [ 3] 2347 	lda	4,x
+   0DFC 87            [ 2] 2348 	psha
+   0DFD E6 03         [ 3] 2349 	lda	3,x
+   0DFF 87            [ 2] 2350 	psha
+   0E00 E6 02         [ 3] 2351 	lda	2,x
+   0E02 87            [ 2] 2352 	psha
+   0E03 E6 01         [ 3] 2353 	lda	1,x
+   0E05 87            [ 2] 2354 	psha
+   0E06 F6            [ 2] 2355 	lda	,x
+   0E07 87            [ 2] 2356 	psha
+   0E08 CDr00r00      [ 5] 2357 	jsr	__divslong
+   0E0B 9E E7 0C      [ 4] 2358 	sta	12,s
+   0E0E 9E EF 0B      [ 4] 2359 	stx	11,s
+   0E11 B6*00         [ 3] 2360 	lda	*___SDCC_hc08_ret2
+   0E13 9E E7 0A      [ 4] 2361 	sta	10,s
+   0E16 B6*00         [ 3] 2362 	lda	*___SDCC_hc08_ret3
+   0E18 9E E7 09      [ 4] 2363 	sta	9,s
+   0E1B A7 08         [ 2] 2364 	ais	#8
+   0E1D 9E E6 04      [ 4] 2365 	lda	4,s
+   0E20 9E EE 03      [ 4] 2366 	ldx	3,s
+   0E23 9E EB 1D      [ 4] 2367 	add	29,s
+   0E26 9E E7 14      [ 4] 2368 	sta	20,s
+   0E29 9F            [ 1] 2369 	txa
+   0E2A 9E E9 1C      [ 4] 2370 	adc	28,s
+   0E2D 9E E7 13      [ 4] 2371 	sta	19,s
+                           2372 ;tables.c:140: return (int8_t)interpolate(x, bins[i], bins[i + 1], values[i], values[i + 1]);
+   0E30                    2373 00113$:
+   0E30 95            [ 2] 2374 	tsx
+   0E31 E6 13         [ 3] 2375 	lda	19,x
+   0E33 20 13         [ 3] 2376 	bra	00117$
+   0E35                    2377 00116$:
+                           2378 ;tables.c:138: for (i = 0; i < size - 1; i++) {
+   0E35 95            [ 2] 2379 	tsx
+   0E36 6C 16         [ 4] 2380 	inc	22,x
+   0E38 E6 16         [ 3] 2381 	lda	22,x
+   0E3A E7 0E         [ 3] 2382 	sta	14,x
+   0E3C CCr0CrA4      [ 3] 2383 	jmp	00115$
+   0E3F                    2384 00110$:
+                           2385 ;tables.c:143: return values[size - 1];
+   0E3F 9E E6 0D      [ 4] 2386 	lda	13,s
+   0E42 87            [ 2] 2387 	psha
+   0E43 8A            [ 2] 2388 	pulh
+   0E44 9E EE 0E      [ 4] 2389 	ldx	14,s
+   0E47 F6            [ 2] 2390 	lda	,x
+   0E48                    2391 00117$:
+                           2392 ;tables.c:144: }
+   0E48 A7 1F         [ 2] 2393 	ais	#31
+   0E4A 81            [ 4] 2394 	rts
+                           2395 	.area CSEG    (CODE)
+                           2396 	.area CONST   (CODE)
+                           2397 	.area XINIT   (CODE)
+                           2398 	.area CABS    (ABS,CODE)
