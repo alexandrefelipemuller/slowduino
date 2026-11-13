@@ -361,6 +361,16 @@ void loadDefaults() {
   configPage2.engineProtectRPM = 70;
   configPage2.engineProtectRPMHysteresis = 3;
 
+  // Corte de RPM: rolling por ignição (padrão Speeduino)
+  configPage2.engineProtectType = PROTECT_CUT_IGN;
+  configPage2.hardCutType = HARD_CUT_ROLLING;
+  const int8_t  rollDelta[] = {-30, -20, -10, -5};   // x10 RPM abaixo do limite
+  const uint8_t rollPct[]   = {10, 30, 60, 85};
+  for (uint8_t i = 0; i < 4; i++) {
+    configPage2.rollingProtRPMDelta[i] = rollDelta[i];
+    configPage2.rollingProtCutPercent[i] = rollPct[i];
+  }
+
   // ---- Tabelas VE e Ignição ----
   loadDefaultTables();
 

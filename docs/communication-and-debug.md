@@ -58,6 +58,6 @@ flashing.
 
 ## Protections Feedback
 - `statuses.protectionStatus` reports active protections (RPM, oil pressure).
-- `engineProtectCutType` allows you to choose fuel cut, spark cut, or both so you know what each bit means when monitoring.
+- `engineProtectType` (0=Off, 1=spark, 2=fuel, 3=both) and `hardCutType` (0=Full, 1=Rolling) select how the RPM limit cuts; see `rollingProtRPMDelta`/`rollingProtCutPercent` for the progressive curve.
 
 Use these bits in your logging/tuning sessions to understand when the ECU is protecting itself vs. simply running in closed loop.

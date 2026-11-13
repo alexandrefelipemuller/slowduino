@@ -21,10 +21,7 @@ int8_t calculateAdvance() {
   // 3. Aplica correções
   advance = applyAdvanceCorrections(advance);
 
-  // 4. Aplica rev limiter
-  advance = applyRevLimiter(advance);
-
-  // 5. Limita range
+  // 4. Limita range (o corte de RPM agora é feito em protections.cpp)
   if (advance < IGN_MIN_ADVANCE) advance = IGN_MIN_ADVANCE;
   if (advance > IGN_MAX_ADVANCE) advance = IGN_MAX_ADVANCE;
 
@@ -118,27 +115,6 @@ int8_t correctionIdleAdvance() {
   if (delta < 0) delta = 0;
 
   return lookupCurveI8(configPage2.idleAdvBins, configPage2.idleAdvValues, 4, delta / 10);
-}
-
-// ============================================================================
-// REV LIMITER
-// ============================================================================
-
-int8_t applyRevLimiter(int8_t advance) {
-  uint16_t limitRPM = (uint16_t)configPage2.revLimitRPM * 100;
-
-  if (currentStatus.RPM >= limitRPM) {
-    // Corta avanço completamente (corte suave)
-    // Pode alternar entre cortar e não cortar para "soft limiter"
-    static bool cutState = false;
-    cutState = !cutState;
-
-    if (cutState) {
-      return IGN_MIN_ADVANCE;  // Retardo máximo
-    }
-  }
-
-  return advance;
 }
 
 // ============================================================================

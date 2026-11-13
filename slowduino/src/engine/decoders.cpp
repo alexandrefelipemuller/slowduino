@@ -7,6 +7,7 @@
 #include "scheduler.h"
 #include "fuel.h"
 #include "ignition.h"
+#include "protections.h"
 
 // Forward declarations
 void scheduleInjection();
@@ -36,10 +37,14 @@ volatile uint8_t revolutionCounter = 0;  // 0 ou 1 (para alternar cilindros)
 // FUNÇÕES INLINE PARA AGENDAMENTO RÁPIDO NA ISR
 // ============================================================================
 
+// Máscara de corte do evento atual (decidida uma vez por disparo do trigger)
+static uint8_t eventCutMask = 0;
+
 // Agenda injeção VIA POLLING - CHAMADO DIRETAMENTE DA ISR
 inline void scheduleInjectionISR() __attribute__((always_inline));
 inline void scheduleInjectionISR() {
   if (triggerState.revolutionTime == 0) return;
+  if (eventCutMask & CUT_FUEL_BIT) return;   // corte de combustível
 
   // Calcula tempo até ângulo de injeção
   uint32_t timeToInjection = ((uint32_t)INJECTION_ANGLE * triggerState.revolutionTime) / 360UL;
@@ -67,6 +72,7 @@ inline void scheduleInjectionISR() {
 inline void scheduleIgnitionISR() __attribute__((always_inline));
 inline void scheduleIgnitionISR() {
   if (triggerState.revolutionTime == 0) return;
+  if (eventCutMask & CUT_IGN_BIT) return;    // corte de ignição
 
   // Obtém valores (calculados no loop principal)
   int8_t advance = currentStatus.advance;
@@ -285,6 +291,7 @@ void triggerPri_MissingTooth() {
 
       // *** AGENDAMENTO DIRETO NA ISR - TEMPO REAL! ***
       if (triggerState.revolutionTime > 0) {
+        eventCutMask = protectionCutEvent(revolutionCounter);
         scheduleInjectionISR();
         scheduleIgnitionISR();
       }
@@ -333,6 +340,7 @@ void triggerPri_BasicDistributor() {
   revolutionCounter = (revolutionCounter == 0) ? 1 : 0;
 
   // *** AGENDAMENTO DIRETO NA ISR - TEMPO REAL! ***
+  eventCutMask = protectionCutEvent(revolutionCounter);
   scheduleInjectionISR();
   scheduleIgnitionISR();
 }

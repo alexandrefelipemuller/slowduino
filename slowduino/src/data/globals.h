@@ -258,11 +258,19 @@ struct ConfigPage2 {
   uint8_t  idleAdvBins[4];     // Delta de RPM (alvo - atual) / 10
   int8_t   idleAdvValues[4];   // Avanço adicional (graus, pode ser negativo)
 
+  // ==========================================================================
+  // Corte de RPM (padrão Speeduino: engineProtectType / hardCutType / rolling)
+  // ==========================================================================
+  uint8_t  engineProtectType;  // 0=Off, 1=Ignição, 2=Combustível, 3=Ambos
+  uint8_t  hardCutType;        // 0=Full, 1=Rolling (progressivo)
+  int8_t   rollingProtRPMDelta[4];   // RPM abaixo do limite / 10 (negativos)
+  uint8_t  rollingProtCutPercent[4]; // % de eventos cortados em cada delta
+
   // Reserva para compatibilidade com Speeduino (página 4 = 128 bytes).
   // Cresceu de 60 para 64 bytes: removidos triggerAngle, idleAdvance,
   // idleRPM e engineProtectCutType (4 campos mortos - ver comentários
   // acima), preservando os 128 bytes da página.
-  uint8_t  spare[64];
+  uint8_t  spare[54];
 
 } __attribute__((packed));
 
@@ -321,6 +329,16 @@ static_assert(sizeof(CalibrationConfig) == 128, "CalibrationConfig deve ocupar 1
 // Protections
 #define PROTECTION_RPM_BIT 0x01
 #define PROTECTION_OIL_BIT 0x02
+
+// engineProtectType (Speeduino: PROTECT_CUT_*)
+#define PROTECT_CUT_OFF   0
+#define PROTECT_CUT_IGN   1
+#define PROTECT_CUT_FUEL  2
+#define PROTECT_CUT_BOTH  3
+
+// hardCutType (Speeduino: HARD_CUT_*)
+#define HARD_CUT_FULL     0
+#define HARD_CUT_ROLLING  1
 // ENGINE_PROTECT_CUT_FUEL/SPARK removidos junto com engineProtectCutType
 // (bloco estava duplicado; as macros não tinham mais nenhum uso)
 

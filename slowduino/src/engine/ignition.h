@@ -80,13 +80,5 @@ bool isIdleAdvanceActive();
  */
 int8_t correctionIdleAdvance();
 
-/**
- * @brief Verifica rev limiter
- *
- * Corta avanço se RPM exceder limite
- * @param advance Avanço atual
- * @return Avanço limitado
- */
-int8_t applyRevLimiter(int8_t advance);
 
 #endif // IGNITION_H
